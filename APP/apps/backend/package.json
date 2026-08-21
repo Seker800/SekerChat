@@ -12,6 +12,9 @@
     "test:integration": "node --require ts-node/register --test --test-concurrency=1 src/auth/reminder-device-auth.integration.test.ts src/file-shares/file-share-attempt-limiter.integration.test.ts",
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "prisma:generate": "prisma generate",
+    "prisma:validate": "prisma validate --schema prisma/schema.prisma",
+    "prisma:deploy": "prisma migrate deploy --schema prisma/schema.prisma",
+    "prisma:status": "prisma migrate status --schema prisma/schema.prisma",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio"
   },

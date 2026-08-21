@@ -21,6 +21,8 @@ jobs:
   quality:
     name: Quality and unit tests
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/sekerchat_ci?schema=public
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
@@ -30,7 +32,7 @@ jobs:
           cache-dependency-path: APP/package-lock.json
       - run: npm ci
       - run: npm run prisma:generate --workspace @sekerchat/backend
-      - run: npx prisma validate --schema apps/backend/prisma/schema.prisma
+      - run: npm run prisma:validate --workspace @sekerchat/backend
       - run: npm run architecture:check
       - run: npm run open-source:check
       - run: npm run deployment:check
@@ -98,8 +100,8 @@ jobs:
           cache-dependency-path: APP/package-lock.json
       - run: npm ci
       - run: npm run prisma:generate --workspace @sekerchat/backend
-      - run: npx prisma migrate deploy --schema apps/backend/prisma/schema.prisma
-      - run: npx prisma migrate status --schema apps/backend/prisma/schema.prisma
+      - run: npm run prisma:deploy --workspace @sekerchat/backend
+      - run: npm run prisma:status --workspace @sekerchat/backend
       - run: npm run test:integration --workspace @sekerchat/backend
 
   workspace-smoke:
