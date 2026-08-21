@@ -1,0 +1,597 @@
+.sidebar {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg-sidebar);
+  overflow: hidden;
+}
+
+.sidebarVisible {
+  transform: translateX(0);
+}
+
+.header {
+  min-height: 52px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line-subtle);
+  color: var(--text-strong);
+  font-weight: 700;
+}
+
+.headerTitle {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.headerActions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.headerButton {
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 11px;
+  padding: 0;
+}
+
+.headerAddButton {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+
+.headerAddButton:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-strong);
+}
+
+.closeButton {
+  display: none;
+}
+
+
+.section {
+  padding: 12px 8px 10px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.specialSection {
+  display: grid;
+  gap: 6px;
+}
+
+.groupList {
+  display: grid;
+  gap: 4px;
+}
+
+.sectionTitle {
+  padding: 0 8px;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+
+.groupRow {
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 7px 10px;
+  text-align: left;
+  transition: background 120ms;
+  position: relative;
+}
+
+.groupRow:hover {
+  background: var(--bg-channel-hover);
+}
+
+.groupRow:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.groupRowActive {
+  background: var(--bg-channel-active);
+  color: var(--text-strong);
+}
+
+.groupRowActive:hover {
+  background: var(--bg-channel-active);
+}
+
+.specialRow {
+  padding-block: 10px;
+}
+
+.dmRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.dmRowContent {
+  min-width: 0;
+  flex: 1;
+}
+
+.dmCloseButton {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-dim);
+  opacity: 0;
+  transition: opacity 120ms, background 120ms, color 120ms;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.groupRow:hover .dmCloseButton {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.dmCloseButton:hover {
+  background: rgba(237, 66, 69, 0.15);
+  color: #ed4245;
+}
+
+.groupRowHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.groupName {
+  min-width: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.groupName span {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  word-break: break-word;
+}
+
+.groupMetaTime {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.unreadBadge {
+  flex-shrink: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  background: #ed4245;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+
+.updateDot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ed4245;
+  box-shadow: 0 0 0 2px var(--bg-secondary);
+}
+
+/* Server channel row: badge fixed at top-right */
+.groupRow > .unreadBadge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  flex-shrink: unset;
+}
+
+.groupRow:has(> .unreadBadge) .groupRowHeader {
+  padding-right: 28px;
+}
+
+.currentThreadMeta {
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.confirmedMarker {
+  display: inline-flex;
+  align-items: center;
+  min-height: 16px;
+  padding: 0 5px;
+  border: 1px solid rgba(252, 211, 77, 0.28);
+  border-radius: 999px;
+  background: rgba(252, 211, 77, 0.08);
+  color: #fcd34d;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.statusBadgepriority {
+  background: rgba(88, 101, 242, 0.2);
+  color: #c7d2fe;
+}
+
+.statusBadgedanger {
+  background: rgba(237, 66, 69, 0.16);
+  color: #fca5a5;
+}
+
+.statusBadgeactive {
+  background: rgba(59, 165, 92, 0.16);
+  color: #9ae6b4;
+}
+
+.statusBadgehandoff {
+  background: rgba(250, 166, 26, 0.18);
+  color: #fcd34d;
+}
+
+.statusBadgeidle {
+  background: rgba(114, 137, 218, 0.12);
+  color: #cbd5f5;
+}
+
+.statusBadgepaused {
+  background: rgba(148, 155, 164, 0.14);
+  color: #cbd5e1;
+}
+
+.statusBadgemuted {
+  background: rgba(148, 155, 164, 0.12);
+  color: #9ca3af;
+}
+
+.userPanel {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  background: var(--bg-user-panel);
+  border-top: 1px solid var(--line-subtle);
+  flex-shrink: 0;
+}
+
+.attendanceCard {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: calc(100% + 10px);
+  z-index: 25;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(28, 30, 36, 0.98);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.32);
+  backdrop-filter: blur(12px);
+  transform-origin: left bottom;
+  opacity: 0;
+  transform: translateY(12px) scale(0.985);
+  transition:
+    opacity 240ms ease,
+    transform 240ms ease;
+  pointer-events: none;
+}
+
+.attendanceCard[data-state='open'] {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.attendanceCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.attendanceCardLabel {
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.attendanceCardClose {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.attendanceCardClose:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-strong);
+}
+
+.attendanceCardStatus {
+  color: var(--text-strong);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.attendanceCardAction {
+  min-height: 36px;
+  border: 0;
+  border-radius: 10px;
+  background: #f2f3f5;
+  color: #17181c;
+  position: relative;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 120ms ease, transform 120ms ease, color 120ms ease;
+}
+
+.attendanceCardAction:hover:not(:disabled) {
+  background: #fff;
+  transform: translateY(-1px);
+}
+
+.attendanceCardAction:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.attendanceCardAction:disabled {
+  cursor: default;
+  opacity: 0.68;
+}
+
+.attendanceCardActionRunning {
+  background: rgba(242, 243, 245, 0.12);
+  color: #f2f3f5;
+}
+
+.attendanceCardActionSuccess {
+  background: #46c784;
+  color: #062312;
+}
+
+.attendanceCardActionFill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  background: linear-gradient(90deg, #6b7280 0%, #f2f3f5 100%);
+  transition: width 80ms linear;
+}
+
+.attendanceCardActionSuccess .attendanceCardActionFill {
+  background: #46c784;
+}
+
+.attendanceCardActionLabel {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  width: 100%;
+}
+
+.userPanelMainRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.userPanelAccount {
+  position: relative;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.userPanelInfo {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.tooltipBubble {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  z-index: 30;
+  max-width: 180px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  background: rgba(17, 18, 22, 0.96);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+  color: var(--text-strong);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+  opacity: 0;
+  pointer-events: none;
+  text-align: center;
+  transform: translate(-50%, 4px);
+  transition: opacity 120ms ease, transform 120ms ease;
+  white-space: nowrap;
+}
+
+.userPanelAccount:hover .tooltipBubble,
+.userPanelAccount:focus-visible .tooltipBubble,
+.userPanelInfo:hover .tooltipBubble,
+.userPanelInfo:focus-visible .tooltipBubble {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.userPanelName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userPanelEmail {
+  font-size: 11px;
+  color: var(--text-soft);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.userPanelGear {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  transition: background 120ms;
+}
+
+.userPanelGear:hover {
+  background: #3c3e44;
+  color: var(--text-strong);
+}
+
+.userPanelGear:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.userPanelGearActive {
+  background: #3c3e44;
+  color: #eab308;
+}
+
+.userPanelGearPanelActive {
+  background: #3c3e44;
+  color: var(--text-strong);
+}
+
+@media (max-width: 880px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 64px;
+    width: min(272px, calc(100vw - 64px));
+    border-right: 1px solid var(--line-subtle);
+    transform: translateX(calc(-100% - 64px));
+    transition: transform 180ms ease;
+    z-index: 25;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .sidebarVisible {
+    transform: translateX(0);
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .closeButton {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .headerActions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+}

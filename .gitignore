@@ -1,0 +1,26 @@
+.DS_Store
+
+# Node / frontend build output
+node_modules/
+dist/
+coverage/
+.vite/
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Project-specific local data
+30-build/apps/backend/prisma/dev.db
+30-build/apps/reminder/.local/
+.omx/
+.deploy-artifacts/
+APP/.local/
+
+# Optional private companion repositories
+/Cli/
+
+# Local sensitive incident notes
+凭据暴露处置-runbook.md

@@ -1,0 +1,125 @@
+.shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: #111318;
+  color: #edf1f7;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.window {
+  width: min(380px, 100%);
+  overflow: hidden;
+  border: 1px solid #303642;
+  border-radius: 12px;
+  background: #191d25;
+  box-shadow: 0 18px 48px rgb(0 0 0 / 34%);
+}
+
+.titlebar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #2a303a;
+  background: #1e232c;
+  color: #cbd2df;
+  font-size: 12px;
+}
+
+.logo {
+  display: grid;
+  width: 21px;
+  height: 21px;
+  place-items: center;
+  border-radius: 6px;
+  background: #5865f2;
+  color: white;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 11px;
+  padding: 30px 28px 28px;
+  text-align: center;
+}
+
+.content h1 {
+  margin: 4px 0 0;
+  font-size: 18px;
+  font-weight: 650;
+}
+
+.content p {
+  margin: 0 0 5px;
+  color: #8f99aa;
+  font-size: 13px;
+}
+
+.fileIcon {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border: 1px solid #343c49;
+  border-radius: 12px;
+  background: #222833;
+  color: #9ba8ed;
+  font-size: 22px;
+}
+
+.content input {
+  width: 172px;
+  box-sizing: border-box;
+  padding: 10px 13px;
+  border: 1px solid #3b4352;
+  border-radius: 8px;
+  outline: none;
+  background: #12161d;
+  color: white;
+  text-align: center;
+  font-size: 18px;
+  letter-spacing: 7px;
+}
+
+.content input:focus {
+  border-color: #6976e8;
+  box-shadow: 0 0 0 3px rgb(88 101 242 / 16%);
+}
+
+.primary {
+  min-width: 172px;
+  box-sizing: border-box;
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 8px;
+  background: #5865f2;
+  color: white;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.error,
+.success {
+  font-size: 12px;
+}
+
+.error {
+  color: #ff9da4;
+}
+
+.success {
+  color: #91d8ae;
+}

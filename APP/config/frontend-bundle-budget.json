@@ -1,0 +1,16 @@
+{
+  "description": "Guardrails, not optimization targets. Raise only with a reviewed bundle report.",
+  "maxSingleJavaScriptBytes": 460800,
+  "maxTotalJavaScriptBytes": 1572864,
+  "maxTotalCssBytes": 262144,
+  "deferredJavaScriptAssets": {
+    "SubscriptionArticleEditor-": 307200
+  },
+  "forbiddenEditorCssPatterns": [
+    "milkdown-ai-",
+    "milkdown-latex-",
+    "milkdown-code-block .cm-editor",
+    "milkdown-diff-"
+  ],
+  "forbiddenEditorAssetPrefixes": ["KaTeX_"]
+}

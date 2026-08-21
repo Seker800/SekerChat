@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SekerChat</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <section class="hero">
+        <p class="eyebrow">SekerChat</p>
+        <h1>菜单栏常驻提醒器</h1>
+        <p class="description">填好服务地址和邮箱验证码后，提醒器会在后台常驻，收到消息时弹提醒并打开网页会话。</p>
+      </section>
+
+      <section class="card">
+        <div class="status-row">
+          <span id="runtime-badge" class="badge badge-idle">未运行</span>
+          <span id="session-badge" class="subtle">未登录</span>
+        </div>
+
+        <label class="field">
+          <span>服务地址</span>
+          <input id="api-base-url" type="url" placeholder="http://localhost:3100/api" />
+        </label>
+
+        <label class="field">
+          <span>网页地址</span>
+          <input id="web-base-url" type="url" placeholder="http://localhost:5173" />
+        </label>
+
+        <label class="field">
+          <span>邮箱</span>
+          <input id="email" type="email" placeholder="alice@example.com" />
+        </label>
+
+        <label class="field">
+          <span>设备名</span>
+          <input id="device-name" type="text" placeholder="mac-reminder" />
+        </label>
+
+        <div class="button-row">
+          <button id="request-code-button" class="button button-secondary">请求验证码</button>
+          <button id="save-config-button" class="button button-ghost">保存配置</button>
+        </div>
+
+        <div id="request-result" class="hint"></div>
+
+        <label class="field">
+          <span>验证码</span>
+          <input id="code" type="text" maxlength="6" placeholder="123456" />
+        </label>
+
+        <label class="toggle">
+          <input id="auto-start-on-launch" type="checkbox" checked />
+          <span>启动 app 时自动开始提醒服务</span>
+        </label>
+
+        <label class="toggle">
+          <input id="open-at-login" type="checkbox" />
+          <span>开机自动启动菜单栏 app</span>
+        </label>
+
+        <div class="button-grid">
+          <button id="login-button" class="button">登录并开始常驻</button>
+          <button id="start-button" class="button button-secondary">开始提醒</button>
+          <button id="stop-button" class="button button-secondary">停止提醒</button>
+          <button id="logout-button" class="button button-ghost">移除登录状态</button>
+        </div>
+
+        <div id="feedback" class="feedback"></div>
+      </section>
+
+      <section class="card">
+        <div class="panel-header">
+          <h2>本地状态</h2>
+          <button id="open-data-dir-button" class="link-button">打开数据目录</button>
+        </div>
+        <dl class="meta-list">
+          <div>
+            <dt>Session 文件</dt>
+            <dd id="state-path">-</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="card">
+        <div class="panel-header">
+          <h2>运行日志</h2>
+          <button id="clear-log-button" class="link-button">清空面板</button>
+        </div>
+        <pre id="log-output" class="log-output"></pre>
+      </section>
+    </main>
+
+    <script src="./renderer.js"></script>
+  </body>
+</html>

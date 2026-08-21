@@ -1,0 +1,66 @@
+diff --git a/APP/apps/frontend/src/components/GroupThreadPanel.vue b/APP/apps/frontend/src/components/GroupThreadPanel.vue
+index 118daf6..4c2ed45 100644
+--- a/APP/apps/frontend/src/components/GroupThreadPanel.vue
++++ b/APP/apps/frontend/src/components/GroupThreadPanel.vue
+@@ -28,7 +28,7 @@ const props = defineProps<{
+   bindFileInput: (element: BindableRefTarget) => void;
+   bindThreadPanel: (element: BindableRefTarget) => void;
+   formatFileSize: (size: number) => string;
+-  formatMessageType: (type: 'text' | 'image' | 'file') => string;
++  formatMessageType: (type: 'text' | 'image' | 'file' | 'system') => string;
+   formatTimestamp: (value: string) => string;
+   getMentionToken: (user: { email: string; displayName: string | null }) => string;
+   getProtectedImageUrl: (item: MessageResponse) => string;
+diff --git a/APP/apps/frontend/src/components/GroupsWorkspace.vue b/APP/apps/frontend/src/components/GroupsWorkspace.vue
+index 67b2862..dc51da4 100644
+--- a/APP/apps/frontend/src/components/GroupsWorkspace.vue
++++ b/APP/apps/frontend/src/components/GroupsWorkspace.vue
+@@ -757,6 +757,12 @@ function handleRealtimeEvent(event: RealtimeEventResponse): void {
+   if (!alreadyPresent) {
+     void hydrateSingleImage(nextMessage);
+   }
++
++  console.log('[realtime] message.created', nextMessage.type, nextMessage.text?.slice(0, 40));
++  if (nextMessage.type === 'system') {
++    console.log('[realtime] triggering loadArtifacts');
++    void loadArtifacts(event.groupId);
++  }
+ }
+ 
+ function clearReconnectTimer(): void {
+@@ -1117,7 +1123,9 @@ async function loadArtifacts(groupId: string): Promise<void> {
+ 
+   try {
+     groupArtifacts.value = await listGroupArtifacts(props.accessToken, groupId);
++    console.log('[loadArtifacts] loaded', groupArtifacts.value.length, 'items');
+   } catch (error) {
++    console.error('[loadArtifacts] failed', error);
+     errorMessage.value = error instanceof Error ? error.message : '加载产出区文件失败。';
+   } finally {
+     isLoadingArtifacts.value = false;
+@@ -1782,10 +1790,11 @@ function formatAdminVisibilityReason(group: AdminDiscoverableGroupResponse): str
+   return '管理员可见 · 你当前不在群内';
+ }
+ 
+-function formatMessageType(type: 'text' | 'image' | 'file'): string {
++function formatMessageType(type: 'text' | 'image' | 'file' | 'system'): string {
+   if (type === 'text') return '文本';
+   if (type === 'image') return '图片';
+-  return '文件';
++  if (type === 'file') return '文件';
++  return '系统';
+ }
+ 
+ function getSenderLabel(item: MessageResponse): string {
+diff --git a/APP/apps/frontend/src/lib/messages-files-api.ts b/APP/apps/frontend/src/lib/messages-files-api.ts
+index f58a08c..7e2c1be 100644
+--- a/APP/apps/frontend/src/lib/messages-files-api.ts
++++ b/APP/apps/frontend/src/lib/messages-files-api.ts
+@@ -1,6 +1,6 @@
+ import { bearerHeader, authHeaders, apiBaseUrl, parseResponse } from './api-core';
+ 
+-export type MessageType = 'text' | 'image' | 'file';
++export type MessageType = 'text' | 'image' | 'file' | 'system';
+ export type FileKind = 'image' | 'file';
+ 
+ export interface FileObjectResponse {

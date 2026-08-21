@@ -1,0 +1,21 @@
+<Application x:Class="SekerChat.DesktopPet.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             ShutdownMode="OnExplicitShutdown">
+  <Application.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ui:ThemesDictionary Theme="Dark" />
+        <ui:ControlsDictionary />
+      </ResourceDictionary.MergedDictionaries>
+      <SolidColorBrush x:Key="InkBrush" Color="#F2F3F5" />
+      <SolidColorBrush x:Key="MutedBrush" Color="#949BA4" />
+      <SolidColorBrush x:Key="AccentBrush" Color="#7AA2F7" />
+      <SolidColorBrush x:Key="AppBackgroundBrush" Color="#1E1F22" />
+      <SolidColorBrush x:Key="ChromeBackgroundBrush" Color="#18191C" />
+      <SolidColorBrush x:Key="SurfaceBrush" Color="#2B2D31" />
+      <SolidColorBrush x:Key="SubtleBorderBrush" Color="#14FFFFFF" />
+    </ResourceDictionary>
+  </Application.Resources>
+</Application>

@@ -1,0 +1,155 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: APP
+
+jobs:
+  quality:
+    name: Quality and unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: APP/package-lock.json
+      - run: npm ci
+      - run: npm run prisma:generate --workspace @sekerchat/backend
+      - run: npx prisma validate --schema apps/backend/prisma/schema.prisma
+      - run: npm run architecture:check
+      - run: npm run open-source:check
+      - run: npm run deployment:check
+      - run: npm run ci:check
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run contracts:check
+      - run: npm run test:unit
+      - run: npm run build
+      - run: npm run bundle:check
+      - run: npm run security:audit:ci
+
+  dependency-review:
+    name: Dependency change review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+        with:
+          fail-on-severity: high
+
+  mobile-shell-audit:
+    name: Mobile shell dependency audit
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: APP/apps/mobile-shell
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: APP/apps/mobile-shell/package-lock.json
+      - run: npm ci
+      - run: npm audit --audit-level=high
+
+  migrations:
+    name: Empty database migration rehearsal
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: sekerchat_ci
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d sekerchat_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/sekerchat_ci?schema=public
+      TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/sekerchat_ci?schema=public
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: APP/package-lock.json
+      - run: npm ci
+      - run: npm run prisma:generate --workspace @sekerchat/backend
+      - run: npx prisma migrate deploy --schema apps/backend/prisma/schema.prisma
+      - run: npx prisma migrate status --schema apps/backend/prisma/schema.prisma
+      - run: npm run test:integration --workspace @sekerchat/backend
+
+  workspace-smoke:
+    name: Mocked workspace smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: APP/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e
+      - if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: playwright-report
+          path: APP/playwright-report
+          if-no-files-found: ignore
+
+  image-smoke:
+    name: Production image security (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: backend
+            dockerfile: apps/backend/Dockerfile
+            image: sekerchat-backend:ci
+          - name: frontend
+            dockerfile: apps/frontend-react/Dockerfile
+            image: sekerchat-frontend:ci
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - run: docker build --file ${{ matrix.dockerfile }} --tag ${{ matrix.image }} .
+      - name: Generate image SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          image: ${{ matrix.image }}
+          artifact-name: sekerchat-${{ matrix.name }}-sbom.spdx.json
+          output-file: sekerchat-${{ matrix.name }}-sbom.spdx.json
+          format: spdx-json
+      - name: Scan image vulnerabilities
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7
+        with:
+          image: ${{ matrix.image }}
+          fail-build: true
+          severity-cutoff: high
+          only-fixed: true
+          output-format: table

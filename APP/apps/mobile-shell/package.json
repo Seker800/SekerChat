@@ -1,0 +1,23 @@
+{
+  "name": "@sekerchat/mobile-shell",
+  "version": "0.5.2",
+  "license": "AGPL-3.0-only",
+  "private": true,
+  "description": "Android thin shell for SekerChat web app",
+  "scripts": {
+    "cap:add": "npx cap add android",
+    "cap:sync": "npx cap sync",
+    "cap:open": "npx cap open android",
+    "cap:run": "npx cap run android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.3.4",
+    "@capacitor/background-runner": "^3.0.0",
+    "@capacitor/core": "^8.3.4",
+    "@capacitor/local-notifications": "^8.2.0",
+    "@capacitor/preferences": "^8.0.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.3.4"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "@sekerchat/shared",
+  "version": "0.9.7",
+  "license": "AGPL-3.0-only",
+  "private": true,
+  "//": "WARNING: main MUST point to a single self-contained .ts file. DO NOT use index.ts barrel export — nest start's ts-node cannot resolve extensionless cross-file imports within workspace packages. If you add new exports, append them to work-status.ts or fix the barrel resolution first.",
+  "main": "./src/work-status.ts",
+  "types": "./src/work-status.ts"
+}

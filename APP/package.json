@@ -1,0 +1,75 @@
+{
+  "name": "sekerchat",
+  "private": true,
+  "version": "0.9.7",
+  "license": "AGPL-3.0-only",
+  "workspaces": [
+    "apps/backend",
+    "apps/frontend-react",
+    "apps/ui-lab",
+    "apps/reminder",
+    "packages/shared",
+    "packages/contracts"
+  ],
+  "scripts": {
+    "dev:backend": "bash ./scripts/run-backend-dev.sh",
+    "dev:frontend": "npm run dev --workspace @sekerchat/frontend-react --",
+    "dev:ui-lab": "npm run dev --workspace @sekerchat/ui-lab",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "build": "npm run build --workspace @sekerchat/backend && npm run build --workspace @sekerchat/frontend-react && npm run build --workspace @sekerchat/reminder",
+    "build:synology-images": "bash ./scripts/build-synology-images.sh",
+    "build:ui-lab": "npm run build --workspace @sekerchat/ui-lab",
+    "typecheck": "npm run typecheck --workspace @sekerchat/contracts && npm run typecheck --workspace @sekerchat/backend && npm run typecheck --workspace @sekerchat/frontend-react && npm run typecheck --workspace @sekerchat/reminder",
+    "test": "npm run test:unit",
+    "test:unit": "npm run test --workspace @sekerchat/contracts && npm run test --workspace @sekerchat/backend && npm run test --workspace @sekerchat/frontend-react && npm run test --workspace @sekerchat/reminder",
+    "classify:handoff": "node ./scripts/classify-handoff.mjs",
+    "auto-slice:inspect": "node ./scripts/auto-slice-runner.mjs inspect",
+    "auto-slice:dry-run": "node ./scripts/auto-slice-runner.mjs run --dry-run",
+    "auto-slice:signal": "node ./scripts/auto-slice-runner.mjs run --format text",
+    "auto-slice:run": "node ./scripts/auto-slice-runner.mjs run",
+    "auto-slice:advance": "npm run auto-slice:run",
+    "smoke:groups": "node ./scripts/smoke-groups.mjs",
+    "smoke:web-realtime": "node ./scripts/smoke-web-realtime.mjs",
+    "smoke:web-login": "playwright test -c playwright.live.config.ts",
+    "smoke:reminder-runtime": "node ./scripts/smoke-reminder-runtime.mjs",
+    "smoke:reminder-delivery": "node ./scripts/smoke-reminder-delivery.mjs",
+    "smoke:reminder-fallback": "node ./scripts/smoke-reminder-fallback.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:update": "playwright test --update-snapshots",
+    "review:web": "playwright test",
+    "architecture:check": "node --test ./scripts/check-module-boundaries.test.mjs ./scripts/check-sekereagle-retirement.test.mjs && node ./scripts/check-import-cycles.mjs && node ./scripts/check-module-boundaries.mjs",
+    "open-source:check": "node --test ./scripts/open-source-boundaries.test.mjs ./scripts/create-public-repository.test.mjs ./scripts/security-audit-gate.test.mjs",
+    "deployment:check": "node ./scripts/check-deployment-boundaries.mjs && node --test ./scripts/deployment-scripts.test.mjs ./scripts/memory-monitor.test.mjs",
+    "monitor:memory:report": "node ./scripts/analyze-memory-monitor.mjs",
+    "ci:check": "node ./scripts/check-ci-contract.mjs",
+    "bundle:check": "node ./scripts/check-frontend-bundle.mjs",
+    "contracts:generate": "npm run build:openapi --workspace @sekerchat/backend && node ./apps/backend/dist-openapi/src/openapi/generate-openapi.js && openapi-typescript ./contracts/openapi.json -o ./packages/contracts/src/generated/openapi.ts",
+    "contracts:check": "npm run build:openapi --workspace @sekerchat/backend && node ./apps/backend/dist-openapi/src/openapi/generate-openapi.js --check && openapi-typescript ./contracts/openapi.json -o ./packages/contracts/src/generated/openapi.ts --check && node ./scripts/check-api-contract.mjs",
+    "security:audit": "npm audit --audit-level=high",
+    "security:audit:ci": "node ./scripts/security-audit-gate.mjs",
+    "security:audit:runtime": "npm audit --omit=dev --audit-level=high"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.56.1",
+    "eslint": "^10.1.0",
+    "eslint-plugin-vue": "^10.8.0",
+    "globals": "^17.4.0",
+    "openapi-typescript": "^7.13.0",
+    "prettier": "^3.6.2",
+    "typescript-eslint": "^8.57.2",
+    "vue-eslint-parser": "^10.4.0",
+    "ws": "^8.21.3"
+  },
+  "dependencies": {
+    "helmet": "^8.1.0"
+  },
+  "overrides": {
+    "@nestjs/swagger": {
+      "js-yaml": "5.2.3"
+    }
+  }
+}

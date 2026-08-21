@@ -1,0 +1,188 @@
+.rail {
+  display: flex;
+  flex-direction: column;
+  padding: 12px 8px;
+  background: var(--bg-server-rail);
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.railMain {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.home {
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+  position: relative;
+  padding: 0;
+  transition:
+    box-shadow 120ms,
+    filter 120ms;
+}
+
+.home:hover {
+  filter: brightness(1.05);
+}
+
+.button {
+  width: 48px;
+  height: 48px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-soft);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  position: relative;
+  padding: 0;
+  transition:
+    box-shadow 120ms,
+    filter 120ms,
+    opacity 120ms;
+}
+
+.button:hover {
+  filter: brightness(1.05);
+}
+
+.buttonActive {
+  box-shadow: 0 0 0 3px var(--bg-server-active);
+}
+
+.buttonActive:hover {
+  filter: brightness(1.05);
+}
+
+.addButton {
+  width: 48px;
+  height: 48px;
+  border: 2px dashed var(--line-subtle, #4e5058);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-soft);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  padding: 0;
+  transition:
+    border-color 120ms,
+    color 120ms,
+    filter 120ms;
+}
+
+.addButton:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  filter: brightness(1.05);
+}
+
+.badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #ed4245;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+
+.divider {
+  width: 32px;
+  height: 1px;
+  margin: 0 auto;
+  background: var(--line-subtle, #4e5058);
+}
+
+.archiveToggle {
+  width: 48px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  padding: 0;
+  font-size: 12px;
+  transition:
+    background 120ms,
+    color 120ms;
+}
+
+.archiveToggle:hover {
+  background: var(--bg-channel-hover, #35373c);
+  color: var(--text-soft);
+}
+
+.archiveBadge {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--bg-input, #383a40);
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+
+.archiveList {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+}
+
+.buttonArchived {
+  opacity: 0.55;
+}
+
+.buttonArchived:hover {
+  opacity: 0.85;
+}
+
+@media (max-width: 880px) {
+  .railOverlay {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 64px;
+    z-index: 22;
+    transform: translateX(-100%);
+    transition: transform 180ms ease;
+    visibility: hidden;
+    pointer-events: none;
+    border-right: 1px solid var(--line-subtle);
+  }
+
+  .railOverlayVisible {
+    transform: translateX(0);
+    visibility: visible;
+    pointer-events: auto;
+  }
+}

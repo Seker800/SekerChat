@@ -1,0 +1,336 @@
+.composer {
+  display: grid;
+  gap: 6px;
+  padding: 0 16px 18px;
+  border-top: 1px solid var(--line-subtle);
+  background: linear-gradient(180deg, rgba(49, 51, 56, 0), rgba(49, 51, 56, 1) 18%);
+}
+
+.reply {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: 10px 10px 0 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(35, 36, 40, 0.92);
+  color: var(--text-muted);
+}
+
+.bannerCopy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.bannerCopy strong {
+  color: var(--text-strong);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.bannerCopy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.bannerThumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.bannerButton {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-soft);
+  cursor: pointer;
+  font-size: 11px;
+  flex-shrink: 0;
+  font-weight: 600;
+}
+
+.shell {
+  padding: 0 12px;
+  border-radius: 8px;
+  background: var(--bg-input);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.inputRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 0;
+}
+
+.attachButton {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--text-soft);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.attachButton span {
+  display: block;
+  line-height: 1;
+  transform: translateY(-1px);
+}
+
+.fileButton {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  padding: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-soft);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.fileIcon {
+  width: 16px;
+  height: 16px;
+}
+
+.visuallyHiddenInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(100%);
+  white-space: nowrap;
+}
+
+.editor {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+  position: relative;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 22px;
+  max-height: 180px;
+  padding: 9px 0;
+  border: 0;
+  resize: none;
+  background: transparent;
+  color: var(--text-soft);
+  box-sizing: border-box;
+  line-height: 22px;
+  overflow-wrap: anywhere;
+  font-size: 15px;
+  overflow-x: hidden;
+  overflow-y: hidden;
+}
+
+.textarea::placeholder {
+  color: var(--text-dim);
+}
+
+.textarea:focus {
+  outline: none;
+}
+
+.primaryActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.send {
+  min-height: 28px;
+  min-width: 42px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.bannerButton:hover,
+.attachButton:hover,
+.fileButton:hover {
+  color: var(--text-soft);
+}
+
+.send {
+  background: rgba(88, 101, 242, 0.18);
+  color: #c7d2fe;
+}
+
+.send:hover:not(:disabled) {
+  background: rgba(88, 101, 242, 0.28);
+}
+
+.bannerButton:disabled,
+.send:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+@media (max-width: 960px) {
+  .composer {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .shell {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .inputRow {
+    gap: 8px;
+  }
+}
+
+@media (max-width: 880px) {
+  .shell {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+
+  .inputRow {
+    grid-template-columns: 20px 20px minmax(0, 1fr) auto;
+    gap: 6px;
+    min-height: 40px;
+  }
+
+  .attachButton,
+  .fileButton {
+    width: 20px;
+    height: 20px;
+  }
+
+  .attachButton {
+    font-size: 16px;
+  }
+
+  .fileIcon {
+    width: 13px;
+    height: 13px;
+  }
+
+  .editor {
+    min-height: 36px;
+  }
+
+  .textarea {
+    padding: 7px 0;
+    font-size: 14px;
+    line-height: 20px;
+  }
+
+  .primaryActions {
+    gap: 0;
+  }
+
+  .send {
+    min-width: 34px;
+    min-height: 24px;
+    padding: 0 6px;
+    font-size: 10px;
+  }
+}
+
+.mentionDropdown {
+  position: absolute;
+  left: 0;
+  bottom: 100%;
+  margin-bottom: 4px;
+  min-width: 220px;
+  max-height: 240px;
+  overflow-y: auto;
+  background: var(--bg-elevated, #2b2d31);
+  border: 1px solid var(--line-subtle);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 50;
+  padding: 4px;
+}
+
+.mentionItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  font-size: 14px;
+  text-align: left;
+}
+
+.mentionItemActive {
+  background: rgba(88, 101, 242, 0.2);
+  color: var(--text-strong);
+}
+
+.mentionItem:hover {
+  background: rgba(88, 101, 242, 0.12);
+}
+
+.mentionName {
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.mentionEmail {
+  font-size: 12px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 880px) {
+  .composer {
+    padding-bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (max-width: 640px) {
+  .reply,
+  .attachment {
+    align-items: flex-start;
+  }
+
+  .bannerActions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

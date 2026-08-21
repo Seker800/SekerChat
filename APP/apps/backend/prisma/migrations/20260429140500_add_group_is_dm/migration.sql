@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Group" ADD COLUMN "isDM" BOOLEAN NOT NULL DEFAULT false;

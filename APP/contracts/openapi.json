@@ -1,0 +1,8095 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api/health": {
+      "get": {
+        "operationId": "AppController_getHealth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/api/health/live": {
+      "get": {
+        "operationId": "AppController_getLiveness",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/api/health/ready": {
+      "get": {
+        "operationId": "AppController_getReadiness",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/api/realtime/events": {
+      "get": {
+        "operationId": "RealtimeController_pullEvents",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Realtime"
+        ]
+      }
+    },
+    "/api/admin/artifacts": {
+      "get": {
+        "operationId": "AdminArtifactsController_list",
+        "parameters": [
+          {
+            "name": "query",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "groupId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "uploaderId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "groupWorkStatus",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "packedState",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "AdminArtifacts"
+        ]
+      }
+    },
+    "/api/admin/artifacts/{artifactId}": {
+      "get": {
+        "operationId": "AdminArtifactsController_getMetadata",
+        "parameters": [
+          {
+            "name": "artifactId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "AdminArtifacts"
+        ]
+      },
+      "delete": {
+        "operationId": "AdminArtifactsController_delete",
+        "parameters": [
+          {
+            "name": "artifactId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "AdminArtifacts"
+        ]
+      }
+    },
+    "/api/admin/artifacts/{artifactId}/download-url": {
+      "get": {
+        "operationId": "AdminArtifactsController_getDownloadUrl",
+        "parameters": [
+          {
+            "name": "artifactId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "AdminArtifacts"
+        ]
+      }
+    },
+    "/api/admin/artifacts/{artifactId}/content": {
+      "get": {
+        "operationId": "AdminArtifactsController_getContent",
+        "parameters": [
+          {
+            "name": "artifactId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "AdminArtifacts"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/artifacts": {
+      "get": {
+        "operationId": "ArtifactsController_listArtifacts",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Artifacts"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/artifacts/confirm": {
+      "post": {
+        "operationId": "ArtifactsController_confirmArtifacts",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Artifacts"
+        ]
+      },
+      "delete": {
+        "operationId": "ArtifactsController_unlockArtifacts",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Artifacts"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/artifacts/from-files/{fileId}": {
+      "post": {
+        "operationId": "ArtifactsController_addFileToArtifacts",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinalizedArtifactValueResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Artifacts"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/artifacts/{artifactId}": {
+      "get": {
+        "operationId": "ArtifactsController_getArtifactMetadata",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "artifactId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Artifacts"
+        ]
+      },
+      "delete": {
+        "operationId": "ArtifactsController_deleteArtifact",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "artifactId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Artifacts"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/artifacts/{artifactId}/download-url": {
+      "get": {
+        "operationId": "ArtifactsController_getArtifactDownloadUrl",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "artifactId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Artifacts"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/artifacts/{artifactId}/content": {
+      "get": {
+        "operationId": "ArtifactsController_getArtifactContent",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "artifactId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Artifacts"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/files/{fileId}": {
+      "get": {
+        "operationId": "FilesController_getFileMetadata",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileMetadataResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "files"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/files/{fileId}/thumbnail": {
+      "get": {
+        "operationId": "FilesController_getFileThumbnail",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/gif": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "files"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/files/{fileId}/download-url": {
+      "get": {
+        "operationId": "FilesController_getFileDownloadUrl",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileDownloadUrlResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "files"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/files/{fileId}/view-url": {
+      "get": {
+        "operationId": "FilesController_getFileViewUrl",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileViewUrlResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "files"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/files/{fileId}/content": {
+      "get": {
+        "operationId": "FilesController_getFileContent",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "files"
+        ]
+      }
+    },
+    "/api/system-config": {
+      "get": {
+        "operationId": "SystemConfigController_getAll",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "SystemConfig"
+        ]
+      },
+      "patch": {
+        "operationId": "SystemConfigController_updateConfig",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSystemConfigDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "SystemConfig"
+        ]
+      }
+    },
+    "/api/system-config/storage-stats": {
+      "get": {
+        "operationId": "SystemConfigController_getStorageStats",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "SystemConfig"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/messages": {
+      "get": {
+        "operationId": "MessagesController_listMessages",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "messages"
+        ]
+      },
+      "post": {
+        "operationId": "MessagesController_createMessage",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "messages"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/messages/{messageId}": {
+      "patch": {
+        "operationId": "MessagesController_editMessage",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "messageId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EditMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "messages"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/messages/{messageId}/revoke": {
+      "post": {
+        "operationId": "MessagesController_revokeMessage",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "messageId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "messages"
+        ]
+      }
+    },
+    "/api/admin/bans": {
+      "get": {
+        "operationId": "LoginRiskController_listBlacklist",
+        "parameters": [
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "LoginRisk"
+        ]
+      }
+    },
+    "/api/admin/bans/{id}/unban": {
+      "post": {
+        "operationId": "LoginRiskController_unbanEntry",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnbanDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "LoginRisk"
+        ]
+      }
+    },
+    "/api/presence-logs": {
+      "get": {
+        "operationId": "PresenceLogController_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "event",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "PresenceLog"
+        ]
+      }
+    },
+    "/api/avatars/users/me": {
+      "post": {
+        "operationId": "AvatarsController_uploadUserAvatar",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Avatars"
+        ]
+      }
+    },
+    "/api/avatars/users/{userId}/content": {
+      "get": {
+        "operationId": "AvatarsController_getUserAvatarContent",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Avatars"
+        ]
+      }
+    },
+    "/api/avatars/servers/{category}": {
+      "post": {
+        "operationId": "AvatarsController_uploadServerAvatar",
+        "parameters": [
+          {
+            "name": "category",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Avatars"
+        ]
+      },
+      "delete": {
+        "operationId": "AvatarsController_deleteServerAvatar",
+        "parameters": [
+          {
+            "name": "category",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Avatars"
+        ]
+      }
+    },
+    "/api/avatars/servers/by-id/{serverId}": {
+      "post": {
+        "operationId": "AvatarsController_uploadServerAvatarById",
+        "parameters": [
+          {
+            "name": "serverId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Avatars"
+        ]
+      },
+      "delete": {
+        "operationId": "AvatarsController_deleteServerAvatarById",
+        "parameters": [
+          {
+            "name": "serverId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Avatars"
+        ]
+      }
+    },
+    "/api/avatars/servers/{category}/content": {
+      "get": {
+        "operationId": "AvatarsController_getServerAvatarContent",
+        "parameters": [
+          {
+            "name": "category",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Avatars"
+        ]
+      }
+    },
+    "/api/avatars/servers/by-id/{serverId}/content": {
+      "get": {
+        "operationId": "AvatarsController_getServerAvatarContentById",
+        "parameters": [
+          {
+            "name": "serverId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Avatars"
+        ]
+      }
+    },
+    "/api/servers": {
+      "get": {
+        "operationId": "ServersController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ServerResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "servers"
+        ]
+      }
+    },
+    "/api/servers/{serverId}": {
+      "patch": {
+        "operationId": "ServersController_rename",
+        "parameters": [
+          {
+            "name": "serverId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateServerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "servers"
+        ]
+      }
+    },
+    "/api/servers/{serverId}/archive": {
+      "patch": {
+        "operationId": "ServersController_archive",
+        "parameters": [
+          {
+            "name": "serverId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArchiveServerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchiveServerResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "servers"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/work-state": {
+      "get": {
+        "operationId": "OpsController_getGroupWorkState",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Ops"
+        ]
+      },
+      "patch": {
+        "operationId": "OpsController_setGroupWorkState",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetGroupWorkStateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Ops"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/work-state/history": {
+      "get": {
+        "operationId": "OpsController_getGroupWorkStateHistory",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Ops"
+        ]
+      }
+    },
+    "/api/subscriptions": {
+      "get": {
+        "operationId": "SubscriptionsController_list",
+        "parameters": [
+          {
+            "name": "manage",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "PUBLISHED",
+                "WITHDRAWN"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/SubscriptionListResponseDto"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SubscriptionManageListResponseDto"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "subscriptions"
+        ]
+      },
+      "post": {
+        "operationId": "SubscriptionsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSubscriptionPostDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionPostResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/api/subscriptions/summary": {
+      "get": {
+        "operationId": "SubscriptionsController_summary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionSummaryResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/api/subscriptions/{postId}": {
+      "get": {
+        "operationId": "SubscriptionsController_detail",
+        "parameters": [
+          {
+            "name": "postId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionPostResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "subscriptions"
+        ]
+      },
+      "patch": {
+        "operationId": "SubscriptionsController_update",
+        "parameters": [
+          {
+            "name": "postId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSubscriptionPostDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionPostResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "subscriptions"
+        ]
+      },
+      "delete": {
+        "operationId": "SubscriptionsController_delete",
+        "parameters": [
+          {
+            "name": "postId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeleteSubscriptionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/api/subscriptions/{postId}/confirmations": {
+      "get": {
+        "operationId": "SubscriptionsController_confirmations",
+        "parameters": [
+          {
+            "name": "postId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionConfirmationsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/api/subscriptions/{postId}/confirmation": {
+      "put": {
+        "operationId": "SubscriptionsController_confirm",
+        "parameters": [
+          {
+            "name": "postId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionConfirmationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/api/subscriptions/{postId}/publish": {
+      "post": {
+        "operationId": "SubscriptionsController_publish",
+        "parameters": [
+          {
+            "name": "postId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionPostResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/api/subscriptions/{postId}/withdraw": {
+      "post": {
+        "operationId": "SubscriptionsController_withdraw",
+        "parameters": [
+          {
+            "name": "postId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionPostResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/api/subscriptions/{postId}/pin": {
+      "post": {
+        "operationId": "SubscriptionsController_pin",
+        "parameters": [
+          {
+            "name": "postId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PinSubscriptionPostDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionPostResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/api/subscriptions/{postId}/read": {
+      "post": {
+        "operationId": "SubscriptionsController_read",
+        "parameters": [
+          {
+            "name": "postId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Deprecated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionSummaryResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "subscriptions"
+        ]
+      },
+      "delete": {
+        "operationId": "SubscriptionsController_unread",
+        "parameters": [
+          {
+            "name": "postId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Deprecated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionSummaryResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/api/subscriptions/read/all": {
+      "post": {
+        "operationId": "SubscriptionsController_readAll",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Deprecated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionSummaryResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/api/subscriptions/attachments/{attachmentId}/download-url": {
+      "get": {
+        "operationId": "SubscriptionsController_downloadUrl",
+        "parameters": [
+          {
+            "name": "attachmentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentDownloadUrlResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/api/subscriptions/attachments/{attachmentId}/view-url": {
+      "get": {
+        "operationId": "SubscriptionsController_viewUrl",
+        "parameters": [
+          {
+            "name": "attachmentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentViewUrlResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/api/subscriptions/attachments/{attachmentId}/content": {
+      "get": {
+        "operationId": "SubscriptionsController_content",
+        "parameters": [
+          {
+            "name": "attachmentId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "operationId": "AuthController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "auth-legacy-reminder"
+        ]
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "auth-legacy-reminder"
+        ]
+      }
+    },
+    "/api/auth/request-code": {
+      "post": {
+        "operationId": "AuthController_requestCode",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestEmailCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "auth-legacy-reminder"
+        ]
+      }
+    },
+    "/api/auth/verify-code": {
+      "post": {
+        "operationId": "AuthController_verifyCode",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEmailCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "auth-legacy-reminder"
+        ]
+      }
+    },
+    "/api/auth/oidc/login": {
+      "get": {
+        "operationId": "AuthController_startOidcLogin",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "auth-legacy-reminder"
+        ]
+      }
+    },
+    "/api/auth/oidc/callback": {
+      "get": {
+        "operationId": "AuthController_completeOidcLogin",
+        "parameters": [
+          {
+            "name": "error",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "state",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          },
+          {
+            "name": "code",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "auth-legacy-reminder"
+        ]
+      }
+    },
+    "/api/auth/oidc/implicit/complete": {
+      "post": {
+        "operationId": "AuthController_completeImplicitOidcLogin",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "auth-legacy-reminder"
+        ]
+      }
+    },
+    "/api/auth/reminder/verify-code": {
+      "post": {
+        "operationId": "AuthController_verifyReminderDeviceCode",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyReminderDeviceCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderDeviceResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth-legacy-reminder"
+        ]
+      }
+    },
+    "/api/auth/reminder/create-device": {
+      "post": {
+        "operationId": "AuthController_createReminderDevice",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReminderDeviceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderDeviceResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth-legacy-reminder"
+        ]
+      }
+    },
+    "/api/auth/reminder/realtime-ticket": {
+      "post": {
+        "operationId": "AuthController_issueReminderRealtimeTicket",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderRealtimeTicketResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth-legacy-reminder"
+        ]
+      }
+    },
+    "/api/auth/reminder/devices": {
+      "get": {
+        "operationId": "AuthController_listReminderDevices",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ReminderDeviceSummaryResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth-legacy-reminder"
+        ]
+      }
+    },
+    "/api/auth/reminder/devices/{deviceTokenId}": {
+      "delete": {
+        "operationId": "AuthController_revokeReminderDevice",
+        "parameters": [
+          {
+            "name": "deviceTokenId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth-legacy-reminder"
+        ]
+      }
+    },
+    "/api/auth/reminder/devices/{deviceTokenId}/rotate": {
+      "post": {
+        "operationId": "AuthController_rotateReminderDevice",
+        "parameters": [
+          {
+            "name": "deviceTokenId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReminderDeviceResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth-legacy-reminder"
+        ]
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "operationId": "AuthController_refresh",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshSessionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserSessionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth-legacy-reminder"
+        ]
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshSessionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth-legacy-reminder"
+        ]
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "operationId": "AuthController_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "auth-legacy-reminder"
+        ]
+      },
+      "patch": {
+        "operationId": "AuthController_updateProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "auth-legacy-reminder"
+        ]
+      }
+    },
+    "/api/auth/capabilities": {
+      "get": {
+        "operationId": "AuthController_capabilities",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "auth-legacy-reminder"
+        ]
+      }
+    },
+    "/api/auth/me/password": {
+      "patch": {
+        "operationId": "AuthController_changePassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "auth-legacy-reminder"
+        ]
+      }
+    },
+    "/api/auth/browser/register": {
+      "post": {
+        "operationId": "BrowserAuthController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserSessionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth-browser"
+        ]
+      }
+    },
+    "/api/auth/browser/login": {
+      "post": {
+        "operationId": "BrowserAuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserSessionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth-browser"
+        ]
+      }
+    },
+    "/api/auth/browser/request-code": {
+      "post": {
+        "operationId": "BrowserAuthController_requestCode",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestEmailCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestCodeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth-browser"
+        ]
+      }
+    },
+    "/api/auth/browser/verify-code": {
+      "post": {
+        "operationId": "BrowserAuthController_verifyCode",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEmailCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserSessionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth-browser"
+        ]
+      }
+    },
+    "/api/auth/browser/refresh": {
+      "post": {
+        "operationId": "BrowserAuthController_refresh",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserSessionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth-browser"
+        ]
+      }
+    },
+    "/api/auth/browser/logout": {
+      "post": {
+        "operationId": "BrowserAuthController_logout",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth-browser"
+        ]
+      }
+    },
+    "/api/auth/browser/me/password": {
+      "patch": {
+        "operationId": "BrowserAuthController_changePassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrowserSessionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth-browser"
+        ]
+      }
+    },
+    "/api/auth/token/register": {
+      "post": {
+        "operationId": "TokenAuthController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenSessionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth-token"
+        ]
+      }
+    },
+    "/api/auth/token/login": {
+      "post": {
+        "operationId": "TokenAuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenSessionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth-token"
+        ]
+      }
+    },
+    "/api/auth/token/request-code": {
+      "post": {
+        "operationId": "TokenAuthController_requestCode",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RequestEmailCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RequestCodeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth-token"
+        ]
+      }
+    },
+    "/api/auth/token/verify-code": {
+      "post": {
+        "operationId": "TokenAuthController_verifyCode",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEmailCodeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenSessionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth-token"
+        ]
+      }
+    },
+    "/api/auth/token/refresh": {
+      "post": {
+        "operationId": "TokenAuthController_refresh",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshSessionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenSessionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth-token"
+        ]
+      }
+    },
+    "/api/auth/token/logout": {
+      "post": {
+        "operationId": "TokenAuthController_logout",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefreshSessionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogoutResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "auth-token"
+        ]
+      }
+    },
+    "/api/users": {
+      "get": {
+        "operationId": "UsersController_listUsers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/users/dm-candidates": {
+      "get": {
+        "operationId": "UsersController_listDMCandidates",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/users/{userId}/role": {
+      "patch": {
+        "operationId": "UsersController_updateUserRole",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUserRoleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/users/{userId}": {
+      "delete": {
+        "operationId": "UsersController_deleteUser",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/users/{userId}/disabled": {
+      "patch": {
+        "operationId": "UsersController_setUserDisabled",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/users/{userId}/password": {
+      "patch": {
+        "operationId": "UsersController_resetUserPassword",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetUserPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/users/me": {
+      "get": {
+        "operationId": "CurrentUserController_getCurrentUser",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "CurrentUser"
+        ]
+      },
+      "patch": {
+        "operationId": "CurrentUserController_updateProfile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProfileDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "CurrentUser"
+        ]
+      }
+    },
+    "/api/users/me/capabilities": {
+      "get": {
+        "operationId": "CurrentUserController_getCapabilities",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "CurrentUser"
+        ]
+      }
+    },
+    "/api/dm": {
+      "get": {
+        "operationId": "DmController_listDMs",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Dm"
+        ]
+      },
+      "post": {
+        "operationId": "DmController_createOrGetDM",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Dm"
+        ]
+      }
+    },
+    "/api/groups": {
+      "post": {
+        "operationId": "GroupsController_createGroup",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateGroupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      },
+      "get": {
+        "operationId": "GroupsController_listGroups",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GroupResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/api/groups/admin/discovery": {
+      "get": {
+        "operationId": "GroupsController_listAdminDiscoverableGroups",
+        "parameters": [
+          {
+            "name": "scope",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "category",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "serverId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AdminDiscoverableGroupResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/api/groups/admin/categories": {
+      "get": {
+        "operationId": "GroupsController_listManageableCategories",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ManageableCategoryResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      },
+      "patch": {
+        "operationId": "GroupsController_renameCategory",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenameCategoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenameCategoryResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      },
+      "delete": {
+        "operationId": "GroupsController_resetCategory",
+        "parameters": [
+          {
+            "name": "name",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetCategoryResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/api/groups/admin/categories/archive": {
+      "patch": {
+        "operationId": "GroupsController_archiveCategory",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArchiveCategoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArchiveCategoryResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/admin/join": {
+      "post": {
+        "operationId": "GroupsController_adminJoinGroup",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/api/groups/{groupId}": {
+      "get": {
+        "operationId": "GroupsController_getGroup",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      },
+      "patch": {
+        "operationId": "GroupsController_updateGroup",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGroupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/invite-candidates": {
+      "get": {
+        "operationId": "GroupsController_listInviteCandidates",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/UserOptionResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/members": {
+      "post": {
+        "operationId": "GroupsController_inviteMember",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteGroupMemberDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/members/{memberUserId}/role": {
+      "patch": {
+        "operationId": "GroupsController_updateMemberRole",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "memberUserId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGroupMemberRoleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/members/{memberUserId}": {
+      "delete": {
+        "operationId": "GroupsController_removeMember",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "memberUserId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/leave": {
+      "delete": {
+        "operationId": "GroupsController_leaveGroup",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeaveGroupResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/archive": {
+      "patch": {
+        "operationId": "GroupsController_archiveGroup",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArchiveGroupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/mark-read": {
+      "post": {
+        "operationId": "GroupsController_markGroupRead",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkGroupReadResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/read-cursor": {
+      "patch": {
+        "operationId": "GroupsController_advanceReadCursor",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdvanceReadCursorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdvanceReadCursorResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/files/{fileId}/share": {
+      "get": {
+        "operationId": "FileSharesController_get",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "FileShares"
+        ]
+      },
+      "patch": {
+        "operationId": "FileSharesController_save",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveFileShareDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "FileShares"
+        ]
+      },
+      "delete": {
+        "operationId": "FileSharesController_revoke",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "FileShares"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/files/{fileId}/share/rotate": {
+      "post": {
+        "operationId": "FileSharesController_rotate",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fileId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RotateFileShareDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "FileShares"
+        ]
+      }
+    },
+    "/api/public/file-shares/unlock": {
+      "post": {
+        "operationId": "PublicFileSharesController_unlock",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnlockFileShareDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "PublicFileShares"
+        ]
+      }
+    },
+    "/api/public/file-shares/{shareId}/content": {
+      "head": {
+        "operationId": "PublicFileSharesController_head",
+        "parameters": [
+          {
+            "name": "shareId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "PublicFileShares"
+        ]
+      },
+      "get": {
+        "operationId": "PublicFileSharesController_content",
+        "parameters": [
+          {
+            "name": "shareId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "PublicFileShares"
+        ]
+      }
+    },
+    "/api/admin/bots": {
+      "get": {
+        "operationId": "BotsController_listBots",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Bots"
+        ]
+      },
+      "post": {
+        "operationId": "BotsController_createBot",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBotDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Bots"
+        ]
+      }
+    },
+    "/api/admin/bots/{botId}": {
+      "patch": {
+        "operationId": "BotsController_updateBot",
+        "parameters": [
+          {
+            "name": "botId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBotDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Bots"
+        ]
+      },
+      "delete": {
+        "operationId": "BotsController_deleteBot",
+        "parameters": [
+          {
+            "name": "botId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Bots"
+        ]
+      }
+    },
+    "/api/admin/bots/{botId}/avatar": {
+      "post": {
+        "operationId": "BotsController_uploadBotAvatar",
+        "parameters": [
+          {
+            "name": "botId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Bots"
+        ]
+      }
+    },
+    "/api/bots": {
+      "get": {
+        "operationId": "BotsPublicController_listBots",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "BotsPublic"
+        ]
+      }
+    },
+    "/api/uploads/initiate": {
+      "post": {
+        "operationId": "UploadsController_initiateUpload",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InitiateUploadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadSessionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "uploads"
+        ]
+      }
+    },
+    "/api/uploads/{sessionId}/parts": {
+      "get": {
+        "operationId": "UploadsController_getUploadedParts",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadedPartsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "uploads"
+        ]
+      }
+    },
+    "/api/uploads/{sessionId}/parts/{partNumber}": {
+      "put": {
+        "operationId": "UploadsController_uploadPart",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "partNumber",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadPartResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "uploads"
+        ]
+      }
+    },
+    "/api/uploads/{sessionId}/complete": {
+      "post": {
+        "operationId": "UploadsController_completeUpload",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteUploadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/FinalizedChatAttachmentResponseDto"
+                    },
+                    {
+                      "$ref": "#/components/schemas/FinalizedArtifactResponseDto"
+                    },
+                    {
+                      "$ref": "#/components/schemas/FinalizedSubscriptionAttachmentResponseDto"
+                    },
+                    {
+                      "$ref": "#/components/schemas/FinalizedAlbumPhotoResponseDto"
+                    }
+                  ],
+                  "discriminator": {
+                    "propertyName": "kind",
+                    "mapping": {
+                      "CHAT_ATTACHMENT": "#/components/schemas/FinalizedChatAttachmentResponseDto",
+                      "ARTIFACT": "#/components/schemas/FinalizedArtifactResponseDto",
+                      "SUBSCRIPTION_ATTACHMENT": "#/components/schemas/FinalizedSubscriptionAttachmentResponseDto",
+                      "ALBUM_PHOTO": "#/components/schemas/FinalizedAlbumPhotoResponseDto"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "uploads"
+        ]
+      }
+    },
+    "/api/uploads/{sessionId}": {
+      "delete": {
+        "operationId": "UploadsController_abortUpload",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AbortUploadResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "uploads"
+        ]
+      }
+    },
+    "/api/album/update-status": {
+      "get": {
+        "operationId": "AlbumController_updateStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlbumUpdateStatusResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "album"
+        ]
+      }
+    },
+    "/api/album/viewed": {
+      "post": {
+        "operationId": "AlbumController_viewed",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlbumUpdateStatusResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "album"
+        ]
+      }
+    },
+    "/api/album/photos": {
+      "get": {
+        "operationId": "AlbumController_list",
+        "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tag",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlbumPhotoListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "album"
+        ]
+      }
+    },
+    "/api/album/tags": {
+      "get": {
+        "operationId": "AlbumController_tags",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AlbumTagResponseDto"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "album"
+        ]
+      }
+    },
+    "/api/album/photos/{photoId}/manage": {
+      "get": {
+        "operationId": "AlbumController_manage",
+        "parameters": [
+          {
+            "name": "photoId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlbumManagePhotoResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "album"
+        ]
+      }
+    },
+    "/api/album/photos/{photoId}/tags": {
+      "patch": {
+        "operationId": "AlbumController_updateTags",
+        "parameters": [
+          {
+            "name": "photoId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAlbumTagsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlbumUpdateTagsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "album"
+        ]
+      }
+    },
+    "/api/album/photos/{photoId}": {
+      "delete": {
+        "operationId": "AlbumController_delete",
+        "parameters": [
+          {
+            "name": "photoId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlbumDeleteResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "album"
+        ]
+      }
+    },
+    "/api/album/photos/batch-delete": {
+      "post": {
+        "operationId": "AlbumController_deleteMany",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteAlbumPhotosDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlbumBatchDeleteResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "album"
+        ]
+      }
+    },
+    "/api/album/photos/{photoId}/thumbnail": {
+      "get": {
+        "operationId": "AlbumController_thumbnail",
+        "parameters": [
+          {
+            "name": "photoId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mediaTicket",
+            "required": false,
+            "in": "query",
+            "schema": {}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/gif": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "album"
+        ]
+      }
+    },
+    "/api/album/photos/{photoId}/content": {
+      "get": {
+        "operationId": "AlbumController_content",
+        "parameters": [
+          {
+            "name": "photoId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/gif": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "video/mp4": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "album"
+        ]
+      }
+    },
+    "/api/album/photos/{photoId}/view-url": {
+      "get": {
+        "operationId": "AlbumController_viewUrl",
+        "parameters": [
+          {
+            "name": "photoId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlbumViewUrlResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "album"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/tasks": {
+      "get": {
+        "operationId": "TasksController_listTasks",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Tasks"
+        ]
+      },
+      "post": {
+        "operationId": "TasksController_createTask",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTaskDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Tasks"
+        ]
+      }
+    },
+    "/api/groups/{groupId}/tasks/{taskId}": {
+      "patch": {
+        "operationId": "TasksController_updateTask",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTaskDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Tasks"
+        ]
+      },
+      "delete": {
+        "operationId": "TasksController_deleteTask",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "taskId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Tasks"
+        ]
+      }
+    },
+    "/api/attendance/daily": {
+      "get": {
+        "operationId": "AttendanceController_listDaily",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "userId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workDate",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "mode",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Attendance"
+        ]
+      }
+    },
+    "/api/attendance/users": {
+      "get": {
+        "operationId": "AttendanceController_listUsers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Attendance"
+        ]
+      }
+    },
+    "/api/attendance/users/stats": {
+      "get": {
+        "operationId": "AttendanceController_listUserStats",
+        "parameters": [
+          {
+            "name": "workDate",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Attendance"
+        ]
+      }
+    },
+    "/api/attendance/users/averages": {
+      "get": {
+        "operationId": "AttendanceController_listUserAverages",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Attendance"
+        ]
+      }
+    },
+    "/api/attendance/me/stats": {
+      "get": {
+        "operationId": "AttendanceController_getOwnStats",
+        "parameters": [
+          {
+            "name": "workDate",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Attendance"
+        ]
+      }
+    },
+    "/api/attendance/me/panel": {
+      "get": {
+        "operationId": "AttendanceController_getOwnPanel",
+        "parameters": [
+          {
+            "name": "days",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Attendance"
+        ]
+      }
+    },
+    "/api/attendance/me/checkin/today": {
+      "get": {
+        "operationId": "AttendanceController_getOwnCheckInToday",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Attendance"
+        ]
+      }
+    },
+    "/api/attendance/me/checkin/dev/reset-today": {
+      "post": {
+        "operationId": "AttendanceController_resetOwnCheckInTodayForDev",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Attendance"
+        ]
+      }
+    },
+    "/api/attendance/me/checkin": {
+      "post": {
+        "operationId": "AttendanceController_checkIn",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Attendance"
+        ]
+      }
+    },
+    "/api/attendance/me/checkout": {
+      "post": {
+        "operationId": "AttendanceController_checkOut",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Attendance"
+        ]
+      }
+    },
+    "/api/attendance/me/checkin/panel": {
+      "get": {
+        "operationId": "AttendanceController_getOwnCheckInPanel",
+        "parameters": [
+          {
+            "name": "days",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Attendance"
+        ]
+      }
+    },
+    "/api/attendance/users/{userId}/stats": {
+      "get": {
+        "operationId": "AttendanceController_getUserStats",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "workDate",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Attendance"
+        ]
+      }
+    },
+    "/api/attendance/config": {
+      "patch": {
+        "operationId": "AttendanceController_updateAttendanceConfig",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAttendanceConfigDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Attendance"
+        ]
+      }
+    },
+    "/api/attendance/users/{userId}/mode": {
+      "patch": {
+        "operationId": "AttendanceController_updateMode",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAttendancePolicyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Attendance"
+        ]
+      }
+    },
+    "/api/workspace/bootstrap": {
+      "get": {
+        "operationId": "WorkspaceController_getBootstrap",
+        "parameters": [
+          {
+            "name": "mode",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "groupId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "dmId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "messageLimit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Workspace"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "SekerChat HTTP API",
+    "description": "Published contract for browser, CLI, reminder, and mobile clients.",
+    "version": "0.8.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      },
+      "cookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "seker_access"
+      }
+    },
+    "schemas": {
+      "FinalizedArtifactValueResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "uploaderId": {
+            "type": "string"
+          },
+          "originalName": {
+            "type": "string"
+          },
+          "storedName": {
+            "type": "string"
+          },
+          "relativePath": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          },
+          "sourceFileId": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "contentUrl": {
+            "type": "string"
+          },
+          "metadataUrl": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "groupId",
+          "uploaderId",
+          "originalName",
+          "storedName",
+          "relativePath",
+          "mimeType",
+          "size",
+          "sourceFileId",
+          "createdAt",
+          "contentUrl",
+          "metadataUrl"
+        ]
+      },
+      "FileMetadataResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "originalName": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          },
+          "width": {
+            "type": "number",
+            "nullable": true
+          },
+          "height": {
+            "type": "number",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "contentUrl": {
+            "type": "string"
+          },
+          "metadataUrl": {
+            "type": "string"
+          },
+          "thumbnailUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "uploaderId": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "image",
+              "file"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "groupId",
+          "originalName",
+          "mimeType",
+          "size",
+          "createdAt",
+          "contentUrl",
+          "metadataUrl",
+          "thumbnailUrl",
+          "uploaderId",
+          "kind"
+        ]
+      },
+      "FileDownloadUrlResponseDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "originalName": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "url",
+          "originalName",
+          "mimeType",
+          "size"
+        ]
+      },
+      "FileViewUrlResponseDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          },
+          "expiresAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "mimeType",
+          "size",
+          "expiresAt"
+        ]
+      },
+      "WorkStatusDefDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "tone": {
+            "type": "string"
+          },
+          "textTone": {
+            "type": "string"
+          },
+          "isArchive": {
+            "type": "boolean"
+          },
+          "isPackaging": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "tone",
+          "textTone"
+        ]
+      },
+      "UpdateSystemConfigDto": {
+        "type": "object",
+        "properties": {
+          "attendanceTimezone": {
+            "type": "string"
+          },
+          "attendanceClockInStart": {
+            "type": "string",
+            "pattern": "^(\\d{2}:\\d{2})?$"
+          },
+          "attendanceClockInEnd": {
+            "type": "string",
+            "pattern": "^(\\d{2}:\\d{2})?$"
+          },
+          "attendanceClockOutStart": {
+            "type": "string",
+            "pattern": "^(\\d{2}:\\d{2})?$"
+          },
+          "attendanceClockOutEnd": {
+            "type": "string",
+            "pattern": "^(\\d{2}:\\d{2})?$"
+          },
+          "attendanceWorkDays": {
+            "type": "string",
+            "pattern": "^([0-6](,[0-6])*)?$"
+          },
+          "attendanceScheduledBreakMinutes": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 720
+          },
+          "attendanceActiveWindowMinutes": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 720
+          },
+          "dndOn1": {
+            "type": "string",
+            "pattern": "^(\\d{2}:\\d{2})?$"
+          },
+          "dndOff1": {
+            "type": "string",
+            "pattern": "^(\\d{2}:\\d{2})?$"
+          },
+          "dndOn2": {
+            "type": "string",
+            "pattern": "^(\\d{2}:\\d{2})?$"
+          },
+          "dndOff2": {
+            "type": "string",
+            "pattern": "^(\\d{2}:\\d{2})?$"
+          },
+          "dndDaysOfWeek": {
+            "type": "string",
+            "pattern": "^([0-6](,[0-6])*)?$"
+          },
+          "workStatusDefs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/WorkStatusDefDto"
+            }
+          },
+          "messageRetentionDays": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 3650
+          },
+          "messageRetentionSizeGB": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000
+          },
+          "textRetentionDays": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 3650
+          },
+          "imageRetentionDays": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 3650
+          },
+          "imageRetentionSizeGB": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000
+          },
+          "fileRetentionDays": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 3650
+          },
+          "fileRetentionSizeGB": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1000
+          },
+          "chatAttachmentMaxMB": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 10240
+          },
+          "subscriptionAttachmentMaxMB": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 10240
+          },
+          "retentionSchedule": {
+            "type": "string",
+            "pattern": "^(daily|weekly|manual)$"
+          },
+          "registrationOpen": {
+            "type": "string"
+          },
+          "emailWhitelist": {
+            "type": "string"
+          },
+          "rolePermissions": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "MessageSenderResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "displayName",
+          "avatarUrl"
+        ]
+      },
+      "MessageAttachmentResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "fileId": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "originalName": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          },
+          "width": {
+            "type": "number",
+            "nullable": true
+          },
+          "height": {
+            "type": "number",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "contentUrl": {
+            "type": "string"
+          },
+          "metadataUrl": {
+            "type": "string"
+          },
+          "uploaderId": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "image",
+              "file"
+            ]
+          },
+          "thumbnailUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "isSharing": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "fileId",
+          "groupId",
+          "originalName",
+          "mimeType",
+          "size",
+          "createdAt",
+          "contentUrl",
+          "metadataUrl",
+          "uploaderId",
+          "kind",
+          "thumbnailUrl"
+        ]
+      },
+      "MessageReplyResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "senderId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "text",
+              "image",
+              "file",
+              "system"
+            ]
+          },
+          "textPreview": {
+            "type": "string",
+            "nullable": true
+          },
+          "sender": {
+            "$ref": "#/components/schemas/MessageSenderResponseDto"
+          },
+          "attachment": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MessageAttachmentResponseDto"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "senderId",
+          "type",
+          "textPreview",
+          "sender",
+          "attachment"
+        ]
+      },
+      "MessageReadReceiptMemberResponseDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "userId",
+          "email",
+          "displayName",
+          "avatarUrl"
+        ]
+      },
+      "MessageReadReceiptResponseDto": {
+        "type": "object",
+        "properties": {
+          "totalRecipients": {
+            "type": "number"
+          },
+          "readCount": {
+            "type": "number"
+          },
+          "unreadCount": {
+            "type": "number"
+          },
+          "readBy": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MessageReadReceiptMemberResponseDto"
+            }
+          },
+          "unreadBy": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MessageReadReceiptMemberResponseDto"
+            }
+          }
+        },
+        "required": [
+          "totalRecipients",
+          "readCount",
+          "unreadCount",
+          "readBy",
+          "unreadBy"
+        ]
+      },
+      "MessageResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "eventSequence": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "senderId": {
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "text",
+              "image",
+              "file",
+              "system"
+            ],
+            "type": "string"
+          },
+          "text": {
+            "type": "string",
+            "nullable": true
+          },
+          "revokedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "editedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "mentionedUserIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "replyTo": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MessageReplyResponseDto"
+              }
+            ]
+          },
+          "attachment": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MessageAttachmentResponseDto"
+              }
+            ]
+          },
+          "readReceipt": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/MessageReadReceiptResponseDto"
+              }
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "sender": {
+            "$ref": "#/components/schemas/MessageSenderResponseDto"
+          }
+        },
+        "required": [
+          "id",
+          "eventSequence",
+          "groupId",
+          "senderId",
+          "type",
+          "text",
+          "revokedAt",
+          "editedAt",
+          "mentionedUserIds",
+          "replyTo",
+          "attachment",
+          "readReceipt",
+          "createdAt",
+          "sender"
+        ]
+      },
+      "MessageListResponseDto": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/MessageResponseDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "groupId",
+          "items"
+        ]
+      },
+      "MessageAttachmentDto": {
+        "type": "object",
+        "properties": {
+          "fileId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "fileId"
+        ]
+      },
+      "CreateMessageDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "text",
+              "image",
+              "file"
+            ]
+          },
+          "clientMessageId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 10000
+          },
+          "attachment": {
+            "$ref": "#/components/schemas/MessageAttachmentDto"
+          },
+          "replyToMessageId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "EditMessageDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 10000
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
+      "UnbanDto": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        }
+      },
+      "ServerResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "archivedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "avatarUrl",
+          "archivedAt",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "UpdateServerDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "object",
+            "default": "",
+            "maxLength": 40
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "ArchiveServerDto": {
+        "type": "object",
+        "properties": {
+          "archive": {
+            "type": "boolean"
+          }
+        }
+      },
+      "ArchiveServerResponseDto": {
+        "type": "object",
+        "properties": {
+          "serverId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "archivedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "groupCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "serverId",
+          "name",
+          "category",
+          "archivedAt",
+          "groupCount"
+        ]
+      },
+      "SetGroupWorkStateDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "maxLength": 50
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "sourceMessageIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "SubscriptionConfirmationProgressResponseDto": {
+        "type": "object",
+        "properties": {
+          "confirmedCount": {
+            "type": "number"
+          },
+          "recipientCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "confirmedCount",
+          "recipientCount"
+        ]
+      },
+      "SubscriptionAuthorResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "email"
+        ]
+      },
+      "SubscriptionPostSummaryResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "WITHDRAWN"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "bodyPreview": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "isPinned": {
+            "type": "boolean"
+          },
+          "isConfirmed": {
+            "type": "boolean"
+          },
+          "isRecipient": {
+            "type": "boolean"
+          },
+          "confirmedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "confirmationProgress": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SubscriptionConfirmationProgressResponseDto"
+              }
+            ]
+          },
+          "isRead": {
+            "type": "boolean",
+            "deprecated": true
+          },
+          "publishedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "author": {
+            "$ref": "#/components/schemas/SubscriptionAuthorResponseDto"
+          },
+          "attachmentCount": {
+            "type": "number"
+          },
+          "hasAttachments": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "title",
+          "bodyPreview",
+          "tags",
+          "isPinned",
+          "isConfirmed",
+          "isRecipient",
+          "confirmedAt",
+          "confirmationProgress",
+          "publishedAt",
+          "updatedAt",
+          "author",
+          "attachmentCount",
+          "hasAttachments"
+        ]
+      },
+      "SubscriptionListResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionPostSummaryResponseDto"
+            }
+          },
+          "pendingConfirmationCount": {
+            "type": "number"
+          },
+          "unreadCount": {
+            "type": "number",
+            "deprecated": true
+          }
+        },
+        "required": [
+          "items",
+          "pendingConfirmationCount"
+        ]
+      },
+      "SubscriptionAttachmentResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "originalName": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          },
+          "sha256": {
+            "type": "string",
+            "nullable": true
+          },
+          "downloadCount": {
+            "type": "number"
+          },
+          "usage": {
+            "type": "string",
+            "enum": [
+              "INLINE_IMAGE",
+              "DOWNLOADABLE_FILE"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "originalName",
+          "mimeType",
+          "size",
+          "sha256",
+          "downloadCount",
+          "usage"
+        ]
+      },
+      "SubscriptionPostResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "DRAFT",
+              "PUBLISHED",
+              "WITHDRAWN"
+            ],
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "isPinned": {
+            "type": "boolean"
+          },
+          "isConfirmed": {
+            "type": "boolean"
+          },
+          "isRecipient": {
+            "type": "boolean"
+          },
+          "confirmedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "confirmationProgress": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/SubscriptionConfirmationProgressResponseDto"
+              }
+            ]
+          },
+          "isRead": {
+            "type": "boolean",
+            "deprecated": true
+          },
+          "publishedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "author": {
+            "$ref": "#/components/schemas/SubscriptionAuthorResponseDto"
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionAttachmentResponseDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "status",
+          "title",
+          "body",
+          "tags",
+          "isPinned",
+          "isConfirmed",
+          "isRecipient",
+          "confirmedAt",
+          "confirmationProgress",
+          "publishedAt",
+          "updatedAt",
+          "author",
+          "attachments"
+        ]
+      },
+      "SubscriptionManageListResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionPostResponseDto"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "SubscriptionSummaryResponseDto": {
+        "type": "object",
+        "properties": {
+          "pendingConfirmationCount": {
+            "type": "number"
+          },
+          "unreadCount": {
+            "type": "number",
+            "deprecated": true
+          }
+        },
+        "required": [
+          "pendingConfirmationCount"
+        ]
+      },
+      "SubscriptionConfirmationMemberResponseDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string"
+          },
+          "confirmedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "displayName",
+          "email"
+        ]
+      },
+      "SubscriptionConfirmationsResponseDto": {
+        "type": "object",
+        "properties": {
+          "postId": {
+            "type": "string"
+          },
+          "confirmedCount": {
+            "type": "number"
+          },
+          "recipientCount": {
+            "type": "number"
+          },
+          "confirmed": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionConfirmationMemberResponseDto"
+            }
+          },
+          "pending": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionConfirmationMemberResponseDto"
+            }
+          }
+        },
+        "required": [
+          "postId",
+          "confirmedCount",
+          "recipientCount",
+          "confirmed",
+          "pending"
+        ]
+      },
+      "SubscriptionConfirmationResponseDto": {
+        "type": "object",
+        "properties": {
+          "isConfirmed": {
+            "type": "boolean"
+          },
+          "confirmedAt": {
+            "type": "string"
+          },
+          "pendingConfirmationCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "isConfirmed",
+          "confirmedAt",
+          "pendingConfirmationCount"
+        ]
+      },
+      "CreateSubscriptionPostDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 100000
+          },
+          "tags": {
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 30
+            }
+          }
+        },
+        "required": [
+          "title"
+        ]
+      },
+      "UpdateSubscriptionPostDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "body": {
+            "type": "string",
+            "maxLength": 100000
+          },
+          "tags": {
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 30
+            }
+          }
+        }
+      },
+      "PinSubscriptionPostDto": {
+        "type": "object",
+        "properties": {
+          "pinned": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "pinned"
+        ]
+      },
+      "DeleteSubscriptionResponseDto": {
+        "type": "object",
+        "properties": {
+          "postId": {
+            "type": "string"
+          },
+          "deleted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "postId",
+          "deleted"
+        ]
+      },
+      "AttachmentDownloadUrlResponseDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "originalName": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "url",
+          "originalName",
+          "mimeType",
+          "size"
+        ]
+      },
+      "AttachmentViewUrlResponseDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "originalName": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "url",
+          "originalName",
+          "mimeType",
+          "size"
+        ]
+      },
+      "RegisterDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 8,
+            "pattern": "(?=.*[A-Z])"
+          },
+          "displayName": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "password": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "RequestEmailCodeDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "VerifyEmailCodeDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 6,
+            "maxLength": 6
+          }
+        },
+        "required": [
+          "email",
+          "code"
+        ]
+      },
+      "VerifyReminderDeviceCodeDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 6,
+            "maxLength": 6
+          },
+          "deviceName": {
+            "type": "string",
+            "maxLength": 120
+          }
+        },
+        "required": [
+          "email",
+          "code",
+          "deviceName"
+        ]
+      },
+      "AuthUserResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "role": {
+            "type": "string"
+          },
+          "mustChangePassword": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "displayName",
+          "role"
+        ]
+      },
+      "ReminderDeviceResponseDto": {
+        "type": "object",
+        "properties": {
+          "deviceToken": {
+            "type": "string"
+          },
+          "deviceTokenId": {
+            "type": "string"
+          },
+          "deviceName": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/AuthUserResponseDto"
+          }
+        },
+        "required": [
+          "deviceToken",
+          "deviceTokenId",
+          "deviceName",
+          "user"
+        ]
+      },
+      "CreateReminderDeviceDto": {
+        "type": "object",
+        "properties": {
+          "deviceName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "deviceName"
+        ]
+      },
+      "ReminderRealtimeTicketResponseDto": {
+        "type": "object",
+        "properties": {
+          "ticket": {
+            "type": "string"
+          },
+          "expiresAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticket",
+          "expiresAt"
+        ]
+      },
+      "ReminderDeviceSummaryResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "deviceName": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "lastUsedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "revokedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "deviceName",
+          "createdAt",
+          "updatedAt",
+          "lastUsedAt",
+          "revokedAt"
+        ]
+      },
+      "LogoutResponseDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ]
+      },
+      "RefreshSessionDto": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "minLength": 10
+          }
+        }
+      },
+      "BrowserSessionResponseDto": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/AuthUserResponseDto"
+          }
+        },
+        "required": [
+          "user"
+        ]
+      },
+      "UpdateProfileDto": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "dndUntil": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "ChangePasswordDto": {
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string"
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 8,
+            "pattern": "(?=.*[A-Z])"
+          }
+        },
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ]
+      },
+      "RequestCodeResponseDto": {
+        "type": "object",
+        "properties": {
+          "deliveryHint": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deliveryHint"
+        ]
+      },
+      "TokenSessionResponseDto": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/AuthUserResponseDto"
+          },
+          "accessToken": {
+            "type": "string"
+          },
+          "refreshToken": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "user",
+          "accessToken",
+          "refreshToken"
+        ]
+      },
+      "UpdateUserRoleDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "SUPER_ADMIN",
+              "MEMBER",
+              "CLI_BOT",
+              "ADMIN"
+            ]
+          }
+        },
+        "required": [
+          "role"
+        ]
+      },
+      "ResetUserPasswordDto": {
+        "type": "object",
+        "properties": {
+          "newPassword": {
+            "type": "string",
+            "minLength": 8,
+            "pattern": "(?=.*[A-Z])"
+          }
+        },
+        "required": [
+          "newPassword"
+        ]
+      },
+      "CreateGroupDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "serverId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "GroupServerResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "archivedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "avatarUrl",
+          "archivedAt",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "GroupMessagePreviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "nullable": true
+          },
+          "senderId": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "TEXT",
+              "IMAGE",
+              "FILE"
+            ]
+          }
+        },
+        "required": [
+          "text",
+          "senderId",
+          "type"
+        ]
+      },
+      "GroupWorkStateSummaryResponseDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "updatedAt"
+        ]
+      },
+      "GroupArtifactConfirmationResponseDto": {
+        "type": "object",
+        "properties": {
+          "isConfirmed": {
+            "type": "boolean"
+          },
+          "confirmedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "confirmedByUserId": {
+            "type": "string",
+            "nullable": true
+          },
+          "confirmedByDisplayName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "isConfirmed",
+          "confirmedAt",
+          "confirmedByUserId",
+          "confirmedByDisplayName"
+        ]
+      },
+      "GroupMemberResponseDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "MEMBER",
+              "ADMIN"
+            ]
+          },
+          "joinedAt": {
+            "type": "string"
+          },
+          "isOnline": {
+            "type": "boolean"
+          },
+          "isDnd": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "userId",
+          "email",
+          "displayName",
+          "avatarUrl",
+          "role",
+          "joinedAt",
+          "isOnline",
+          "isDnd"
+        ]
+      },
+      "GroupResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "serverId": {
+            "type": "string",
+            "nullable": true
+          },
+          "server": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GroupServerResponseDto"
+              }
+            ]
+          },
+          "isDM": {
+            "type": "boolean"
+          },
+          "latestMessage": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GroupMessagePreviewResponseDto"
+              }
+            ]
+          },
+          "serverAvatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "workState": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GroupWorkStateSummaryResponseDto"
+              }
+            ]
+          },
+          "artifactConfirmation": {
+            "$ref": "#/components/schemas/GroupArtifactConfirmationResponseDto"
+          },
+          "archivedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "categoryArchivedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "createdById": {
+            "type": "string"
+          },
+          "currentUserRole": {
+            "enum": [
+              "MEMBER",
+              "ADMIN"
+            ],
+            "type": "string"
+          },
+          "unreadCount": {
+            "type": "number"
+          },
+          "memberCount": {
+            "type": "number"
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupMemberResponseDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "category",
+          "isDM",
+          "latestMessage",
+          "serverAvatarUrl",
+          "workState",
+          "artifactConfirmation",
+          "archivedAt",
+          "createdAt",
+          "updatedAt",
+          "createdById",
+          "currentUserRole",
+          "unreadCount",
+          "members"
+        ]
+      },
+      "AdminDiscoverableCreatorResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "displayName"
+        ]
+      },
+      "AdminDiscoverableGroupResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "serverId": {
+            "type": "string",
+            "nullable": true
+          },
+          "server": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GroupServerResponseDto"
+              }
+            ]
+          },
+          "serverAvatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "archivedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "createdBy": {
+            "$ref": "#/components/schemas/AdminDiscoverableCreatorResponseDto"
+          },
+          "workState": {
+            "nullable": true,
+            "type": "object",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/GroupWorkStateSummaryResponseDto"
+              }
+            ]
+          },
+          "memberCount": {
+            "type": "number"
+          },
+          "isCurrentUserMember": {
+            "type": "boolean"
+          },
+          "currentUserMembershipRole": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "MEMBER",
+              "ADMIN"
+            ]
+          },
+          "canSelfJoin": {
+            "type": "boolean"
+          },
+          "visibilityReason": {
+            "type": "string",
+            "enum": [
+              "current_member",
+              "archived_admin_override",
+              "admin_override"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "category",
+          "serverId",
+          "server",
+          "serverAvatarUrl",
+          "archivedAt",
+          "createdAt",
+          "updatedAt",
+          "createdBy",
+          "workState",
+          "memberCount",
+          "isCurrentUserMember",
+          "currentUserMembershipRole",
+          "canSelfJoin",
+          "visibilityReason"
+        ]
+      },
+      "ManageableCategoryResponseDto": {
+        "type": "object",
+        "properties": {
+          "serverId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "groupCount": {
+            "type": "number"
+          },
+          "archivedGroupCount": {
+            "type": "number"
+          },
+          "activeGroupCount": {
+            "type": "number"
+          },
+          "latestUpdatedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "serverId",
+          "name",
+          "groupCount",
+          "archivedGroupCount",
+          "activeGroupCount",
+          "latestUpdatedAt"
+        ]
+      },
+      "ArchiveCategoryDto": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "object",
+            "default": ""
+          },
+          "archive": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "category"
+        ]
+      },
+      "ArchiveCategoryResponseDto": {
+        "type": "object",
+        "properties": {
+          "serverId": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "archivedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "groupCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "serverId",
+          "category",
+          "archivedAt",
+          "groupCount"
+        ]
+      },
+      "RenameCategoryDto": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "to": {
+            "type": "string",
+            "maxLength": 40
+          }
+        },
+        "required": [
+          "from",
+          "to"
+        ]
+      },
+      "RenameCategoryResponseDto": {
+        "type": "object",
+        "properties": {
+          "serverId": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "updatedGroupCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "updatedGroupCount"
+        ]
+      },
+      "ResetCategoryResponseDto": {
+        "type": "object",
+        "properties": {
+          "serverId": {
+            "type": "string"
+          },
+          "reassignedToServerId": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "reassignedTo": {
+            "type": "string"
+          },
+          "updatedGroupCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "category",
+          "reassignedTo",
+          "updatedGroupCount"
+        ]
+      },
+      "UserOptionResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "SUPER_ADMIN",
+              "MEMBER",
+              "ADMIN"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "displayName"
+        ]
+      },
+      "UpdateGroupDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 40
+          },
+          "serverId": {
+            "type": "string"
+          }
+        }
+      },
+      "InviteGroupMemberDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "UpdateGroupMemberRoleDto": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": [
+              "MEMBER",
+              "ADMIN"
+            ]
+          }
+        },
+        "required": [
+          "role"
+        ]
+      },
+      "LeaveGroupResponseDto": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string"
+          },
+          "left": {
+            "type": "boolean"
+          },
+          "archivedAfterLeave": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "groupId",
+          "left"
+        ]
+      },
+      "ArchiveGroupDto": {
+        "type": "object",
+        "properties": {
+          "archive": {
+            "type": "boolean"
+          }
+        }
+      },
+      "MarkGroupReadResponseDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "success"
+        ]
+      },
+      "AdvanceReadCursorDto": {
+        "type": "object",
+        "properties": {
+          "eventSequence": {
+            "type": "string",
+            "maxLength": 19,
+            "pattern": "^[1-9]\\d*$"
+          }
+        },
+        "required": [
+          "eventSequence"
+        ]
+      },
+      "AdvanceReadCursorResponseDto": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string"
+          },
+          "lastReadEventSequence": {
+            "type": "string"
+          },
+          "changed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "groupId",
+          "lastReadEventSequence",
+          "changed"
+        ]
+      },
+      "SaveFileShareDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "RotateFileShareDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "UnlockFileShareDto": {
+        "type": "object",
+        "properties": {}
+      },
+      "CreateBotDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "displayName": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "botConfig": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "email",
+          "displayName"
+        ]
+      },
+      "UpdateBotDto": {
+        "type": "object",
+        "properties": {
+          "displayName": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "botConfig": {
+            "type": "object"
+          }
+        }
+      },
+      "FinalizedChatFileResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "originalName": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          },
+          "width": {
+            "type": "number",
+            "nullable": true
+          },
+          "height": {
+            "type": "number",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "contentUrl": {
+            "type": "string"
+          },
+          "metadataUrl": {
+            "type": "string"
+          },
+          "thumbnailUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "uploaderId": {
+            "type": "string"
+          },
+          "kindLabel": {
+            "type": "string",
+            "enum": [
+              "image",
+              "file"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "groupId",
+          "originalName",
+          "mimeType",
+          "size",
+          "createdAt",
+          "contentUrl",
+          "metadataUrl",
+          "thumbnailUrl",
+          "uploaderId",
+          "kindLabel"
+        ]
+      },
+      "FinalizedChatAttachmentResponseDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "file": {
+            "$ref": "#/components/schemas/FinalizedChatFileResponseDto"
+          }
+        },
+        "required": [
+          "kind",
+          "file"
+        ]
+      },
+      "FinalizedArtifactResponseDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "artifact": {
+            "$ref": "#/components/schemas/FinalizedArtifactValueResponseDto"
+          }
+        },
+        "required": [
+          "kind",
+          "artifact"
+        ]
+      },
+      "FinalizedSubscriptionAttachmentValueResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "postId": {
+            "type": "string"
+          },
+          "uploaderId": {
+            "type": "string"
+          },
+          "originalName": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          },
+          "sha256": {
+            "type": "string"
+          },
+          "downloadCount": {
+            "type": "number"
+          },
+          "usage": {
+            "type": "string",
+            "enum": [
+              "INLINE_IMAGE",
+              "DOWNLOADABLE_FILE"
+            ]
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "postId",
+          "uploaderId",
+          "originalName",
+          "mimeType",
+          "size",
+          "sha256",
+          "downloadCount",
+          "usage",
+          "createdAt"
+        ]
+      },
+      "FinalizedSubscriptionAttachmentResponseDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "attachment": {
+            "$ref": "#/components/schemas/FinalizedSubscriptionAttachmentValueResponseDto"
+          }
+        },
+        "required": [
+          "kind",
+          "attachment"
+        ]
+      },
+      "FinalizedAlbumPhotoValueResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "width": {
+            "type": "number"
+          },
+          "height": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "contentUrl": {
+            "type": "string"
+          },
+          "thumbnailUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "duplicate": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "width",
+          "height",
+          "createdAt",
+          "contentUrl",
+          "thumbnailUrl",
+          "duplicate"
+        ]
+      },
+      "FinalizedAlbumPhotoResponseDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string"
+          },
+          "photo": {
+            "$ref": "#/components/schemas/FinalizedAlbumPhotoValueResponseDto"
+          }
+        },
+        "required": [
+          "kind",
+          "photo"
+        ]
+      },
+      "InitiateUploadDto": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "CHAT_ATTACHMENT",
+              "ARTIFACT",
+              "SUBSCRIPTION_ATTACHMENT",
+              "ALBUM_PHOTO"
+            ]
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "postId": {
+            "type": "string"
+          },
+          "subscriptionUsage": {
+            "type": "string",
+            "enum": [
+              "INLINE_IMAGE",
+              "DOWNLOADABLE_FILE"
+            ]
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "kind",
+          "fileName",
+          "mimeType",
+          "size"
+        ]
+      },
+      "UploadSessionResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "CHAT_ATTACHMENT",
+              "ARTIFACT",
+              "SUBSCRIPTION_ATTACHMENT",
+              "ALBUM_PHOTO"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "COMPLETED",
+              "FAILED",
+              "INITIATED",
+              "ASSEMBLED",
+              "FINALIZING",
+              "ABORTED"
+            ]
+          },
+          "groupId": {
+            "type": "string",
+            "nullable": true
+          },
+          "subscriptionAttachmentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "albumPhotoId": {
+            "type": "string",
+            "nullable": true
+          },
+          "originalName": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          },
+          "multipartUploadId": {
+            "type": "string"
+          },
+          "partSizeBytes": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "groupId",
+          "originalName",
+          "mimeType",
+          "size",
+          "multipartUploadId",
+          "partSizeBytes",
+          "createdAt"
+        ]
+      },
+      "UploadedPartResponseDto": {
+        "type": "object",
+        "properties": {
+          "partNumber": {
+            "type": "number"
+          },
+          "etag": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "partNumber",
+          "etag",
+          "size"
+        ]
+      },
+      "UploadedPartsResponseDto": {
+        "type": "object",
+        "properties": {
+          "uploadSessionId": {
+            "type": "string"
+          },
+          "partSizeBytes": {
+            "type": "number"
+          },
+          "parts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UploadedPartResponseDto"
+            }
+          }
+        },
+        "required": [
+          "uploadSessionId",
+          "partSizeBytes",
+          "parts"
+        ]
+      },
+      "UploadPartResponseDto": {
+        "type": "object",
+        "properties": {
+          "uploadSessionId": {
+            "type": "string"
+          },
+          "partNumber": {
+            "type": "number"
+          },
+          "etag": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "uploadSessionId",
+          "partNumber",
+          "etag"
+        ]
+      },
+      "CompletedUploadPartDto": {
+        "type": "object",
+        "properties": {
+          "partNumber": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 10000
+          },
+          "etag": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "partNumber",
+          "etag"
+        ]
+      },
+      "CompleteUploadDto": {
+        "type": "object",
+        "properties": {
+          "parts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CompletedUploadPartDto"
+            }
+          }
+        },
+        "required": [
+          "parts"
+        ]
+      },
+      "AbortUploadResponseDto": {
+        "type": "object",
+        "properties": {
+          "uploadSessionId": {
+            "type": "string"
+          },
+          "aborted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "uploadSessionId",
+          "aborted"
+        ]
+      },
+      "AlbumUpdateStatusResponseDto": {
+        "type": "object",
+        "properties": {
+          "hasUpdates": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "hasUpdates"
+        ]
+      },
+      "AlbumPhotoResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "mediaType": {
+            "type": "string",
+            "enum": [
+              "image",
+              "video"
+            ]
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "durationMs": {
+            "type": "number",
+            "nullable": true
+          },
+          "width": {
+            "type": "number"
+          },
+          "height": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "contentUrl": {
+            "type": "string"
+          },
+          "thumbnailUrl": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "mediaType",
+          "mimeType",
+          "durationMs",
+          "width",
+          "height",
+          "createdAt",
+          "contentUrl",
+          "thumbnailUrl"
+        ]
+      },
+      "AlbumPhotoListResponseDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlbumPhotoResponseDto"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "items",
+          "nextCursor"
+        ]
+      },
+      "AlbumTagResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "normalizedName": {
+            "type": "string"
+          },
+          "photoCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "normalizedName",
+          "photoCount"
+        ]
+      },
+      "AlbumManagePhotoResponseDto": {
+        "type": "object",
+        "properties": {
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlbumTagResponseDto"
+            }
+          },
+          "photoId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tags",
+          "photoId"
+        ]
+      },
+      "UpdateAlbumTagsDto": {
+        "type": "object",
+        "properties": {
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "tags"
+        ]
+      },
+      "AlbumUpdateTagsResponseDto": {
+        "type": "object",
+        "properties": {
+          "tags": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AlbumTagResponseDto"
+            }
+          },
+          "photoId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tags",
+          "photoId"
+        ]
+      },
+      "AlbumDeleteResponseDto": {
+        "type": "object",
+        "properties": {
+          "photoId": {
+            "type": "string"
+          },
+          "deleted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "photoId",
+          "deleted"
+        ]
+      },
+      "DeleteAlbumPhotosDto": {
+        "type": "object",
+        "properties": {
+          "photoIds": {
+            "uniqueItems": true,
+            "minItems": 1,
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "photoIds"
+        ]
+      },
+      "AlbumBatchDeleteResponseDto": {
+        "type": "object",
+        "properties": {
+          "requestedCount": {
+            "type": "number"
+          },
+          "deletedCount": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "requestedCount",
+          "deletedCount"
+        ]
+      },
+      "AlbumViewUrlResponseDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "size": {
+            "type": "number"
+          },
+          "expiresAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "mimeType",
+          "size",
+          "expiresAt"
+        ]
+      },
+      "CreateTaskDto": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "content"
+        ]
+      },
+      "UpdateTaskDto": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "completed": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdateAttendanceConfigDto": {
+        "type": "object",
+        "properties": {
+          "attendanceTimezone": {
+            "type": "string"
+          },
+          "attendanceClockInStart": {
+            "type": "string",
+            "pattern": "^(\\d{2}:\\d{2})?$"
+          },
+          "attendanceClockInEnd": {
+            "type": "string",
+            "pattern": "^(\\d{2}:\\d{2})?$"
+          },
+          "attendanceClockOutStart": {
+            "type": "string",
+            "pattern": "^(\\d{2}:\\d{2})?$"
+          },
+          "attendanceClockOutEnd": {
+            "type": "string",
+            "pattern": "^(\\d{2}:\\d{2})?$"
+          },
+          "attendanceWorkDays": {
+            "type": "string",
+            "pattern": "^([0-6](,[0-6])*)?$"
+          },
+          "attendanceScheduledBreakMinutes": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 720
+          },
+          "attendanceActiveWindowMinutes": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 720
+          }
+        }
+      },
+      "UpdateAttendancePolicyDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "type": "string",
+            "enum": [
+              "SCHEDULED",
+              "FLEXIBLE"
+            ]
+          }
+        },
+        "required": [
+          "mode"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,256 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  MEMBER
+  ADMIN
+}
+
+enum GroupMemberRole {
+  MEMBER
+  ADMIN
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+}
+
+
+model User {
+  id                   String                @id @default(uuid())
+  email                String                @unique
+  displayName          String?
+  avatarStorageKey     String?
+  oidcProvider         String?
+  oidcSubject          String?
+  emailVerifiedAt      DateTime?
+  role                 UserRole              @default(MEMBER)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  authCodes            AuthCode[]
+  refreshTokens        RefreshToken[]
+  reminderDeviceTokens ReminderDeviceToken[]
+  createdGroups        Group[]               @relation("GroupCreator")
+  groupMembers         GroupMember[]
+  sentMessages         Message[]             @relation("MessageSender")
+  uploadedFiles        FileObject[]          @relation("FileUploader")
+  uploadedArtifacts    GroupArtifact[]
+  tasksCreated         Task[]               @relation("TaskCreator")
+  tasksCompleted       Task[]               @relation("TaskCompleter")
+
+  @@unique([oidcProvider, oidcSubject])
+}
+
+model AuthCode {
+  id         String   @id @default(uuid())
+  email      String
+  code       String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime @default(now())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([email, expiresAt])
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  tokenHash  String   @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime @default(now())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model ReminderDeviceToken {
+  id         String   @id @default(uuid())
+  deviceName String
+  tokenHash  String   @unique
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([userId, deviceName, revokedAt])
+}
+
+model Group {
+  id          String        @id @default(uuid())
+  name        String
+  category    String        @default("未分类")
+  isDM        Boolean       @default(false)
+  artifactPath     String?
+  archivedAt       DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  createdById String
+  createdBy   User          @relation("GroupCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  members     GroupMember[]
+  messages    Message[]
+  fileObjects FileObject[]
+  artifacts   GroupArtifact[]
+  tasks       Task[]
+  workState   GroupWorkState?
+  workStateHistory GroupWorkStateHistory[]
+
+  @@index([createdById])
+  @@index([artifactPath])
+  @@index([archivedAt, updatedAt])
+  @@index([category])
+  @@index([archivedAt])
+}
+
+model GroupMember {
+  id                     String          @id @default(uuid())
+  role                   GroupMemberRole @default(MEMBER)
+  joinedAt               DateTime        @default(now())
+  lastReadEventSequence  BigInt?
+  groupId                String
+  userId                 String
+  group                  Group           @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user                   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+  @@index([groupId, role])
+}
+
+model Message {
+  id               String      @id @default(uuid())
+  groupId          String
+  senderId         String
+  eventSequence    BigInt      @unique @default(autoincrement())
+  type             MessageType
+  text             String?
+  attachmentFileId String?
+  mentionedUserIds String[]    @default([])
+  replyToMessageId String?
+  revokedAt        DateTime?
+  editedAt         DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  group            Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  sender           User        @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  attachmentFile   FileObject? @relation(fields: [attachmentFileId], references: [id], onDelete: Restrict)
+  replyToMessage   Message?    @relation("MessageReplies", fields: [replyToMessageId], references: [id], onDelete: SetNull)
+  replies          Message[]   @relation("MessageReplies")
+
+  @@index([groupId, createdAt])
+  @@index([groupId, eventSequence])
+  @@index([senderId, createdAt])
+  @@index([attachmentFileId])
+  @@index([replyToMessageId])
+}
+
+model FileObject {
+  id           String    @id @default(uuid())
+  storageKey   String    @unique
+  originalName String
+  mimeType     String
+  size         Int
+  uploaderId   String
+  groupId      String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  uploader     User      @relation("FileUploader", fields: [uploaderId], references: [id], onDelete: Cascade)
+  group        Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  messages     Message[]
+
+  @@index([groupId, createdAt])
+  @@index([uploaderId, createdAt])
+}
+
+model GroupArtifact {
+  id           String   @id @default(uuid())
+  originalName String
+  storedName   String
+  relativePath String   @unique
+  mimeType     String
+  size         Int
+  uploaderId   String
+  groupId      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  uploader     User     @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+  group        Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, createdAt])
+  @@index([uploaderId, createdAt])
+}
+
+model GroupWorkState {
+  id               String          @id @default(uuid())
+  groupId          String          @unique
+  status           String
+  reason           String?
+  sourceMessageIds String[]        @default([])
+  updatedByActorType String
+  updatedByActorId String
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  group            Group           @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([status, updatedAt])
+}
+
+model Category {
+  name              String   @id
+  avatarStorageKey  String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+model SystemConfig {
+  key        String   @id
+  value      String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model GroupWorkStateHistory {
+  id               String          @id @default(uuid())
+  groupId          String
+  fromStatus       String?
+  toStatus         String
+  reason           String?
+  sourceMessageIds String[]        @default([])
+  actorType        String
+  actorId          String
+  createdAt        DateTime        @default(now())
+  group            Group           @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, createdAt])
+  @@index([toStatus, createdAt])
+}
+
+model Task {
+  id            String    @id @default(uuid())
+  groupId       String
+  content       String
+  completed     Boolean   @default(false)
+  createdById   String
+  completedById String?
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+
+  group       Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdBy   User   @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  completedBy User?  @relation("TaskCompleter", fields: [completedById], references: [id], onDelete: SetNull)
+
+  @@index([groupId])
+}

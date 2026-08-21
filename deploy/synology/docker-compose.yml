@@ -1,0 +1,47 @@
+version: "3.8"
+
+services:
+  sekerchat-postgres:
+    image: postgres:16-alpine
+    container_name: sekerchat-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: sekerchat
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - sekerchat
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sekerchat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  sekerchat-minio:
+    image: minio/minio
+    container_name: sekerchat-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-change-me}
+    volumes:
+      - ./data/minio:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    networks:
+      - sekerchat
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  sekerchat:
+    driver: bridge

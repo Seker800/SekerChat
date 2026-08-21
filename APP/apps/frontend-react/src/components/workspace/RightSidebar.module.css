@@ -1,0 +1,525 @@
+.sidebar {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  background: var(--bg-right-sidebar);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--line-subtle);
+}
+
+.headerInfo {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.headerTitle {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.headerMeta {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.closeButton {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-soft);
+  cursor: pointer;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.content {
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 16px;
+  display: grid;
+  align-content: start;
+  gap: 0;
+}
+
+.sectionFlat {
+  padding: 12px 0;
+}
+
+.sectionLabel {
+  margin: 0 0 8px;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sectionHint {
+  margin: 0 0 8px;
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.divider {
+  height: 1px;
+  background: var(--line-subtle);
+}
+
+.field {
+  margin-bottom: 8px;
+}
+
+.field input {
+  min-height: 34px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--bg-input);
+  color: var(--text-soft);
+  padding: 0 10px;
+  font-size: 12px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.subtle {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.memberList {
+  display: grid;
+  gap: 2px;
+}
+
+.member {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+.member:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.memberAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: var(--bg-avatar);
+  color: var(--text-strong);
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.memberCopy {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.memberName {
+  color: var(--text-strong);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.removeBtn {
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 10px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  opacity: 0;
+}
+
+.member:hover .removeBtn {
+  opacity: 1;
+}
+
+.dmBtn {
+  min-height: 22px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(88, 101, 242, 0.14);
+  color: var(--text-soft);
+  cursor: pointer;
+  font-size: 11px;
+  flex-shrink: 0;
+  opacity: 0;
+}
+
+.member:hover .dmBtn {
+  opacity: 1;
+}
+
+.dmBtn:hover {
+  background: rgba(88, 101, 242, 0.24);
+  color: var(--text-strong);
+}
+
+.dmBtn:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.joinBtn {
+  min-height: 30px;
+  margin: 4px 8px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 4px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.removeBtn:hover {
+  background: rgba(237, 66, 69, 0.15);
+  color: #f7b3b6;
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sectionActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.addBtn {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  padding: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.addBtn:hover {
+  color: var(--text-strong);
+}
+
+.addBtn[data-disabled='true'] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.filePill {
+  width: 22px;
+  height: 22px;
+  border: 0;
+  padding: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-soft);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.filePill[data-disabled='true'] {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.fileIcon {
+  width: 14px;
+  height: 14px;
+}
+
+.fileInput {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(100%);
+  white-space: nowrap;
+}
+
+.artifactDropZone {
+  margin: 0 0 8px;
+  padding: 12px;
+  border: 1px dashed rgba(158, 203, 255, 0.18);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.5;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.artifactDropZoneActive {
+  border-color: rgba(88, 101, 242, 0.65);
+  background: rgba(88, 101, 242, 0.12);
+  color: #d7ddff;
+  box-shadow: inset 0 0 0 1px rgba(88, 101, 242, 0.22);
+}
+
+.artifactDropZoneDisabled {
+  opacity: 0.6;
+}
+
+.artifactList {
+  display: grid;
+  gap: 2px;
+}
+
+.confirmBtn {
+  min-height: 24px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.confirmBtn:hover {
+  color: var(--text-strong);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.confirmBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.confirmBtnActive {
+  background: rgba(255, 211, 61, 0.14);
+  border-color: rgba(255, 211, 61, 0.45);
+  color: #f6d365;
+}
+
+.confirmMeta {
+  margin: 0 0 8px;
+  color: #f6d365;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.confirmFooter {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.pendingNotice {
+  margin: 0 0 8px;
+  color: #9ecbff;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.artifactRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+}
+
+.artifactRow:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.artifactRowPending {
+  opacity: 0.65;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.artifactCopy {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+  flex: 1;
+}
+
+.artifactCopy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.artifactNameBtn {
+  border: 0;
+  background: transparent;
+  color: var(--text-strong);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artifactNameBtn:hover {
+  text-decoration: underline;
+}
+
+.artifactNameBroken {
+  color: #ed4245;
+}
+
+.artifactNameBroken:hover {
+  color: #f7b3b6;
+}
+
+.artifactDeleteBtn {
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 10px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  opacity: 0;
+}
+
+.artifactRow:hover .artifactDeleteBtn {
+  opacity: 1;
+}
+
+.artifactDeleteBtn:hover {
+  background: rgba(237, 66, 69, 0.15);
+  color: #f7b3b6;
+}
+
+.artifactDeleteBtn:disabled,
+.addBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (max-width: 1200px) {
+  .sidebarOverlay {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: min(380px, calc(100vw - 64px));
+    border-left: 1px solid var(--line-subtle);
+    transform: translateX(108%);
+    transition: transform 180ms ease;
+    z-index: 26;
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .sidebarOverlayOpen {
+    transform: translateX(0);
+    visibility: visible;
+    pointer-events: auto;
+  }
+}
+
+.personalRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.editAvatarBtn {
+  padding: 4px 14px;
+  border: none;
+  border-radius: 6px;
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.editAvatarBtn:hover {
+  background: var(--bg-hover);
+}
+
+.dmPartnerCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 16px 12px;
+}
+
+.dmPartnerName {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.dmPartnerEmail {
+  font-size: 12px;
+  color: var(--text-dim);
+}

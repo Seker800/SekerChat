@@ -1,0 +1,1 @@
+ALTER TYPE "UploadKind" ADD VALUE 'EAGLE_ASSET';

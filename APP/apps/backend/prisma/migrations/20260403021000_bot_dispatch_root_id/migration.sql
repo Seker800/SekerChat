@@ -1,0 +1,4 @@
+-- This migration directory was missing from the repository state.
+-- The current schema already includes rootMessageId and parentDispatchId
+-- from the initial BotDispatchRecord migration, so no additional SQL is
+-- required here. The file is kept to preserve Prisma migration continuity.

@@ -1,0 +1,63 @@
+server {
+  listen 80;
+  server_name _;
+
+  root /usr/share/nginx/html;
+  index index.html;
+  resolver 127.0.0.11 valid=30s ipv6=off;
+  resolver_timeout 5s;
+  set $backend_origin http://sekerchat-backend:3100;
+
+  client_max_body_size 0;
+  gzip_static on;
+  gzip_vary on;
+  # The optional object-storage origin is validated and injected at container startup.
+  set $sekerchat_csp "default-src 'self' https: wss: data: blob: ${SEKERCHAT_CSP_OBJECT_SOURCE}; img-src 'self' https: data: blob: ${SEKERCHAT_CSP_OBJECT_SOURCE}; media-src 'self' https: data: blob: ${SEKERCHAT_CSP_OBJECT_SOURCE}; connect-src 'self' https: wss: ${SEKERCHAT_CSP_OBJECT_SOURCE}; style-src 'self' 'unsafe-inline' https:; script-src 'self' https:;";
+  add_header Content-Security-Policy $sekerchat_csp always;
+
+  location = /index.html {
+    add_header Content-Security-Policy $sekerchat_csp always;
+    add_header Cache-Control "no-cache" always;
+    try_files /index.html =404;
+  }
+
+  location /assets/ {
+    add_header Content-Security-Policy $sekerchat_csp always;
+    add_header Cache-Control "public, max-age=31536000, immutable" always;
+    try_files $uri =404;
+  }
+
+  location / {
+    try_files $uri $uri/ /index.html;
+  }
+
+  location /api/ {
+    proxy_pass $backend_origin;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    # This is the only trusted application proxy hop. Overwrite untrusted input.
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Proto $scheme;
+
+    # 文件下载：关缓冲立即流式传输，大文件不被超时切断
+    proxy_buffering off;
+    proxy_request_buffering off;
+    proxy_read_timeout 600s;
+
+    # 大文件上传：客户端请求体发送超时
+    client_body_timeout 600s;
+  }
+
+  location /realtime {
+    proxy_pass $backend_origin;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 600s;
+  }
+}

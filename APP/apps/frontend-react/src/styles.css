@@ -1,0 +1,65 @@
+:root {
+  color-scheme: dark;
+  font-family:
+    'gg sans', 'ABC Ginto Nord', 'Helvetica Neue', 'PingFang SC', 'Microsoft YaHei',
+    sans-serif;
+  font-size: 13px;
+  line-height: 1.42;
+  --bg-app: #1e1f22;
+  --bg-shell: #313338;
+  --bg-server-rail: #1e1f22;
+  --bg-server-item: #2b2d31;
+  --bg-server-active: #5865f2;
+  --bg-sidebar: #2b2d31;
+  --bg-right-sidebar: #232428;
+  --bg-main: #313338;
+  --bg-input: #383a40;
+  --bg-subtle: #2b2d31;
+  --bg-avatar: #000000;
+  --bg-channel-active: #404249;
+  --bg-channel-hover: #35373c;
+  --bg-user-panel: #1e1f22;
+  --line-subtle: rgba(255, 255, 255, 0.06);
+  --line-strong: rgba(255, 255, 255, 0.12);
+  --text-strong: #f2f3f5;
+  --text-soft: #dbdee1;
+  --text-muted: #b5bac1;
+  --text-dim: #949ba4;
+  --accent: #5865f2;
+  --danger: #f23f43;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-app);
+  color: var(--text-strong);
+  font-size: 13px;
+  line-height: 1.42;
+  overflow: hidden;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+a {
+  color: #00a8fc;
+}

@@ -1,0 +1,4 @@
+{
+  "description": "Import cycles are not permitted. This explicit empty baseline makes regressions fail CI.",
+  "cycles": []
+}

@@ -1,0 +1,819 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  MEMBER
+  CLI_BOT
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum GroupMemberRole {
+  MEMBER
+  ADMIN
+}
+
+enum MessageType {
+  TEXT
+  IMAGE
+  FILE
+  SYSTEM
+}
+
+enum AttendanceMode {
+  SCHEDULED
+  FLEXIBLE
+}
+
+enum UploadKind {
+  CHAT_ATTACHMENT
+  ARTIFACT
+  SUBSCRIPTION_ATTACHMENT
+  ALBUM_PHOTO
+}
+
+enum AlbumMediaJobKind {
+  GENERATE_THUMBNAIL
+  HASH_CONTENT
+  PURGE_PHOTO
+}
+
+enum AlbumMediaJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum UploadSessionStatus {
+  INITIATED
+  ASSEMBLED
+  FINALIZING
+  COMPLETED
+  FAILED
+  ABORTED
+}
+
+enum OutboxEventStatus {
+  PENDING
+  PROCESSING
+  PROCESSED
+  FAILED
+}
+
+enum BotReplyDeliveryStatus {
+  CLAIMED
+  GENERATED
+  COMPLETED
+  AMBIGUOUS
+}
+
+enum SubscriptionPostStatus {
+  DRAFT
+  PUBLISHED
+  WITHDRAWN
+}
+
+enum SubscriptionAttachmentStatus {
+  UPLOADING
+  READY
+}
+
+enum SubscriptionAttachmentUsage {
+  INLINE_IMAGE
+  DOWNLOADABLE_FILE
+}
+
+enum FileShareRevokedReason {
+  MANUAL
+  CHANNEL_ARCHIVED
+}
+
+model User {
+  id                         String                      @id @default(uuid())
+  email                      String                      @unique
+  displayName                String?
+  passwordHash               String?
+  mustChangePassword         Boolean                     @default(false)
+  authVersion                Int                         @default(0)
+  disabledAt                 DateTime?
+  avatarStorageKey           String?
+  oidcProvider               String?
+  oidcSubject                String?
+  emailVerifiedAt            DateTime?
+  role                       UserRole                    @default(MEMBER)
+  isBot                      Boolean                     @default(false)
+  botConfig                  Json?
+  dndUntil                   DateTime?
+  createdAt                  DateTime                    @default(now())
+  updatedAt                  DateTime                    @updatedAt
+  authCodes                  AuthCode[]
+  refreshTokens              RefreshToken[]
+  reminderDeviceTokens       ReminderDeviceToken[]
+  createdGroups              Group[]                     @relation("GroupCreator")
+  groupMembers               GroupMember[]
+  sentMessages               Message[]                   @relation("MessageSender")
+  uploadedFiles              FileObject[]                @relation("FileUploader")
+  uploadedArtifacts          GroupArtifact[]
+  uploadSessions             UploadSession[]
+  tasksCreated               Task[]                      @relation("TaskCreator")
+  tasksCompleted             Task[]                      @relation("TaskCompleter")
+  attendancePolicy           AttendanceUserPolicy?
+  attendanceEvents           AttendanceActionEvent[]
+  attendanceDaily            AttendanceDaily[]
+  checkInSessions            CheckInSession[]
+  subscriptionPosts          SubscriptionPost[]          @relation("SubscriptionPostAuthor")
+  subscriptionAttachments    SubscriptionAttachment[]
+  subscriptionReadStates     SubscriptionReadState[]
+  subscriptionPostRecipients SubscriptionPostRecipient[]
+  subscriptionAuditLogs      SubscriptionAuditLog[]
+  createdFileShares          FileShare[]                 @relation("FileShareCreator")
+  botReplyDeliveries         BotReplyDelivery[]
+  uploadedAlbumPhotos        AlbumPhoto[]                @relation("AlbumPhotoUploader")
+  deletedAlbumPhotos         AlbumPhoto[]                @relation("AlbumPhotoDeleter")
+  albumReadState             AlbumReadState?
+
+  @@unique([oidcProvider, oidcSubject])
+}
+
+model AuthCode {
+  id         String    @id @default(uuid())
+  email      String
+  code       String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+  userId     String?
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([email, expiresAt])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model ReminderDeviceToken {
+  id              String                   @id @default(uuid())
+  deviceName      String
+  tokenHash       String                   @unique
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
+  lastUsedAt      DateTime?
+  revokedAt       DateTime?
+  userId          String
+  user            User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  realtimeTickets ReminderRealtimeTicket[]
+
+  @@index([userId, revokedAt])
+  @@index([userId, deviceName, revokedAt])
+}
+
+model ReminderRealtimeTicket {
+  id                    String              @id @default(uuid())
+  tokenHash             String              @unique
+  expiresAt             DateTime
+  consumedAt            DateTime?
+  createdAt             DateTime            @default(now())
+  reminderDeviceTokenId String
+  reminderDeviceToken   ReminderDeviceToken @relation(fields: [reminderDeviceTokenId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAt, consumedAt])
+  @@index([reminderDeviceTokenId, createdAt])
+}
+
+model Group {
+  id                         String                  @id @default(uuid())
+  name                       String
+  category                   String                  @default("未分类")
+  isDM                       Boolean                 @default(false)
+  dmKey                      String?                 @unique
+  artifactPath               String?
+  artifactsConfirmedByUserId String?
+  artifactsConfirmedAt       DateTime?
+  archivedAt                 DateTime?
+  createdAt                  DateTime                @default(now())
+  updatedAt                  DateTime                @updatedAt
+  createdById                String
+  serverId                   String?
+  createdBy                  User                    @relation("GroupCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  server                     Server?                 @relation(fields: [serverId], references: [id], onDelete: Restrict)
+  members                    GroupMember[]
+  messages                   Message[]
+  fileObjects                FileObject[]
+  artifacts                  GroupArtifact[]
+  uploadSessions             UploadSession[]
+  tasks                      Task[]
+  workState                  GroupWorkState?
+  workStateHistory           GroupWorkStateHistory[]
+  botReplyDeliveries         BotReplyDelivery[]
+
+  @@index([createdById])
+  @@index([artifactPath])
+  @@index([artifactsConfirmedAt])
+  @@index([archivedAt, updatedAt])
+  @@index([category])
+  @@index([serverId])
+  @@index([archivedAt])
+}
+
+model Server {
+  id               String            @id @default(uuid())
+  name             String            @unique
+  avatarStorageKey String?
+  archivedAt       DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  groups           Group[]
+  nameClaims       ServerNameClaim[]
+
+  @@index([archivedAt, updatedAt])
+}
+
+enum ServerNameKind {
+  CANONICAL
+  LEGACY
+}
+
+model ServerNameClaim {
+  name      String         @id
+  kind      ServerNameKind
+  serverId  String
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  server    Server         @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@index([serverId, kind])
+}
+
+model GroupMember {
+  id                    String          @id @default(uuid())
+  role                  GroupMemberRole @default(MEMBER)
+  joinedAt              DateTime        @default(now())
+  lastReadEventSequence BigInt?
+  groupId               String
+  userId                String
+  group                 Group           @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user                  User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+  @@index([userId])
+  @@index([groupId, role])
+}
+
+model Message {
+  id               String      @id @default(uuid())
+  groupId          String
+  senderId         String
+  clientMessageId  String?
+  eventSequence    BigInt      @unique @default(autoincrement())
+  type             MessageType
+  text             String?
+  outboxEventId    String?     @unique
+  attachmentFileId String?
+  mentionedUserIds String[]    @default([])
+  replyToMessageId String?
+  revokedAt        DateTime?
+  editedAt         DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  group            Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  sender           User        @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  attachmentFile   FileObject? @relation(fields: [attachmentFileId], references: [id], onDelete: Restrict)
+  replyToMessage   Message?    @relation("MessageReplies", fields: [replyToMessageId], references: [id], onDelete: SetNull)
+  replies          Message[]   @relation("MessageReplies")
+
+  @@unique([senderId, clientMessageId])
+  @@index([groupId, createdAt])
+  @@index([groupId, eventSequence])
+  @@index([senderId, createdAt])
+  @@index([attachmentFileId])
+  @@index([replyToMessageId])
+  @@index([type, createdAt])
+}
+
+model BotReplyDelivery {
+  id            String                 @id @default(uuid())
+  botUserId     String
+  sourceEventId String
+  groupId       String
+  status        BotReplyDeliveryStatus @default(CLAIMED)
+  responseText  String?
+  lastError     String?
+  completedAt   DateTime?
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  botUser       User                   @relation(fields: [botUserId], references: [id], onDelete: Cascade)
+  group         Group                  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([botUserId, sourceEventId])
+  @@index([status, updatedAt])
+  @@index([groupId, createdAt])
+}
+
+model OutboxEvent {
+  id            String            @id @default(uuid())
+  eventType     String
+  aggregateType String
+  aggregateId   String
+  payload       Json
+  status        OutboxEventStatus @default(PENDING)
+  attempts      Int               @default(0)
+  availableAt   DateTime          @default(now())
+  lockedAt      DateTime?
+  processedAt   DateTime?
+  lastError     String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@index([status, availableAt])
+  @@index([aggregateType, aggregateId, createdAt])
+}
+
+model FileObject {
+  id                  String         @id @default(uuid())
+  storageKey          String         @unique
+  thumbnailStorageKey String?
+  thumbnailSize       Int?
+  imageWidth          Int?
+  imageHeight         Int?
+  originalName        String
+  mimeType            String
+  size                BigInt
+  uploaderId          String
+  groupId             String
+  attachedAt          DateTime?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  uploader            User           @relation("FileUploader", fields: [uploaderId], references: [id], onDelete: Cascade)
+  group               Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  messages            Message[]
+  share               FileShare?
+  promotedArtifact    GroupArtifact? @relation("ArtifactSourceFile")
+
+  @@index([groupId, createdAt])
+  @@index([uploaderId, createdAt])
+}
+
+model FileShare {
+  id                   String                  @id @default(uuid())
+  fileId               String                  @unique
+  creatorId            String
+  publicTokenHash      String                  @unique
+  encryptedPublicToken String
+  passwordHash         String
+  encryptedPassword    String
+  expiresAt            DateTime
+  revokedAt            DateTime?
+  revokedReason        FileShareRevokedReason?
+  downloadCount        Int                     @default(0)
+  lastDownloadedAt     DateTime?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  file                 FileObject              @relation(fields: [fileId], references: [id], onDelete: Cascade)
+  creator              User                    @relation("FileShareCreator", fields: [creatorId], references: [id], onDelete: Restrict)
+
+  @@index([creatorId, createdAt])
+  @@index([expiresAt])
+  @@index([revokedAt])
+}
+
+model FileShareUnlockAttempt {
+  id                String    @id @default(uuid())
+  shareTokenHash    String
+  clientFingerprint String
+  failureCount      Int       @default(0)
+  lockoutLevel      Int       @default(0)
+  blockedUntil      DateTime?
+  lastFailedAt      DateTime
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@unique([shareTokenHash, clientFingerprint])
+  @@index([updatedAt])
+}
+
+model FileShareClientRisk {
+  clientFingerprint String    @id
+  failureCount      Int       @default(0)
+  lockoutLevel      Int       @default(0)
+  blockedUntil      DateTime?
+  windowStartedAt   DateTime
+  lastFailedAt      DateTime
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([updatedAt])
+}
+
+model GroupArtifact {
+  id           String      @id @default(uuid())
+  originalName String
+  storedName   String
+  relativePath String      @unique
+  mimeType     String
+  size         BigInt
+  uploaderId   String
+  groupId      String
+  sourceFileId String?     @unique
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  uploader     User        @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+  group        Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  sourceFile   FileObject? @relation("ArtifactSourceFile", fields: [sourceFileId], references: [id], onDelete: SetNull)
+
+  @@index([groupId, createdAt])
+  @@index([uploaderId, createdAt])
+}
+
+model UploadSession {
+  id                       String                  @id @default(uuid())
+  kind                     UploadKind
+  status                   UploadSessionStatus     @default(INITIATED)
+  originalName             String
+  mimeType                 String
+  size                     BigInt
+  objectKey                String                  @unique
+  multipartUploadId        String
+  completionParts          Json?
+  uploaderId               String
+  groupId                  String?
+  subscriptionAttachmentId String?                 @unique
+  albumPhotoId             String?
+  objectCleanupPending     Boolean                 @default(false)
+  assembledAt              DateTime?
+  finalizationStartedAt    DateTime?
+  finalizationAttempts     Int                     @default(0)
+  lastError                String?
+  completedAt              DateTime?
+  abortedAt                DateTime?
+  createdAt                DateTime                @default(now())
+  updatedAt                DateTime                @updatedAt
+  uploader                 User                    @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+  group                    Group?                  @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  subscriptionAttachment   SubscriptionAttachment? @relation(fields: [subscriptionAttachmentId], references: [id], onDelete: Cascade)
+  albumPhoto               AlbumPhoto?             @relation(fields: [albumPhotoId], references: [id], onDelete: SetNull)
+  finalizationMode         String?
+  finalizationJob          UploadFinalizationJob?
+
+  @@unique([uploaderId, id])
+  @@index([groupId, createdAt])
+  @@index([uploaderId, createdAt])
+  @@index([status, createdAt])
+  @@index([status, updatedAt])
+  @@index([objectCleanupPending, updatedAt])
+}
+
+model UploadFinalizationJob {
+  id              String        @id @default(uuid())
+  uploadSessionId String        @unique
+  status          String        @default("PENDING")
+  availableAt     DateTime      @default(now())
+  attempts        Int           @default(0)
+  leaseVersion    Int           @default(0)
+  lockedAt        DateTime?
+  lastError       String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  uploadSession   UploadSession @relation(fields: [uploadSessionId], references: [id], onDelete: Cascade)
+
+  @@index([status, availableAt, createdAt])
+  @@index([status, lockedAt])
+}
+
+model AlbumPhoto {
+  id                  String          @id @default(uuid())
+  storageKey          String          @unique
+  thumbnailStorageKey String?
+  thumbnailSize       Int?
+  originalName        String
+  mimeType            String
+  size                BigInt
+  sha256              String?
+  width               Int
+  height              Int
+  durationMs          Int?
+  uploaderId          String
+  revision            BigInt          @unique
+  deletedAt           DateTime?
+  deletedById         String?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+  uploader            User            @relation("AlbumPhotoUploader", fields: [uploaderId], references: [id], onDelete: Restrict)
+  deletedBy           User?           @relation("AlbumPhotoDeleter", fields: [deletedById], references: [id], onDelete: SetNull)
+  tags                AlbumPhotoTag[]
+  uploadSessions      UploadSession[]
+
+  @@index([deletedAt, createdAt, id])
+  @@index([sha256, deletedAt])
+  @@index([uploaderId, createdAt])
+}
+
+model AlbumState {
+  id        Int      @id @default(1)
+  revision  BigInt   @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+model AlbumReadState {
+  userId       String   @id
+  seenRevision BigInt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AlbumTag {
+  id             String          @id @default(uuid())
+  name           String
+  normalizedName String          @unique
+  photoCount     Int             @default(0)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  photos         AlbumPhotoTag[]
+}
+
+model AlbumMediaJob {
+  id          String              @id @default(uuid())
+  photoId     String
+  kind        AlbumMediaJobKind
+  status      AlbumMediaJobStatus @default(PENDING)
+  attempts    Int                 @default(0)
+  availableAt DateTime            @default(now())
+  lockedAt    DateTime?
+  completedAt DateTime?
+  lastError   String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@unique([photoId, kind])
+  @@index([status, availableAt])
+}
+
+model AlbumPhotoTag {
+  photoId String
+  tagId   String
+  photo   AlbumPhoto @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  tag     AlbumTag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([photoId, tagId])
+  @@index([tagId, photoId])
+}
+
+model SubscriptionPost {
+  id          String                      @id @default(uuid())
+  status      SubscriptionPostStatus      @default(DRAFT)
+  title       String
+  body        String                      @default("")
+  tags        String[]                    @default([])
+  authorId    String
+  publishedAt DateTime?
+  withdrawnAt DateTime?
+  pinnedAt    DateTime?
+  createdAt   DateTime                    @default(now())
+  updatedAt   DateTime                    @updatedAt
+  author      User                        @relation("SubscriptionPostAuthor", fields: [authorId], references: [id], onDelete: Restrict)
+  attachments SubscriptionAttachment[]
+  readStates  SubscriptionReadState[]
+  recipients  SubscriptionPostRecipient[]
+  auditLogs   SubscriptionAuditLog[]
+
+  @@index([status, pinnedAt, publishedAt])
+  @@index([authorId, createdAt])
+}
+
+model SubscriptionAttachment {
+  id            String                       @id @default(uuid())
+  postId        String
+  uploaderId    String
+  status        SubscriptionAttachmentStatus @default(UPLOADING)
+  usage         SubscriptionAttachmentUsage  @default(DOWNLOADABLE_FILE)
+  storageKey    String                       @unique
+  originalName  String
+  mimeType      String
+  size          BigInt
+  sha256        String?
+  downloadCount BigInt                       @default(0)
+  createdAt     DateTime                     @default(now())
+  updatedAt     DateTime                     @updatedAt
+  post          SubscriptionPost             @relation(fields: [postId], references: [id], onDelete: Cascade)
+  uploader      User                         @relation(fields: [uploaderId], references: [id], onDelete: Restrict)
+  uploadSession UploadSession?
+
+  @@index([postId, status, createdAt])
+  @@index([postId, usage, status, createdAt])
+  @@index([uploaderId, createdAt])
+}
+
+model SubscriptionReadState {
+  id     String           @id @default(uuid())
+  postId String
+  userId String
+  readAt DateTime         @default(now())
+  post   SubscriptionPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([userId, readAt])
+}
+
+model SubscriptionPostRecipient {
+  postId      String
+  userId      String
+  assignedAt  DateTime         @default(now())
+  confirmedAt DateTime?
+  post        SubscriptionPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user        User             @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@id([postId, userId])
+  @@index([userId, confirmedAt])
+  @@index([postId, confirmedAt])
+}
+
+model SubscriptionAuditLog {
+  id        String           @id @default(uuid())
+  postId    String
+  actorId   String
+  action    String
+  createdAt DateTime         @default(now())
+  post      SubscriptionPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  actor     User             @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([postId, createdAt])
+  @@index([actorId, createdAt])
+}
+
+model GroupWorkState {
+  id                 String   @id @default(uuid())
+  groupId            String   @unique
+  status             String
+  reason             String?
+  sourceMessageIds   String[] @default([])
+  updatedByActorType String
+  updatedByActorId   String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  group              Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([status, updatedAt])
+}
+
+model Category {
+  name             String    @id
+  avatarStorageKey String?
+  archivedAt       DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}
+
+model SystemConfig {
+  key       String   @id
+  value     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model GroupWorkStateHistory {
+  id               String   @id @default(uuid())
+  groupId          String
+  fromStatus       String?
+  toStatus         String
+  reason           String?
+  sourceMessageIds String[] @default([])
+  actorType        String
+  actorId          String
+  createdAt        DateTime @default(now())
+  group            Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, createdAt])
+  @@index([toStatus, createdAt])
+}
+
+model LoginRisk {
+  id              String    @id @default(uuid())
+  email           String
+  ip              String
+  failedAttempts  Int       @default(0)
+  lastFailedAt    DateTime?
+  lockedUntil     DateTime?
+  lockoutCount    Int       @default(0)
+  blacklistedAt   DateTime?
+  unblacklistedAt DateTime?
+  unblacklistedBy String?
+  unblacklistNote String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([email, ip])
+  @@index([email])
+  @@index([ip])
+  @@index([blacklistedAt])
+}
+
+model PresenceLog {
+  id          String   @id @default(uuid())
+  userId      String
+  email       String
+  displayName String?
+  event       String // 'online' | 'offline'
+  isOnline    Boolean  @default(false)
+  isDnd       Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
+  @@index([event, createdAt])
+}
+
+model AttendanceUserPolicy {
+  id        String         @id @default(uuid())
+  userId    String         @unique
+  mode      AttendanceMode @default(SCHEDULED)
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AttendanceActionEvent {
+  id            String   @id @default(uuid())
+  userId        String
+  occurredAt    DateTime @default(now())
+  actionType    String
+  requestMethod String
+  requestPath   String
+  groupId       String?
+  actorType     String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, occurredAt])
+  @@index([requestMethod, requestPath, occurredAt])
+  @@index([groupId, occurredAt])
+}
+
+model AttendanceDaily {
+  id              String         @id @default(uuid())
+  userId          String
+  workDate        String
+  mode            AttendanceMode
+  clockInAt       DateTime?
+  clockOutAt      DateTime?
+  clockInSource   String?
+  clockOutSource  String?
+  clockInMissing  Boolean        @default(false)
+  clockOutMissing Boolean        @default(false)
+  workedMinutes   Int?
+  computedAt      DateTime       @default(now())
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workDate, mode])
+  @@index([workDate])
+  @@index([userId, workDate, mode])
+}
+
+model CheckInSession {
+  id         String    @id @default(uuid())
+  userId     String
+  workDate   String
+  checkInAt  DateTime
+  checkOutAt DateTime?
+  source     String    @default("manual")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([workDate])
+  @@index([userId, workDate])
+  @@index([userId, workDate, checkInAt])
+  @@index([userId, workDate, checkOutAt])
+}
+
+model Task {
+  id            String    @id @default(uuid())
+  groupId       String
+  content       String
+  completed     Boolean   @default(false)
+  createdById   String
+  completedById String?
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+
+  group       Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdBy   User  @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  completedBy User? @relation("TaskCompleter", fields: [completedById], references: [id], onDelete: SetNull)
+
+  @@index([groupId])
+}

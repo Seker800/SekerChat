@@ -1,0 +1,72 @@
+services:
+  frontend:
+    image: sekerchat-frontend:${APP_IMAGE_TAG}
+    container_name: sekerchat-frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-}
+    ports:
+      - '${FRONTEND_PORT:-8080}:80'
+    networks:
+      app:
+        ipv4_address: ${FRONTEND_PROXY_IP:-172.29.0.10}
+    mem_limit: 128m
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:80/']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+  backend:
+    image: sekerchat-backend:${APP_IMAGE_TAG}
+    container_name: sekerchat-backend
+    networks:
+      app:
+        aliases: [sekerchat-backend]
+        ipv4_address: ${BACKEND_IP:-172.29.0.11}
+    env_file: [.env]
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3100
+      NODE_ENV: production
+    mem_limit: 512m
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:3100/api/health/ready').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    restart: unless-stopped
+
+  migrate:
+    image: sekerchat-backend:${APP_IMAGE_TAG}
+    profiles: [migration]
+    networks: [app]
+    env_file: [.env]
+    environment:
+      NODE_ENV: production
+    command:
+      [
+        'node',
+        'node_modules/prisma/build/index.js',
+        'migrate',
+        'deploy',
+        '--schema',
+        'prisma/schema.prisma',
+      ]
+    restart: 'no'
+
+networks:
+  app:
+    external: true
+    name: ${APP_NETWORK_NAME:-sekerchat_sekerchat}

@@ -1,0 +1,13 @@
+node_modules
+dist
+coverage
+release
+.vite
+.deploy-artifacts
+.tmp
+apps/backend/.tmp
+apps/mobile-shell/android/**/build
+apps/mobile-shell/android/app/src/main/assets
+deploy/local-dev/runtime
+contracts/openapi.json
+packages/contracts/src/generated/openapi.ts

@@ -1,0 +1,125 @@
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 56;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(7, 8, 10, 0.72);
+  backdrop-filter: blur(12px);
+}
+
+.dialog {
+  width: min(460px, calc(100vw - 32px));
+  max-height: min(520px, calc(100vh - 40px));
+  border: 1px solid var(--line-subtle);
+  border-radius: 14px;
+  background: #232428;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 12px;
+}
+
+.title {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.closeButton {
+  min-height: 28px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-soft);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.searchArea {
+  padding: 0 16px 10px;
+}
+
+.searchInput {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--bg-input);
+  color: var(--text-strong);
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.searchInput::placeholder {
+  color: var(--text-dim);
+}
+
+.list {
+  overflow: auto;
+  padding: 0 8px 12px;
+}
+
+.empty {
+  padding: 24px 12px;
+  color: var(--text-dim);
+  font-size: 13px;
+  text-align: center;
+  margin: 0;
+}
+
+.userRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.userRow:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.userRow:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.userCopy {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.userCopy strong {
+  color: var(--text-strong);
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.userCopy span {
+  color: var(--text-dim);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
