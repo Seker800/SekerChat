@@ -22,7 +22,7 @@ jobs:
     name: Quality and unit tests
     runs-on: ubuntu-latest
     env:
-      APP_BASE_URL: http://127.0.0.1:5173
+      APP_BASE_URL: https://im.example.com
       API_BASE_URL: http://127.0.0.1:3100/api
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/sekerchat_ci?schema=public
       JWT_ACCESS_SECRET: ci-access-secret
