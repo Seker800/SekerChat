@@ -115,7 +115,7 @@ describe('App auth boundary', () => {
     expect(screen.getByTestId('app-version')).toHaveTextContent(/^SekerChat v/);
     expect(screen.queryByTestId('oidc-login-button')).not.toBeInTheDocument();
     expect(screen.queryByText('通过群晖统一登录')).not.toBeInTheDocument();
-    expect(screen.getByText('团队频道')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '自托管的小团队协作工具' })).toBeInTheDocument();
     expect(screen.queryByText('# 当班确认')).not.toBeInTheDocument();
     expect(screen.queryByTestId('workspace-shell')).not.toBeInTheDocument();
     expect(screen.queryByTestId('admin-page')).not.toBeInTheDocument();
@@ -129,7 +129,7 @@ describe('App auth boundary', () => {
 
     expect(
       await screen.findByRole('heading', {
-        name: 'Team conversations and files, securely on your own server.',
+        name: 'Self-hosted collaboration for small teams',
       }),
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '切换到中文首页' })).toHaveAttribute('href', '/');

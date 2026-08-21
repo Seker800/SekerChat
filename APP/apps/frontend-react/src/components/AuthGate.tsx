@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import styles from './AuthGate.module.css';
 
@@ -6,33 +6,20 @@ interface HomeCopy {
   language: 'zh-CN' | 'en';
   title: string;
   description: string;
-  eyebrow: string;
   heading: string;
-  lead: string;
-  github: string;
-  loginAnchor: string;
-  languageLabel: string;
+  intro: string;
+  sourceLink: string;
+  loginLink: string;
   languageHref: string;
-  languageName: string;
-  proof: string[];
-  preview: {
-    channels: string;
-    general: string;
-    handoff: string;
-    files: string;
-    online: string;
-    author: string;
-    message: string;
-    reply: string;
-    composer: string;
-  };
-  sectionEyebrow: string;
-  sectionTitle: string;
+  languageLabel: string;
+  facts: string[];
+  featuresTitle: string;
   features: Array<{ title: string; body: string }>;
-  audienceTitle: string;
-  audienceBody: string;
-  audienceItems: string[];
-  loginEyebrow: string;
+  stackTitle: string;
+  stackBody: string;
+  scenariosTitle: string;
+  scenarios: string[];
+  loginKicker: string;
   loginTitle: string;
   registerTitle: string;
   email: string;
@@ -52,56 +39,36 @@ const HOME_COPY: Record<'zh' | 'en', HomeCopy> = {
     language: 'zh-CN',
     title: 'SekerChat｜开源自托管团队协作与即时通讯',
     description:
-      'SekerChat 是面向小团队的开源自托管协作工作区，集频道、私聊、文件、机器人和提醒于一体，支持 Docker、PostgreSQL 与 S3 兼容存储。',
-    eyebrow: '开源 · 自托管 · 数据自主',
-    heading: '把团队沟通和文件，稳稳放在自己的服务器上。',
-    lead: 'SekerChat 是面向小团队的实时协作工作区。频道、私聊、文件、机器人和提醒集中在一处，数据与运行环境始终由你掌控。',
-    github: '查看 GitHub 项目',
-    loginAnchor: '登录当前实例',
-    languageLabel: 'Switch to English homepage',
+      'SekerChat 是面向小团队的开源自托管协作工具，提供频道、私聊、文件、机器人和提醒，支持 Docker、PostgreSQL 与 S3 兼容存储。',
+    heading: '自托管的小团队协作工具',
+    intro:
+      'SekerChat 把频道、私聊、文件、机器人和提醒放在同一个工作区。前端、后端、数据库和对象存储都可以运行在你自己的服务器上。',
+    sourceLink: '查看源代码',
+    loginLink: '登录此实例',
     languageHref: '/en',
-    languageName: 'English',
-    proof: ['AGPL-3.0 开源', 'Docker 自托管', 'PostgreSQL + MinIO', '实时 WebSocket'],
-    preview: {
-      channels: '团队频道',
-      general: '# 日常协作',
-      handoff: '# 交接播报',
-      files: '# 文件归档',
-      online: '3 人在线',
-      author: '林晓',
-      message: '新版部署清单已更新，数据库迁移和回滚步骤都在同一份文档里。',
-      reply: '收到，我来补充今晚的验证结果。',
-      composer: '发送消息到 #日常协作',
-    },
-    sectionEyebrow: '为真实协作而设计',
-    sectionTitle: '一个可落地、可维护的团队工作区',
+    languageLabel: 'English',
+    facts: ['AGPL-3.0', 'Docker', 'PostgreSQL', 'MinIO / S3', 'WebSocket'],
+    featuresTitle: '主要功能',
     features: [
+      { title: '频道与私聊', body: '按团队和话题组织讨论，支持实时消息、回复和阅读进度。' },
+      { title: '文件管理', body: '图片和文件保存在自己的 S3 兼容对象存储中，并可创建受控分享。' },
+      { title: '机器人与提醒', body: '后台任务负责机器人、提醒、缩略图和通知，失败后可以重试。' },
       {
-        title: '沟通集中有序',
-        body: '用服务器、频道和私聊组织讨论，支持实时消息、回复、成员状态与阅读进度。',
-      },
-      {
-        title: '文件留在自己的存储',
-        body: '通过 MinIO 或其他 S3 兼容对象存储管理图片和文件，并支持受控的外部分享。',
-      },
-      {
-        title: '自动化不阻塞聊天',
-        body: '机器人、提醒、缩略图和通知由可重试任务处理，让核心消息链路保持稳定。',
-      },
-      {
-        title: '部署边界清晰',
-        body: 'React、NestJS、PostgreSQL 与 MinIO 组成完整栈，适合 Docker 与群晖 NAS。',
+        title: '完整的自托管栈',
+        body: 'React、NestJS、PostgreSQL 和 MinIO 可通过 Docker 一起部署。',
       },
     ],
-    audienceTitle: '适合谁？',
-    audienceBody: '适合想摆脱分散工具、重视数据所有权，又希望保留现代协作体验的小团队。',
-    audienceItems: [
-      '工作室与创业团队',
-      '家庭与兴趣社群',
-      '内部运维与值班协作',
-      '自托管与开源爱好者',
+    stackTitle: '技术与部署',
+    stackBody:
+      '项目采用 TypeScript 单仓库，前端使用 React 和 Vite，后端使用 NestJS 与 Prisma。当前维护本机 Docker 开发环境和群晖 NAS 生产部署流程。',
+    scenariosTitle: '适合的场景',
+    scenarios: [
+      '小型工作室和创业团队',
+      '家庭或兴趣社群',
+      '值班、运维和内部协作',
+      '希望掌控数据的自托管用户',
     ],
-    loginEyebrow: '当前实例',
+    loginKicker: '当前实例',
     loginTitle: '登录 SekerChat',
     registerTitle: '注册 SekerChat',
     email: '邮箱',
@@ -124,64 +91,47 @@ const HOME_COPY: Record<'zh' | 'en', HomeCopy> = {
     language: 'en',
     title: 'SekerChat | Open-source, self-hosted team chat',
     description:
-      'SekerChat is an open-source, self-hosted workspace for small teams, combining channels, direct messages, files, bots, and reminders with Docker deployment.',
-    eyebrow: 'Open source · Self-hosted · Data ownership',
-    heading: 'Team conversations and files, securely on your own server.',
-    lead: 'SekerChat is a real-time collaboration workspace for small teams. Keep channels, direct messages, files, bots, and reminders together while you stay in control of the infrastructure and data.',
-    github: 'View project on GitHub',
-    loginAnchor: 'Sign in to this instance',
-    languageLabel: '切换到中文首页',
+      'SekerChat is an open-source, self-hosted collaboration tool for small teams, with channels, direct messages, files, bots, and reminders.',
+    heading: 'Self-hosted collaboration for small teams',
+    intro:
+      'SekerChat keeps channels, direct messages, files, bots, and reminders in one workspace. The frontend, backend, database, and object storage can all run on your own server.',
+    sourceLink: 'View source code',
+    loginLink: 'Sign in to this instance',
     languageHref: '/',
-    languageName: '中文',
-    proof: [
-      'AGPL-3.0 licensed',
-      'Docker self-hosting',
-      'PostgreSQL + MinIO',
-      'Real-time WebSocket',
-    ],
-    preview: {
-      channels: 'Team channels',
-      general: '# daily-work',
-      handoff: '# handoff',
-      files: '# file-archive',
-      online: '3 online',
-      author: 'Alex Chen',
-      message: 'The deployment checklist now includes database migration and rollback steps.',
-      reply: "Got it — I will add tonight's verification results.",
-      composer: 'Message #daily-work',
-    },
-    sectionEyebrow: 'Built for real collaboration',
-    sectionTitle: 'A practical, maintainable team workspace',
+    languageLabel: '中文',
+    facts: ['AGPL-3.0', 'Docker', 'PostgreSQL', 'MinIO / S3', 'WebSocket'],
+    featuresTitle: 'Features',
     features: [
       {
-        title: 'Organized conversations',
-        body: 'Structure work with servers, channels, and direct messages, including replies, presence, and read progress.',
+        title: 'Channels and direct messages',
+        body: 'Organize discussions by team and topic with real-time messages, replies, and read progress.',
       },
       {
-        title: 'Files in your own storage',
-        body: 'Store images and documents in MinIO or another S3-compatible service, with controlled public sharing.',
+        title: 'File management',
+        body: 'Keep images and files in your own S3-compatible object storage and create controlled shares.',
       },
       {
-        title: 'Reliable automation',
-        body: 'Bots, reminders, thumbnails, and notifications run as retryable jobs without blocking core messaging.',
+        title: 'Bots and reminders',
+        body: 'Retryable background jobs handle bots, reminders, thumbnails, and notifications.',
       },
       {
-        title: 'A clear deployment model',
-        body: 'React, NestJS, PostgreSQL, and MinIO form a complete stack for Docker and Synology NAS.',
+        title: 'A complete self-hosted stack',
+        body: 'Deploy React, NestJS, PostgreSQL, and MinIO together with Docker.',
       },
     ],
-    audienceTitle: 'Who is it for?',
-    audienceBody:
-      'For small teams that want fewer scattered tools, full data ownership, and a modern collaboration experience.',
-    audienceItems: [
-      'Studios and startups',
-      'Families and communities',
-      'Operations and on-call teams',
-      'Self-hosting enthusiasts',
+    stackTitle: 'Technology and deployment',
+    stackBody:
+      'The TypeScript monorepo uses React and Vite on the frontend, with NestJS and Prisma on the backend. It includes a local Docker development setup and a maintained production workflow for Synology NAS.',
+    scenariosTitle: 'Good fit for',
+    scenarios: [
+      'Small studios and startups',
+      'Families and interest groups',
+      'Operations and internal coordination',
+      'Self-hosters who want data ownership',
     ],
-    loginEyebrow: 'This instance',
+    loginKicker: 'This instance',
     loginTitle: 'Sign in to SekerChat',
-    registerTitle: 'Create a SekerChat account',
+    registerTitle: 'Create an account',
     email: 'Email',
     password: 'Password',
     displayName: 'Display name (optional)',
@@ -232,15 +182,12 @@ export function AuthGate(props: AuthGateProps) {
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [passwordTouched, setPasswordTouched] = useState(false);
-  const passwordRules = useMemo(
-    () => [
-      { key: 'minLength', label: copy.passwordRules[0], passed: password.length >= 8 },
-      { key: 'uppercase', label: copy.passwordRules[1], passed: /[A-Z]/.test(password) },
-      { key: 'lowercase', label: copy.passwordRules[2], passed: /[a-z]/.test(password) },
-      { key: 'digit', label: copy.passwordRules[3], passed: /[0-9]/.test(password) },
-    ],
-    [copy.passwordRules, password],
-  );
+  const passwordRules = [
+    { key: 'minLength', label: copy.passwordRules[0], passed: password.length >= 8 },
+    { key: 'uppercase', label: copy.passwordRules[1], passed: /[A-Z]/.test(password) },
+    { key: 'lowercase', label: copy.passwordRules[2], passed: /[a-z]/.test(password) },
+    { key: 'digit', label: copy.passwordRules[3], passed: /[0-9]/.test(password) },
+  ];
 
   useEffect(() => {
     const origin = window.location.origin;
@@ -282,10 +229,6 @@ export function AuthGate(props: AuthGateProps) {
       property: 'og:url',
       content: `${origin}${canonicalPath}`,
     });
-    upsertHeadElement('meta[property="og:image"]', 'meta', {
-      property: 'og:image',
-      content: `${origin}/og.png`,
-    });
     upsertHeadElement('meta[property="og:locale"]', 'meta', {
       property: 'og:locale',
       content: copy.language === 'en' ? 'en_US' : 'zh_CN',
@@ -298,10 +241,7 @@ export function AuthGate(props: AuthGateProps) {
       name: 'twitter:description',
       content: copy.description,
     });
-    upsertHeadElement('meta[name="twitter:image"]', 'meta', {
-      name: 'twitter:image',
-      content: `${origin}/og.png`,
-    });
+
     let data = document.head.querySelector<HTMLScriptElement>('#sekerchat-structured-data');
     if (!data) {
       data = document.createElement('script');
@@ -329,172 +269,72 @@ export function AuthGate(props: AuthGateProps) {
     });
   }, [copy]);
 
-  function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  function handleSubmit(event: FormEvent) {
+    event.preventDefault();
     if (tab === 'login') void props.onPasswordLogin(email, password);
     else void props.onPasswordRegister(email, password, displayName || undefined);
   }
 
   return (
     <main className={styles.screen} data-testid="auth-panel">
-      <header className={styles.siteHeader}>
-        <a
-          className={styles.brand}
-          href={copy.language === 'en' ? '/en' : '/'}
-          aria-label="SekerChat homepage"
-        >
-          <span className={styles.brandMark}>S</span>
-          <span>SekerChat</span>
+      <header className={styles.header}>
+        <a className={styles.brand} href={copy.language === 'en' ? '/en' : '/'}>
+          SekerChat
         </a>
-        <nav
-          className={styles.headerNav}
-          aria-label={copy.language === 'en' ? 'Main navigation' : '主导航'}
-        >
-          <a href="https://github.com/Seker800/SekerChat" target="_blank" rel="noreferrer">
-            GitHub
-          </a>
+        <nav aria-label={copy.language === 'en' ? 'Main navigation' : '主导航'}>
+          <a href="https://github.com/Seker800/SekerChat">GitHub</a>
           <a
             href={copy.languageHref}
             hrefLang={copy.language === 'en' ? 'zh-CN' : 'en'}
-            aria-label={copy.languageLabel}
+            aria-label={copy.language === 'en' ? '切换到中文首页' : 'Switch to English homepage'}
           >
-            {copy.languageName}
+            {copy.languageLabel}
           </a>
         </nav>
       </header>
 
-      <div className={styles.pageShell}>
-        <section className={styles.hero}>
-          <div className={styles.heroCopy}>
-            <p className={styles.eyebrow}>{copy.eyebrow}</p>
+      <div className={styles.page}>
+        <section className={styles.intro}>
+          <div className={styles.introCopy}>
+            <p className={styles.kicker}>SekerChat</p>
             <h1>{copy.heading}</h1>
-            <p className={styles.lead}>{copy.lead}</p>
-            <div className={styles.heroActions}>
-              <a
-                className={styles.primaryLink}
-                href="https://github.com/Seker800/SekerChat"
-                target="_blank"
-                rel="noreferrer"
-              >
-                {copy.github}
-                <span aria-hidden="true">↗</span>
+            <p className={styles.lead}>{copy.intro}</p>
+            <div className={styles.actions}>
+              <a className={styles.primaryLink} href="https://github.com/Seker800/SekerChat">
+                {copy.sourceLink}
               </a>
-              <a className={styles.secondaryLink} href="#login">
-                {copy.loginAnchor}
+              <a className={styles.textLink} href="#login">
+                {copy.loginLink}
               </a>
             </div>
-            <ul
-              className={styles.proofList}
-              aria-label={copy.language === 'en' ? 'Project highlights' : '项目亮点'}
-            >
-              {copy.proof.map((item) => (
-                <li key={item}>{item}</li>
+            <ul className={styles.facts}>
+              {copy.facts.map((fact) => (
+                <li key={fact}>{fact}</li>
               ))}
             </ul>
           </div>
-          <div
-            className={styles.productPreview}
-            aria-label={
-              copy.language === 'en' ? 'SekerChat workspace preview' : 'SekerChat 工作区预览'
-            }
-          >
-            <div className={styles.previewChrome}>
-              <span />
-              <span />
-              <span />
-              <b>sekerchat.local</b>
-            </div>
-            <div className={styles.previewShell}>
-              <div className={styles.previewRail}>
-                <div className={`${styles.previewRailItem} ${styles.previewRailItemActive}`}>S</div>
-                <div className={styles.previewRailItem}>+</div>
-              </div>
-              <div className={styles.previewSidebar}>
-                <div className={styles.previewSidebarHeader}>
-                  <strong>SekerChat</strong>
-                  <span>{copy.preview.channels}</span>
-                </div>
-                <div className={styles.previewChannelList}>
-                  <div className={`${styles.previewChannel} ${styles.previewChannelActive}`}>
-                    {copy.preview.general}
-                  </div>
-                  <div className={styles.previewChannel}>{copy.preview.handoff}</div>
-                  <div className={styles.previewChannel}>{copy.preview.files}</div>
-                </div>
-              </div>
-              <div className={styles.previewMain}>
-                <div className={styles.previewTopbar}>
-                  <strong>{copy.preview.general}</strong>
-                  <span>{copy.preview.online}</span>
-                </div>
-                <div className={styles.previewMessageList}>
-                  <div className={styles.previewMessage}>
-                    <div className={styles.previewAvatar}>{copy.preview.author.slice(0, 1)}</div>
-                    <div className={styles.previewBubble}>
-                      <strong>{copy.preview.author}</strong>
-                      <p>{copy.preview.message}</p>
-                    </div>
-                  </div>
-                  <div className={styles.previewMessageCompact}>
-                    <span />
-                    <p>{copy.preview.reply}</p>
-                  </div>
-                </div>
-                <div className={styles.previewComposer}>{copy.preview.composer}</div>
-              </div>
-            </div>
-          </div>
-        </section>
 
-        <section className={styles.featuresSection} aria-labelledby="features-title">
-          <div className={styles.sectionHeading}>
-            <p className={styles.eyebrow}>{copy.sectionEyebrow}</p>
-            <h2 id="features-title">{copy.sectionTitle}</h2>
-          </div>
-          <div className={styles.featureGrid}>
-            {copy.features.map((feature, index) => (
-              <article className={styles.featureCard} key={feature.title}>
-                <span>{String(index + 1).padStart(2, '0')}</span>
-                <h3>{feature.title}</h3>
-                <p>{feature.body}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className={styles.bottomGrid}>
-          <div className={styles.audienceCard}>
-            <p className={styles.eyebrow}>SekerChat</p>
-            <h2>{copy.audienceTitle}</h2>
-            <p>{copy.audienceBody}</p>
-            <ul>
-              {copy.audienceItems.map((item) => (
-                <li key={item}>{item}</li>
-              ))}
-            </ul>
-          </div>
           <section
             className={styles.loginCard}
             id="login"
             data-testid="auth-gate-panel"
             aria-labelledby="login-title"
           >
-            <p className={styles.eyebrow}>{copy.loginEyebrow}</p>
+            <p className={styles.kicker}>{copy.loginKicker}</p>
             {import.meta.env.DEV ? (
               <div className={styles.devNotice} data-testid="auth-dev-notice">
                 {copy.devNotice}
               </div>
             ) : null}
             <h2 id="login-title">{tab === 'login' ? copy.loginTitle : copy.registerTitle}</h2>
-            <form onSubmit={handleSubmit} className={styles.passwordForm}>
+            <form onSubmit={handleSubmit} className={styles.form}>
               <label>
                 <span>{copy.email}</span>
                 <input
-                  className={styles.input}
                   type="email"
                   placeholder={copy.email}
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(event) => setEmail(event.target.value)}
                   required
                   autoComplete="email"
                 />
@@ -502,13 +342,12 @@ export function AuthGate(props: AuthGateProps) {
               <label>
                 <span>{copy.password}</span>
                 <input
-                  className={styles.input}
                   type="password"
                   placeholder={copy.password}
                   value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    if (!passwordTouched && e.target.value.length > 0) setPasswordTouched(true);
+                  onChange={(event) => {
+                    setPassword(event.target.value);
+                    if (!passwordTouched && event.target.value) setPasswordTouched(true);
                   }}
                   required
                   minLength={8}
@@ -520,7 +359,7 @@ export function AuthGate(props: AuthGateProps) {
                   {passwordRules.map((rule) => (
                     <span
                       key={rule.key}
-                      className={`${styles.passwordRule} ${rule.passed ? styles.rulePassed : styles.ruleFailed}`}
+                      className={rule.passed ? styles.rulePassed : styles.ruleFailed}
                     >
                       {rule.passed ? '✓' : '✗'} {rule.label}
                     </span>
@@ -531,19 +370,16 @@ export function AuthGate(props: AuthGateProps) {
                 <label>
                   <span>{copy.displayName}</span>
                   <input
-                    className={styles.input}
                     type="text"
                     placeholder={copy.displayName}
                     value={displayName}
-                    onChange={(e) => setDisplayName(e.target.value)}
+                    onChange={(event) => setDisplayName(event.target.value)}
                     autoComplete="name"
                   />
                 </label>
               ) : null}
-              {props.passwordError ? (
-                <p className={`${styles.status} ${styles.error}`}>{props.passwordError}</p>
-              ) : null}
-              <button className={styles.button} type="submit" disabled={props.isPasswordSubmitting}>
+              {props.passwordError ? <p className={styles.error}>{props.passwordError}</p> : null}
+              <button type="submit" disabled={props.isPasswordSubmitting}>
                 {props.isPasswordSubmitting
                   ? copy.waiting
                   : tab === 'login'
@@ -551,25 +387,47 @@ export function AuthGate(props: AuthGateProps) {
                     : copy.register}
               </button>
             </form>
-            <div className={styles.footerMeta}>
-              <p className={styles.version} data-testid="app-version">
-                SekerChat v{__APP_VERSION__}
-              </p>
-              <button
-                type="button"
-                className={styles.modeSwitchButton}
-                onClick={() => setTab(tab === 'login' ? 'register' : 'login')}
-              >
+            <div className={styles.formFooter}>
+              <span data-testid="app-version">SekerChat v{__APP_VERSION__}</span>
+              <button type="button" onClick={() => setTab(tab === 'login' ? 'register' : 'login')}>
                 {tab === 'login' ? copy.switchToRegister : copy.switchToLogin}
               </button>
             </div>
           </section>
         </section>
+
+        <section className={styles.features} aria-labelledby="features-title">
+          <h2 id="features-title">{copy.featuresTitle}</h2>
+          <div className={styles.featureList}>
+            {copy.features.map((feature) => (
+              <article key={feature.title}>
+                <h3>{feature.title}</h3>
+                <p>{feature.body}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className={styles.details}>
+          <div>
+            <h2>{copy.stackTitle}</h2>
+            <p>{copy.stackBody}</p>
+          </div>
+          <div>
+            <h2>{copy.scenariosTitle}</h2>
+            <ul>
+              {copy.scenarios.map((scenario) => (
+                <li key={scenario}>{scenario}</li>
+              ))}
+            </ul>
+          </div>
+        </section>
       </div>
-      <footer className={styles.siteFooter}>
+
+      <footer className={styles.footer}>
         <span>© {new Date().getFullYear()} SekerChat</span>
         <span>
-          AGPL-3.0-only · Open source on <a href="https://github.com/Seker800/SekerChat">GitHub</a>
+          AGPL-3.0-only · <a href="https://github.com/Seker800/SekerChat">GitHub</a>
         </span>
       </footer>
     </main>

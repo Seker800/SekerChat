@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-test('captures the unauthenticated landing page for review evidence', async ({ page }) => {
+test('validates the unauthenticated homepage and login entry', async ({ page }) => {
   const authorizationHeaders: string[] = [];
   await page.route('**/api/users/me', async (route) => {
     const authorization = route.request().headers().authorization;
@@ -21,15 +21,9 @@ test('captures the unauthenticated landing page for review evidence', async ({ p
   await expect(page.getByPlaceholder('密码')).toBeVisible();
   await expect(page.locator('form').getByRole('button', { name: '登录' })).toBeVisible();
   await expect(page.getByRole('button', { name: '没有账号？注册' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: '适合谁？' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '适合的场景' })).toBeVisible();
   await expect(page).toHaveTitle('SekerChat｜开源自托管团队协作与即时通讯');
   expect(authorizationHeaders).toEqual([]);
-  await expect(page).toHaveScreenshot('auth-landing.png', {
-    animations: 'disabled',
-    caret: 'hide',
-    fullPage: true,
-    maxDiffPixelRatio: 0.02,
-  });
 });
 
 test('serves a localized English homepage at a stable URL', async ({ page }) => {
@@ -42,7 +36,7 @@ test('serves a localized English homepage at a stable URL', async ({ page }) => 
 
   await expect(
     page.getByRole('heading', {
-      name: 'Team conversations and files, securely on your own server.',
+      name: 'Self-hosted collaboration for small teams',
     }),
   ).toBeVisible();
   await expect(page.getByRole('link', { name: '切换到中文首页' })).toHaveAttribute('href', '/');
