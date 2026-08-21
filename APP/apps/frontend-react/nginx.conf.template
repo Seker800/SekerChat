@@ -21,6 +21,16 @@ server {
     try_files /index.html =404;
   }
 
+  location = /robots.txt {
+    default_type text/plain;
+    return 200 "User-agent: *\nAllow: /\nDisallow: /admin\nDisallow: /groups\nDisallow: /dm\nDisallow: /s\nSitemap: $scheme://$http_host/sitemap.xml\n";
+  }
+
+  location = /sitemap.xml {
+    default_type application/xml;
+    return 200 '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml"><url><loc>$scheme://$http_host/</loc><xhtml:link rel="alternate" hreflang="zh-CN" href="$scheme://$http_host/"/><xhtml:link rel="alternate" hreflang="en" href="$scheme://$http_host/en"/></url><url><loc>$scheme://$http_host/en</loc><xhtml:link rel="alternate" hreflang="zh-CN" href="$scheme://$http_host/"/><xhtml:link rel="alternate" hreflang="en" href="$scheme://$http_host/en"/></url></urlset>';
+  }
+
   location /assets/ {
     add_header Content-Security-Policy $sekerchat_csp always;
     add_header Cache-Control "public, max-age=31536000, immutable" always;

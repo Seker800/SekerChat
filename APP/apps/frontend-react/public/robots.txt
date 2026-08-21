@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /groups
+Disallow: /dm
+Disallow: /s

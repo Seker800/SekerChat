@@ -115,10 +115,32 @@ describe('App auth boundary', () => {
     expect(screen.getByTestId('app-version')).toHaveTextContent(/^SekerChat v/);
     expect(screen.queryByTestId('oidc-login-button')).not.toBeInTheDocument();
     expect(screen.queryByText('通过群晖统一登录')).not.toBeInTheDocument();
-    expect(screen.queryByText('团队频道')).not.toBeInTheDocument();
+    expect(screen.getByText('团队频道')).toBeInTheDocument();
     expect(screen.queryByText('# 当班确认')).not.toBeInTheDocument();
     expect(screen.queryByTestId('workspace-shell')).not.toBeInTheDocument();
     expect(screen.queryByTestId('admin-page')).not.toBeInTheDocument();
+  });
+
+  it('renders the English homepage with localized metadata at /en', async () => {
+    authApiMocks.getCurrentUser.mockRejectedValue(new Error('Session expired'));
+    authApiMocks.refreshSession.mockRejectedValue(new Error('Session expired'));
+
+    renderApp('/en');
+
+    expect(
+      await screen.findByRole('heading', {
+        name: 'Team conversations and files, securely on your own server.',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '切换到中文首页' })).toHaveAttribute('href', '/');
+    await waitFor(() => {
+      expect(document.title).toBe('SekerChat | Open-source, self-hosted team chat');
+      expect(document.documentElement.lang).toBe('en');
+      expect(document.querySelector('link[rel="canonical"]')).toHaveAttribute(
+        'href',
+        'http://localhost:3000/en',
+      );
+    });
   });
 
   it('routes the root path to the attendance workspace without a duplicate groups request', async () => {
