@@ -102,12 +102,15 @@ public static class WebBridgeScript
               this.addEventListener('message', (messageEvent) => {
                 try {
                   const data = JSON.parse(messageEvent.data);
-                  if (data?.type === 'message.created') {
+                  if (data?.type === 'message.created.v1') {
                     post({ kind: 'realtime_event', event: data });
                     scheduleSync(1200);
-                  } else if (data?.type === 'group.updated') {
+                  } else if (
+                    data?.type === 'group.updated.v1'
+                    || data?.type === 'message.read-cursor.changed.v1'
+                  ) {
                     scheduleSync(400);
-                  } else if (data?.type === 'presence.changed') {
+                  } else if (data?.type === 'presence.changed.v1') {
                     post({
                       kind: 'presence',
                       userId: data.payload?.userId,

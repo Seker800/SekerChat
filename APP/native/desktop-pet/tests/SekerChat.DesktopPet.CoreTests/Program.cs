@@ -51,7 +51,7 @@ Check(
 
 Check(
     WebBridgeScript.Build("https://chat.example.com").Contains(
-        "presence.changed",
+        "presence.changed.v1",
         StringComparison.Ordinal),
     "bridge should forward realtime do-not-disturb changes");
 
@@ -238,12 +238,14 @@ Check(
 
 var bridgeScript = WebBridgeScript.Build("https://chat.example.com");
 Check(
-    bridgeScript.Contains("message.created", StringComparison.Ordinal)
+    bridgeScript.Contains("message.created.v1", StringComparison.Ordinal)
+    && bridgeScript.Contains("group.updated.v1", StringComparison.Ordinal)
+    && bridgeScript.Contains("message.read-cursor.changed.v1", StringComparison.Ordinal)
     && bridgeScript.Contains("window.chrome.webview.postMessage", StringComparison.Ordinal)
     && bridgeScript.Contains("https://chat.example.com", StringComparison.Ordinal)
     && bridgeScript.Contains("userResponse.status === 401", StringComparison.Ordinal)
     && bridgeScript.Contains("groupsResponse.status === 403", StringComparison.Ordinal),
-    "bridge script should forward realtime messages and distinguish expired authentication");
+    "bridge script should follow the versioned realtime contract and distinguish expired authentication");
 
 if (failures.Count > 0)
 {
