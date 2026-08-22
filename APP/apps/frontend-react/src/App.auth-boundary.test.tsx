@@ -105,8 +105,8 @@ describe('App auth boundary', () => {
   });
 
   it('renders the login gate before authenticated routes', async () => {
-    authApiMocks.getCurrentUser.mockRejectedValue(new Error('登录状态已失效'));
-    authApiMocks.refreshSession.mockRejectedValue(new Error('登录状态已失效'));
+    authApiMocks.getCurrentUser.mockRejectedValue(new Error('Unauthorized'));
+    authApiMocks.refreshSession.mockRejectedValue(new Error('Unauthorized'));
 
     renderApp('/groups');
 
@@ -121,6 +121,7 @@ describe('App auth boundary', () => {
     expect(screen.queryByRole('button', { name: '没有账号？注册' })).not.toBeInTheDocument();
     expect(screen.queryByTestId('app-version')).not.toBeInTheDocument();
     expect(screen.queryByTestId('auth-dev-notice')).not.toBeInTheDocument();
+    expect(screen.queryByText('Unauthorized')).not.toBeInTheDocument();
     expect(screen.queryByTestId('workspace-shell')).not.toBeInTheDocument();
     expect(screen.queryByTestId('admin-page')).not.toBeInTheDocument();
   });

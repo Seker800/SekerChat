@@ -26,4 +26,18 @@ describe('AuthGate', () => {
     expect(onPasswordLogin).toHaveBeenCalledWith('user@example.com', 'Password1');
     expect(screen.getAllByRole('button')).toHaveLength(1);
   });
+
+  it('shows an error caused by an actual password login attempt', () => {
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <AuthGate
+          passwordError="邮箱或密码错误"
+          isPasswordSubmitting={false}
+          onPasswordLogin={vi.fn().mockResolvedValue(undefined)}
+        />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('邮箱或密码错误')).toBeInTheDocument();
+  });
 });
