@@ -19,6 +19,9 @@ function AuthenticatedRoute() {
         passwordError={auth.passwordError}
         isPasswordSubmitting={auth.isPasswordSubmitting}
         onPasswordLogin={(email, password) => auth.beginPasswordLogin(email, password)}
+        onPasswordRegister={(email, password, displayName) =>
+          auth.beginPasswordRegister(email, password, displayName)
+        }
       />
     );
   }

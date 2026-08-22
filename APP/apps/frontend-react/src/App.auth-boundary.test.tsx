@@ -118,7 +118,7 @@ describe('App auth boundary', () => {
     expect(screen.queryByText('自托管的小团队协作工具')).not.toBeInTheDocument();
     expect(screen.queryByText('主要功能')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'GitHub' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '没有账号？注册' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '没有账号？注册' })).toBeInTheDocument();
     expect(screen.queryByTestId('app-version')).not.toBeInTheDocument();
     expect(screen.queryByTestId('auth-dev-notice')).not.toBeInTheDocument();
     expect(screen.queryByText('Unauthorized')).not.toBeInTheDocument();
@@ -140,6 +140,7 @@ describe('App auth boundary', () => {
     expect(screen.getByLabelText('Email')).toBeInTheDocument();
     expect(screen.getByLabelText('Password')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Need an account? Register' })).toBeInTheDocument();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
     await waitFor(() => {
       expect(document.title).toBe('SekerChat | Sign in');

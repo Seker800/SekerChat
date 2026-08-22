@@ -7,10 +7,16 @@ interface LoginCopy {
   title: string;
   description: string;
   loginTitle: string;
+  registerTitle: string;
   email: string;
   password: string;
+  displayName: string;
   login: string;
+  register: string;
   waiting: string;
+  switchToRegister: string;
+  switchToLogin: string;
+  passwordRules: string[];
 }
 
 const LOGIN_COPY: Record<'zh' | 'en', LoginCopy> = {
@@ -19,20 +25,42 @@ const LOGIN_COPY: Record<'zh' | 'en', LoginCopy> = {
     title: 'SekerChat｜登录',
     description: '登录 SekerChat。',
     loginTitle: '登录 SekerChat',
+    registerTitle: '注册 SekerChat',
     email: '邮箱',
     password: '密码',
+    displayName: '显示名称（选填）',
     login: '登录',
+    register: '注册',
     waiting: '请稍候...',
+    switchToRegister: '没有账号？注册',
+    switchToLogin: '已有账号？登录',
+    passwordRules: [
+      '至少 8 个字符',
+      '至少包含一个大写字母',
+      '至少包含一个小写字母',
+      '至少包含一个数字',
+    ],
   },
   en: {
     language: 'en',
     title: 'SekerChat | Sign in',
     description: 'Sign in to SekerChat.',
     loginTitle: 'Sign in to SekerChat',
+    registerTitle: 'Create an account',
     email: 'Email',
     password: 'Password',
+    displayName: 'Display name (optional)',
     login: 'Sign in',
+    register: 'Register',
     waiting: 'Please wait...',
+    switchToRegister: 'Need an account? Register',
+    switchToLogin: 'Already have an account? Sign in',
+    passwordRules: [
+      'At least 8 characters',
+      'One uppercase letter',
+      'One lowercase letter',
+      'One number',
+    ],
   },
 };
 
@@ -40,6 +68,7 @@ interface AuthGateProps {
   passwordError: string;
   isPasswordSubmitting: boolean;
   onPasswordLogin: (email: string, password: string) => Promise<void>;
+  onPasswordRegister: (email: string, password: string, displayName?: string) => Promise<void>;
 }
 
 function upsertHeadElement(
@@ -61,8 +90,17 @@ export function AuthGate(props: AuthGateProps) {
     location.pathname === '/en' || location.pathname.startsWith('/en/')
       ? LOGIN_COPY.en
       : LOGIN_COPY.zh;
+  const [tab, setTab] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [passwordTouched, setPasswordTouched] = useState(false);
+  const passwordRules = [
+    { key: 'minLength', label: copy.passwordRules[0], passed: password.length >= 8 },
+    { key: 'uppercase', label: copy.passwordRules[1], passed: /[A-Z]/.test(password) },
+    { key: 'lowercase', label: copy.passwordRules[2], passed: /[a-z]/.test(password) },
+    { key: 'digit', label: copy.passwordRules[3], passed: /[0-9]/.test(password) },
+  ];
 
   useEffect(() => {
     const origin = window.location.origin;
@@ -96,7 +134,8 @@ export function AuthGate(props: AuthGateProps) {
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    void props.onPasswordLogin(email, password);
+    if (tab === 'login') void props.onPasswordLogin(email, password);
+    else void props.onPasswordRegister(email, password, displayName || undefined);
   }
 
   return (
@@ -106,7 +145,7 @@ export function AuthGate(props: AuthGateProps) {
         data-testid="auth-gate-panel"
         aria-labelledby="login-title"
       >
-        <h1 id="login-title">{copy.loginTitle}</h1>
+        <h1 id="login-title">{tab === 'login' ? copy.loginTitle : copy.registerTitle}</h1>
         <form onSubmit={handleSubmit} className={styles.form}>
           <label>
             <span>{copy.email}</span>
@@ -125,17 +164,53 @@ export function AuthGate(props: AuthGateProps) {
               type="password"
               placeholder={copy.password}
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                if (!passwordTouched && event.target.value) setPasswordTouched(true);
+              }}
               required
               minLength={8}
-              autoComplete="current-password"
+              autoComplete={tab === 'login' ? 'current-password' : 'new-password'}
             />
           </label>
+          {tab === 'register' && passwordTouched ? (
+            <div className={styles.passwordRules}>
+              {passwordRules.map((rule) => (
+                <span
+                  key={rule.key}
+                  className={rule.passed ? styles.rulePassed : styles.ruleFailed}
+                >
+                  {rule.passed ? '✓' : '✗'} {rule.label}
+                </span>
+              ))}
+            </div>
+          ) : null}
+          {tab === 'register' ? (
+            <label>
+              <span>{copy.displayName}</span>
+              <input
+                type="text"
+                placeholder={copy.displayName}
+                value={displayName}
+                onChange={(event) => setDisplayName(event.target.value)}
+                autoComplete="name"
+              />
+            </label>
+          ) : null}
           {props.passwordError ? <p className={styles.error}>{props.passwordError}</p> : null}
           <button type="submit" disabled={props.isPasswordSubmitting}>
-            {props.isPasswordSubmitting ? copy.waiting : copy.login}
+            {props.isPasswordSubmitting
+              ? copy.waiting
+              : tab === 'login'
+                ? copy.login
+                : copy.register}
           </button>
         </form>
+        <div className={styles.formFooter}>
+          <button type="button" onClick={() => setTab(tab === 'login' ? 'register' : 'login')}>
+            {tab === 'login' ? copy.switchToRegister : copy.switchToLogin}
+          </button>
+        </div>
       </section>
     </main>
   );

@@ -76,11 +76,40 @@
   cursor: default;
 }
 
+.passwordRules {
+  display: grid;
+  gap: 4px;
+  font-size: 11px;
+}
+
+.rulePassed {
+  color: #65b886;
+}
+
+.ruleFailed {
+  color: #767d87;
+}
+
 .error {
   margin: 0;
   color: #ed777c;
   font-size: 12px;
   line-height: 1.5;
+}
+
+.formFooter {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.formFooter button {
+  border: 0;
+  padding: 0;
+  color: #9ca4ea;
+  background: transparent;
+  font-size: 11px;
+  cursor: pointer;
 }
 
 @media (max-width: 480px) {
