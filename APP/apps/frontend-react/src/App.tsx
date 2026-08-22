@@ -15,18 +15,13 @@ function AuthenticatedRoute() {
 
   if (!auth.isAuthenticated || !auth.session || !auth.currentUser) {
     return (
-      <main>
-        {auth.bootstrapState === 'failed' ? <p>{auth.bootstrapError}</p> : null}
-        <AuthGate
-          passwordError={auth.passwordError}
-          isPasswordSubmitting={auth.isPasswordSubmitting}
-          onOidcLogin={auth.beginOidcLogin}
-          onPasswordLogin={(email, password) => auth.beginPasswordLogin(email, password)}
-          onPasswordRegister={(email, password, displayName) =>
-            auth.beginPasswordRegister(email, password, displayName)
-          }
-        />
-      </main>
+      <AuthGate
+        passwordError={
+          auth.passwordError || (auth.bootstrapState === 'failed' ? auth.bootstrapError : '')
+        }
+        isPasswordSubmitting={auth.isPasswordSubmitting}
+        onPasswordLogin={(email, password) => auth.beginPasswordLogin(email, password)}
+      />
     );
   }
 

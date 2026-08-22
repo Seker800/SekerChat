@@ -111,12 +111,16 @@ describe('App auth boundary', () => {
     renderApp('/groups');
 
     await screen.findByTestId('auth-panel');
-    expect(screen.getByTestId('auth-dev-notice')).toHaveTextContent('本地开发环境');
-    expect(screen.getByTestId('app-version')).toHaveTextContent(/^SekerChat v/);
-    expect(screen.queryByTestId('oidc-login-button')).not.toBeInTheDocument();
-    expect(screen.queryByText('通过群晖统一登录')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '自托管的小团队协作工具' })).toBeInTheDocument();
-    expect(screen.queryByText('# 当班确认')).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '登录 SekerChat' })).toBeInTheDocument();
+    expect(screen.getByLabelText('邮箱')).toHaveAttribute('autocomplete', 'email');
+    expect(screen.getByLabelText('密码')).toHaveAttribute('autocomplete', 'current-password');
+    expect(screen.getByRole('button', { name: '登录' })).toBeInTheDocument();
+    expect(screen.queryByText('自托管的小团队协作工具')).not.toBeInTheDocument();
+    expect(screen.queryByText('主要功能')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'GitHub' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '没有账号？注册' })).not.toBeInTheDocument();
+    expect(screen.queryByTestId('app-version')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('auth-dev-notice')).not.toBeInTheDocument();
     expect(screen.queryByTestId('workspace-shell')).not.toBeInTheDocument();
     expect(screen.queryByTestId('admin-page')).not.toBeInTheDocument();
   });
@@ -129,12 +133,15 @@ describe('App auth boundary', () => {
 
     expect(
       await screen.findByRole('heading', {
-        name: 'Self-hosted collaboration for small teams',
+        name: 'Sign in to SekerChat',
       }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '切换到中文首页' })).toHaveAttribute('href', '/');
+    expect(screen.getByLabelText('Email')).toBeInTheDocument();
+    expect(screen.getByLabelText('Password')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
     await waitFor(() => {
-      expect(document.title).toBe('SekerChat | Open-source, self-hosted team chat');
+      expect(document.title).toBe('SekerChat | Sign in');
       expect(document.documentElement.lang).toBe('en');
       expect(document.querySelector('link[rel="canonical"]')).toHaveAttribute(
         'href',
