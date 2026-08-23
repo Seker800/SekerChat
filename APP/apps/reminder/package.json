@@ -1,6 +1,6 @@
 {
   "name": "@sekerchat/reminder",
-  "version": "0.9.9",
+  "version": "0.9.10",
   "license": "AGPL-3.0-only",
   "private": true,
   "description": "macOS tray reminder desktop shell for SekerChat",
