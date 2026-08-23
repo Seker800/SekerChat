@@ -11,6 +11,14 @@ updates:
       time: "03:00"
       timezone: Asia/Shanghai
     open-pull-requests-limit: 6
+    ignore:
+      # These majors require coordinated toolchain migrations rather than isolated updates.
+      - dependency-name: vite
+        update-types:
+          - version-update:semver-major
+      - dependency-name: "@vitest/coverage-v8"
+        update-types:
+          - version-update:semver-major
     groups:
       npm-patch-updates:
         patterns:
@@ -42,6 +50,11 @@ updates:
       day: monday
       time: "04:00"
       timezone: Asia/Shanghai
+    ignore:
+      # Keep runtime images on an LTS major until the coordinated Node migration lands.
+      - dependency-name: node
+        update-types:
+          - version-update:semver-major
     groups:
       docker-patch-updates:
         patterns:
