@@ -21,12 +21,11 @@ test('validates the unauthenticated homepage and login entry', async ({ page }) 
   await expect(page.getByPlaceholder('密码')).toBeVisible();
   await expect(page.locator('form').getByRole('button', { name: '登录' })).toBeVisible();
   await expect(page.getByRole('button', { name: '没有账号？注册' })).toBeVisible();
-  await expect(page.getByRole('heading', { name: '适合的场景' })).toBeVisible();
-  await expect(page).toHaveTitle('SekerChat｜开源自托管团队协作与即时通讯');
+  await expect(page).toHaveTitle('SekerChat｜登录');
   expect(authorizationHeaders).toEqual([]);
 });
 
-test('serves a localized English homepage at a stable URL', async ({ page }) => {
+test('serves a localized English login at a stable URL', async ({ page }) => {
   await page.route('**/api/users/me', (route) => route.fulfill({ status: 401, body: '' }));
   await page.route('**/api/auth/browser/refresh', (route) =>
     route.fulfill({ status: 401, body: '' }),
@@ -34,12 +33,12 @@ test('serves a localized English homepage at a stable URL', async ({ page }) => 
 
   await page.goto('/en');
 
-  await expect(
-    page.getByRole('heading', {
-      name: 'Self-hosted collaboration for small teams',
-    }),
-  ).toBeVisible();
-  await expect(page.getByRole('link', { name: '切换到中文首页' })).toHaveAttribute('href', '/');
-  await expect(page).toHaveTitle('SekerChat | Open-source, self-hosted team chat');
+  await expect(page.getByTestId('auth-gate-panel')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Sign in to SekerChat' })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Email' })).toBeVisible();
+  await expect(page.getByLabel('Password')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Need an account? Register' })).toBeVisible();
+  await expect(page).toHaveTitle('SekerChat | Sign in');
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 });
