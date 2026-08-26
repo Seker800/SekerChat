@@ -4,6 +4,7 @@ import {
   authHeaders,
   bearerHeader,
   BROWSER_COOKIE_CREDENTIAL,
+  downloadFile,
   isLikelyBrowserReachableUrl,
   parseResponse,
   registerAuthSessionController,
@@ -160,5 +161,37 @@ describe('resolveBrowserReachableUrl', () => {
     expect(isLikelyBrowserReachableUrl('http://127.0.0.1:9000/sekerchat/file.bin', 'localhost')).toBe(true);
     expect(isLikelyBrowserReachableUrl('https://im.example.com/minio/file.bin', 'localhost')).toBe(true);
     expect(isLikelyBrowserReachableUrl('http://192.0.2.10:9000/sekerchat/file.bin', 'localhost')).toBe(true);
+  });
+});
+
+describe('downloadFile', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('falls back to the same-origin content route when the presigned host is not browser-reachable', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ url: 'http://minio:9000/sekerchat/file.bin' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    let clickedUrl = '';
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function click() {
+      clickedUrl = this.href;
+    });
+
+    await downloadFile(
+      'https://public.example.test/api/groups/group-1/files/file-1/content',
+      'file.bin',
+      'token',
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://public.example.test/api/groups/group-1/files/file-1/download-url',
+      expect.objectContaining({ headers: { Authorization: 'Bearer token' } }),
+    );
+    expect(new URL(clickedUrl).origin).toBe(window.location.origin);
+    expect(new URL(clickedUrl).pathname).toBe('/api/groups/group-1/files/file-1/content');
   });
 });
