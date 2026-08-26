@@ -124,6 +124,9 @@ describe('App auth boundary', () => {
     expect(screen.queryByText('Unauthorized')).not.toBeInTheDocument();
     expect(screen.queryByTestId('workspace-shell')).not.toBeInTheDocument();
     expect(screen.queryByTestId('admin-page')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(document.title).toBe('SekerChat');
+    });
   });
 
   it('renders the English homepage with localized metadata at /en', async () => {
@@ -143,7 +146,7 @@ describe('App auth boundary', () => {
     expect(screen.getByRole('button', { name: 'Need an account? Register' })).toBeInTheDocument();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
     await waitFor(() => {
-      expect(document.title).toBe('SekerChat | Sign in');
+      expect(document.title).toBe('SekerChat');
       expect(document.documentElement.lang).toBe('en');
       expect(document.querySelector('link[rel="canonical"]')).toHaveAttribute(
         'href',
