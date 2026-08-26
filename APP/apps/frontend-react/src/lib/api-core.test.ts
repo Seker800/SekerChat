@@ -8,6 +8,7 @@ import {
   isLikelyBrowserReachableUrl,
   parseResponse,
   registerAuthSessionController,
+  resolveApiResourceUrl,
   resolveBrowserReachableUrl,
 } from './api-core';
 
@@ -164,6 +165,20 @@ describe('resolveBrowserReachableUrl', () => {
   });
 });
 
+describe('resolveApiResourceUrl', () => {
+  it('moves backend-authored API URLs onto the browser API base', () => {
+    expect(
+      resolveApiResourceUrl(
+        'https://public.example.test/api/groups/group-1/files/file-1/content?download=1',
+      ),
+    ).toBe(`${window.location.origin}/api/groups/group-1/files/file-1/content?download=1`);
+  });
+
+  it('keeps malformed resource URLs unchanged', () => {
+    expect(resolveApiResourceUrl('not a url')).toBe('not a url');
+  });
+});
+
 describe('downloadFile', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -193,5 +208,43 @@ describe('downloadFile', () => {
     );
     expect(new URL(clickedUrl).origin).toBe(window.location.origin);
     expect(new URL(clickedUrl).pathname).toBe('/api/groups/group-1/files/file-1/content');
+  });
+
+  it('keeps a browser-reachable presigned URL on the direct download path', async () => {
+    const presignedUrl = 'https://objects.example.test/sekerchat/file.bin?signature=valid';
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
+      new Response(JSON.stringify({ url: presignedUrl }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    let clickedUrl = '';
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function click() {
+      clickedUrl = this.href;
+    });
+
+    await downloadFile(
+      `${window.location.origin}/api/groups/group-1/files/file-1/content`,
+      'file.bin',
+      'token',
+    );
+
+    expect(clickedUrl).toBe(presignedUrl);
+  });
+
+  it('rejects content URLs that cannot be mapped to the download-url contract', async () => {
+    await expect(downloadFile('/api/files/file-1', 'file.bin', 'token')).rejects.toThrow(
+      'Download URL format not supported',
+    );
+  });
+
+  it('surfaces a failed download-url request without clicking an anchor', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response('', { status: 503 }));
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click');
+
+    await expect(
+      downloadFile('/api/groups/group-1/files/file-1/content', 'file.bin', 'token'),
+    ).rejects.toThrow('Download failed: 503');
+    expect(clickSpy).not.toHaveBeenCalled();
   });
 });
