@@ -22,7 +22,7 @@ interface LoginCopy {
 const LOGIN_COPY: Record<'zh' | 'en', LoginCopy> = {
   zh: {
     language: 'zh-CN',
-    title: 'SekerChat｜登录',
+    title: 'SekerChat',
     description: '登录 SekerChat。',
     loginTitle: '登录 SekerChat',
     registerTitle: '注册 SekerChat',
@@ -43,7 +43,7 @@ const LOGIN_COPY: Record<'zh' | 'en', LoginCopy> = {
   },
   en: {
     language: 'en',
-    title: 'SekerChat | Sign in',
+    title: 'SekerChat',
     description: 'Sign in to SekerChat.',
     loginTitle: 'Sign in to SekerChat',
     registerTitle: 'Create an account',
