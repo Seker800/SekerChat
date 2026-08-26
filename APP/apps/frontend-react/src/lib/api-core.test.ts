@@ -192,7 +192,9 @@ describe('downloadFile', () => {
       }),
     );
     let clickedUrl = '';
-    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function click() {
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function click(
+      this: HTMLAnchorElement,
+    ) {
       clickedUrl = this.href;
     });
 
@@ -219,7 +221,9 @@ describe('downloadFile', () => {
       }),
     );
     let clickedUrl = '';
-    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function click() {
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function click(
+      this: HTMLAnchorElement,
+    ) {
       clickedUrl = this.href;
     });
 
