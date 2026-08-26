@@ -204,10 +204,11 @@ export function resolveBrowserReachableUrl(rawUrl: string): string | null {
 }
 
 /**
- * Download a file via presigned S3 URL.
+ * Download a file through a browser-reachable URL.
  *
- * Gets a presigned download URL from the backend, then triggers a native
- * browser download — no blob buffering, no JS fallbacks.
+ * Uses the presigned object-storage URL when the browser can reach it. If the
+ * backend signed an internal-only endpoint, the same-origin content route
+ * keeps downloads working across LAN and public entry points.
  */
 export async function downloadFile(
   url: string,
@@ -229,13 +230,15 @@ export async function downloadFile(
   }
 
   const { url: presignedUrl } = await parseResponse<{ url: string }>(presignResponse);
+  const browserDownloadUrl = resolveBrowserReachableUrl(presignedUrl)
+    ?? resolveApiResourceUrl(url);
 
   // Trigger native browser download via a hidden anchor element.
   // window.location.href would work for same-origin but is unreliable
   // for cross-origin presigned URLs (different port).
   const anchor = document.createElement('a');
   anchor.style.display = 'none';
-  anchor.href = presignedUrl;
+  anchor.href = browserDownloadUrl;
   document.body.appendChild(anchor);
   anchor.click();
   document.body.removeChild(anchor);
