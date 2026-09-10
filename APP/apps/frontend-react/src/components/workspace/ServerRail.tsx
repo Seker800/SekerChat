@@ -14,7 +14,8 @@ interface ServerRailProps {
   isOverlayOpen?: boolean;
   isDMMode: boolean;
   dmUnreadCount: number;
-  canManageServers?: boolean;
+  canCreateServers?: boolean;
+  canManageServerSettings?: boolean;
   onOpenDM: () => void;
   onSelect: (serverId: string) => void;
   onOpenCreateServer: () => void;
@@ -30,7 +31,8 @@ export function ServerRail({
   isOverlayOpen,
   isDMMode,
   dmUnreadCount,
-  canManageServers = true,
+  canCreateServers = true,
+  canManageServerSettings = true,
   onOpenDM,
   onSelect,
   onOpenCreateServer,
@@ -41,7 +43,7 @@ export function ServerRail({
     x: number;
     y: number;
   } | null>(null);
-  const [archiveExpanded, setArchiveExpanded] = useState(false);
+  const [serverActionsExpanded, setServerActionsExpanded] = useState(false);
   const { markSecondaryClick, shouldSuppressClick } = useSecondaryClickGuard();
   const handleCloseMenu = useCallback(() => {
     setMenuState(null);
@@ -52,13 +54,13 @@ export function ServerRail({
         {
           key: 'create-server',
           label: '新建 server',
-          disabled: !canManageServers,
+          disabled: !canCreateServers,
           onSelect: onOpenCreateServer,
         },
         {
           key: 'open-server-settings',
           label: '打开 server 设置',
-          disabled: !canManageServers,
+          disabled: !canManageServerSettings,
           onSelect: () => onOpenCategorySettings(menuState.server),
         },
       ]
@@ -134,72 +136,93 @@ export function ServerRail({
           </button>
         ))}
 
-        {archivedCategories.length > 0 ? (
-          <>
-            <div className={styles.divider} />
+        <div className={styles.divider} />
+        <button
+          className={styles.archiveToggle}
+          type="button"
+          aria-controls="server-rail-actions"
+          aria-expanded={serverActionsExpanded}
+          aria-label={serverActionsExpanded ? '收起 Server 操作' : '展开 Server 操作'}
+          onClick={() => setServerActionsExpanded((expanded) => !expanded)}
+          title={serverActionsExpanded ? '收起 Server 操作' : '展开 Server 操作'}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 10 10"
+            aria-hidden="true"
+            style={{
+              transform: serverActionsExpanded ? 'rotate(-90deg)' : 'rotate(90deg)',
+              transition: 'transform 0.15s',
+            }}
+          >
+            <path
+              d="M3 1L8 5L3 9"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </button>
+        {serverActionsExpanded ? (
+          <div id="server-rail-actions" className={styles.archiveList}>
             <button
-              className={styles.archiveToggle}
+              className={styles.addButton}
               type="button"
-              onClick={() => setArchiveExpanded((v) => !v)}
-              title={archiveExpanded ? '收起已归档 Server' : '展开已归档 Server'}
+              aria-label="新建 Server"
+              title={canCreateServers ? '新建 Server' : '暂无创建 Server 权限'}
+              disabled={!canCreateServers}
+              onClick={onOpenCreateServer}
             >
               <svg
-                width="14"
-                height="14"
-                viewBox="0 0 10 10"
-                style={{
-                  transform: archiveExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
-                  transition: 'transform 0.15s',
-                }}
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                aria-hidden="true"
               >
-                <path
-                  d="M3 1L8 5L3 9"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
+                <path d="M12 5v14M5 12h14" />
               </svg>
             </button>
-            {archiveExpanded ? (
-              <div className={styles.archiveList}>
-                {archivedCategories.map((category) => (
-                  <button
-                    key={category.id}
-                    className={`${styles.button} ${styles.buttonArchived} ${category.id === selectedServerId ? styles.buttonActive : ''}`}
-                    onMouseDown={(event) => {
-                      if (!event.ctrlKey || event.button !== 0) return;
-                      event.preventDefault();
-                      markSecondaryClick();
-                      setMenuState({ server: category, x: event.clientX, y: event.clientY });
-                    }}
-                    onClick={(event) => {
-                      if (shouldSuppressClick()) {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        return;
-                      }
-                      onSelect(category.id);
-                    }}
-                    onContextMenu={(event) => {
-                      event.preventDefault();
-                      markSecondaryClick();
-                      setMenuState({ server: category, x: event.clientX, y: event.clientY });
-                    }}
-                    title={`${category.name} · 已归档`}
-                  >
-                    <Avatar
-                      avatarUrl={category.avatarUrl}
-                      name={category.name}
-                      size={40}
-                      accessToken={accessToken}
-                    />
-                  </button>
-                ))}
-              </div>
-            ) : null}
-          </>
+            {archivedCategories.map((category) => (
+              <button
+                key={category.id}
+                className={`${styles.button} ${styles.buttonArchived} ${category.id === selectedServerId ? styles.buttonActive : ''}`}
+                onMouseDown={(event) => {
+                  if (!event.ctrlKey || event.button !== 0) return;
+                  event.preventDefault();
+                  markSecondaryClick();
+                  setMenuState({ server: category, x: event.clientX, y: event.clientY });
+                }}
+                onClick={(event) => {
+                  if (shouldSuppressClick()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    return;
+                  }
+                  onSelect(category.id);
+                }}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  markSecondaryClick();
+                  setMenuState({ server: category, x: event.clientX, y: event.clientY });
+                }}
+                title={`${category.name} · 已归档`}
+              >
+                <Avatar
+                  avatarUrl={category.avatarUrl}
+                  name={category.name}
+                  size={40}
+                  accessToken={accessToken}
+                />
+              </button>
+            ))}
+          </div>
         ) : null}
       </div>
 

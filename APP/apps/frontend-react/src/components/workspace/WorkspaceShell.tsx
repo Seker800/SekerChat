@@ -262,7 +262,8 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
         accessToken={accessToken}
         isDMMode={mode === 'dm'}
         dmUnreadCount={model.dmUnreadCount}
-        canManageServers={canCreateGroup || canManageGroupSettings}
+        canCreateServers={canCreateGroup}
+        canManageServerSettings={canManageGroupSettings}
         isOverlay={model.isNarrowViewport}
         isOverlayOpen={model.isMobileSidebarOpen}
         onOpenDM={() => {

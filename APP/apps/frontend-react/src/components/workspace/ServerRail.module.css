@@ -89,6 +89,14 @@
   filter: brightness(1.05);
 }
 
+.addButton:disabled {
+  border-color: var(--line-subtle, #4e5058);
+  color: var(--text-dim);
+  cursor: not-allowed;
+  filter: none;
+  opacity: 0.5;
+}
+
 .badge {
   position: absolute;
   bottom: -2px;

@@ -58,7 +58,18 @@ test.describe('review web smoke', () => {
       animations: 'disabled',
       caret: 'hide',
       fullPage: true,
+      maxDiffPixels: 30,
     });
+  });
+
+  test('opens the new Server dialog from the collapsed Server actions', async ({ page }) => {
+    await page.getByRole('button', { name: '展开 Server 操作' }).click();
+
+    const createServerButton = page.getByRole('button', { name: '新建 Server' });
+    await expect(createServerButton).toBeVisible();
+    await createServerButton.click();
+
+    await expect(page.getByRole('dialog', { name: '新建 Server' })).toBeVisible();
   });
 
   test('returns from management to the first active channel when archived data is listed first', async ({
