@@ -1,6 +1,6 @@
 {
   "name": "@sekerchat/contracts",
-  "version": "0.9.11",
+  "version": "0.9.12",
   "license": "AGPL-3.0-only",
   "private": true,
   "main": "./src/index.ts",
@@ -22,6 +22,6 @@
   },
   "devDependencies": {
     "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
+    "vitest": "^4.1.11"
   }
 }

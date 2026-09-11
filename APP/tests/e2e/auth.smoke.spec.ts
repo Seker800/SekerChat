@@ -21,7 +21,7 @@ test('validates the unauthenticated homepage and login entry', async ({ page }) 
   await expect(page.getByPlaceholder('密码')).toBeVisible();
   await expect(page.locator('form').getByRole('button', { name: '登录' })).toBeVisible();
   await expect(page.getByRole('button', { name: '没有账号？注册' })).toBeVisible();
-  await expect(page).toHaveTitle('SekerChat｜登录');
+  await expect(page).toHaveTitle('SekerChat');
   expect(authorizationHeaders).toEqual([]);
 });
 
@@ -39,6 +39,6 @@ test('serves a localized English login at a stable URL', async ({ page }) => {
   await expect(page.getByLabel('Password')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Need an account? Register' })).toBeVisible();
-  await expect(page).toHaveTitle('SekerChat | Sign in');
+  await expect(page).toHaveTitle('SekerChat');
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
 });

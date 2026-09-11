@@ -1,7 +1,7 @@
 {
   "name": "sekerchat",
   "private": true,
-  "version": "0.9.11",
+  "version": "0.9.12",
   "license": "AGPL-3.0-only",
   "workspaces": [
     "apps/backend",
@@ -47,7 +47,7 @@
     "ci:check": "node ./scripts/check-ci-contract.mjs",
     "bundle:check": "node ./scripts/check-frontend-bundle.mjs",
     "contracts:generate": "npm run build:openapi --workspace @sekerchat/backend && node ./apps/backend/dist-openapi/src/openapi/generate-openapi.js && openapi-typescript ./contracts/openapi.json -o ./packages/contracts/src/generated/openapi.ts",
-    "contracts:check": "npm run build:openapi --workspace @sekerchat/backend && node ./apps/backend/dist-openapi/src/openapi/generate-openapi.js --check && openapi-typescript ./contracts/openapi.json -o ./packages/contracts/src/generated/openapi.ts --check && node ./scripts/check-api-contract.mjs",
+    "contracts:check": "npm run build:openapi --workspace @sekerchat/backend && SEKERCHAT_OPENAPI_CHECK=1 node ./apps/backend/dist-openapi/src/openapi/generate-openapi.js && openapi-typescript ./contracts/openapi.json -o ./packages/contracts/src/generated/openapi.ts --check && node ./scripts/check-api-contract.mjs",
     "security:audit": "npm audit --audit-level=high",
     "security:audit:ci": "node ./scripts/security-audit-gate.mjs",
     "security:audit:runtime": "npm audit --omit=dev --audit-level=high"
@@ -61,6 +61,7 @@
     "openapi-typescript": "^7.13.0",
     "prettier": "^3.6.2",
     "typescript-eslint": "^8.57.2",
+    "vitest": "^4.1.11",
     "vue-eslint-parser": "^10.4.1",
     "ws": "^8.21.3"
   },
@@ -68,6 +69,8 @@
     "helmet": "^8.1.0"
   },
   "overrides": {
+    "@redocly/openapi-core": "1.34.20",
+    "multer": "2.3.0",
     "@nestjs/swagger": {
       "js-yaml": "5.2.3"
     }
