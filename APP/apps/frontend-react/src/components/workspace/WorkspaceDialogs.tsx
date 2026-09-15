@@ -14,6 +14,8 @@ import { LazyAvatarCropDialog } from '../shared/LazyAvatarCropDialog';
 import { ServerIconPickerDialog } from './ServerIconPickerDialog';
 import { useUserSettingsDialogController } from './useUserSettingsDialogController';
 import styles from './WorkspaceDialogs.module.css';
+import { useTranslation } from 'react-i18next';
+import { useLanguage } from '../../i18n/LanguageProvider';
 
 interface ChannelDialogModel {
   isOpen: boolean;
@@ -175,11 +177,13 @@ function formatJoinedAt(value: string): string {
   }).format(new Date(value));
 }
 
-function formatActiveMinutes(value: number | null): string {
+function formatActiveMinutes(value: number | null, language: 'zh-CN' | 'en'): string {
   if (value === null) return '--';
   const hours = Math.floor(value / 60);
   const minutes = value % 60;
-  return `${hours}小时${String(minutes).padStart(2, '0')}分`;
+  return language === 'en'
+    ? `${hours}h ${String(minutes).padStart(2, '0')}m`
+    : `${hours}小时${String(minutes).padStart(2, '0')}分`;
 }
 
 export function WorkspaceDialogs({
@@ -201,6 +205,8 @@ export function WorkspaceDialogs({
   onShowNotice,
   onLogout,
 }: WorkspaceDialogsProps) {
+  const { t } = useTranslation();
+  const { language, setLanguage } = useLanguage();
   const resolvedAccessToken = useResolvedAccessToken(accessToken);
   const serverAvatarFileRef = useRef<HTMLInputElement | null>(null);
   const [serverCropFile, setServerCropFile] = useState<File | null>(null);
@@ -736,7 +742,7 @@ export function WorkspaceDialogs({
 
       {userSettingsDialog.isOpen ? (
         <DialogFrame
-          title="个人设置"
+          title={t('account.title')}
           description=""
           onClose={userSettingsDialog.onClose}
           testId="user-settings-dialog"
@@ -746,8 +752,8 @@ export function WorkspaceDialogs({
               <button
                 className={styles.accountAvatarButton}
                 type="button"
-                data-tooltip="点击修改头像"
-                aria-label="修改头像"
+                data-tooltip={t('account.clickToChangeAvatar')}
+                aria-label={t('account.changeAvatar')}
                 onClick={() => userAvatarFileRef.current?.click()}
               >
                 <Avatar
@@ -756,7 +762,7 @@ export function WorkspaceDialogs({
                   size={68}
                   accessToken={resolvedAccessToken}
                 />
-                <span className={styles.tooltipBubble}>点击修改头像</span>
+                <span className={styles.tooltipBubble}>{t('account.clickToChangeAvatar')}</span>
               </button>
               <input
                 ref={userAvatarFileRef}
@@ -782,7 +788,7 @@ export function WorkspaceDialogs({
                     <input
                       value={userDisplayName}
                       autoFocus
-                      placeholder="输入昵称"
+                      placeholder={t('account.displayNamePlaceholder')}
                       disabled={isSavingDisplayName}
                       onChange={(event) => setUserDisplayName(event.target.value)}
                       onKeyDown={(event) => {
@@ -797,37 +803,50 @@ export function WorkspaceDialogs({
                       type="submit"
                       disabled={isSavingDisplayName}
                     >
-                      {isSavingDisplayName ? '保存中' : '保存'}
+                      {isSavingDisplayName ? t('common.saving') : t('common.save')}
                     </button>
                   </form>
                 ) : (
                   <button
                     className={styles.displayNameButton}
                     type="button"
-                    data-tooltip="点击修改昵称 / ID"
+                    data-tooltip={t('account.changeDisplayName')}
                     onClick={() => setIsEditingDisplayName(true)}
                   >
                     <span className={styles.displayNameText}>
                       {currentUser.displayName || currentUser.email}
                     </span>
-                    <span className={styles.tooltipBubble}>点击修改昵称 / ID</span>
+                    <span className={styles.tooltipBubble}>{t('account.changeDisplayName')}</span>
                   </button>
                 )}
-                <span className={styles.accountId} data-tooltip="点击上方昵称可修改昵称 / ID">
+                <span className={styles.accountId} data-tooltip={t('account.changeDisplayNameHint')}>
                   <span className={styles.accountIdText}>{currentUser.email}</span>
-                  <span className={styles.tooltipBubble}>点击上方昵称可修改昵称 / ID</span>
+                  <span className={styles.tooltipBubble}>{t('account.changeDisplayNameHint')}</span>
                 </span>
               </div>
 
               <button className={styles.logoutLink} type="button" onClick={onLogout}>
-                退出登录
+                {t('common.logout')}
               </button>
+            </section>
+
+            <section className={styles.languageSection}>
+              <label className={styles.field}>
+                <span>{t('language.label')}</span>
+                <select
+                  value={language}
+                  onChange={(event) => setLanguage(event.target.value as 'zh-CN' | 'en')}
+                >
+                  <option value="zh-CN">{t('language.chinese')}</option>
+                  <option value="en">{t('language.english')}</option>
+                </select>
+              </label>
             </section>
 
             <section className={styles.passwordSection} aria-labelledby="change-password-title">
               <div>
-                <h4 id="change-password-title">修改密码</h4>
-                <p>修改成功后，其他网页会话和提醒设备需要重新登录。</p>
+                <h4 id="change-password-title">{t('account.passwordTitle')}</h4>
+                <p>{t('account.passwordDescription')}</p>
               </div>
               <form
                 className={styles.passwordForm}
@@ -838,7 +857,7 @@ export function WorkspaceDialogs({
               >
                 <div className={styles.passwordFields}>
                   <label className={styles.field}>
-                    <span>当前密码</span>
+                    <span>{t('account.currentPassword')}</span>
                     <input
                       type="password"
                       autoComplete="current-password"
@@ -848,7 +867,7 @@ export function WorkspaceDialogs({
                     />
                   </label>
                   <label className={styles.field}>
-                    <span>新密码</span>
+                    <span>{t('account.newPassword')}</span>
                     <input
                       type="password"
                       autoComplete="new-password"
@@ -859,7 +878,7 @@ export function WorkspaceDialogs({
                     />
                   </label>
                   <label className={styles.field}>
-                    <span>确认新密码</span>
+                    <span>{t('account.confirmPassword')}</span>
                     <input
                       type="password"
                       autoComplete="new-password"
@@ -871,9 +890,9 @@ export function WorkspaceDialogs({
                   </label>
                 </div>
                 <div className={styles.passwordFooter}>
-                  <span>至少 8 位，包含大小写字母和数字。</span>
+                  <span>{t('account.passwordHint')}</span>
                   <button className={styles.button} type="submit" disabled={isChangingPassword}>
-                    {isChangingPassword ? '修改中…' : '修改密码'}
+                    {isChangingPassword ? t('account.changingPassword') : t('account.changePassword')}
                   </button>
                 </div>
                 {passwordNotice ? (
@@ -888,33 +907,34 @@ export function WorkspaceDialogs({
               </form>
             </section>
 
-            <section className={styles.compactActivity} aria-label="我的在线时长">
-              <div className={styles.compactActivityTitle}>我的在线时长</div>
+            <section className={styles.compactActivity} aria-label={t('account.activityTitle')}>
+              <div className={styles.compactActivityTitle}>{t('account.activityTitle')}</div>
               {ownActivityError ? (
                 <p className={styles.dangerNote}>{ownActivityError}</p>
               ) : (
                 <dl className={styles.activityList}>
                   <div>
-                    <dt>今日在线时长</dt>
-                    <dd>{formatActiveMinutes(ownActivityStats?.dayWorkedMinutes ?? null)}</dd>
+                    <dt>{t('account.todayActivity')}</dt>
+                    <dd>{formatActiveMinutes(ownActivityStats?.dayWorkedMinutes ?? null, language)}</dd>
                   </div>
                   <div>
-                    <dt>上一日在线时长</dt>
+                    <dt>{t('account.previousDayActivity')}</dt>
                     <dd>
-                      {formatActiveMinutes(ownActivityStats?.previousDayWorkedMinutes ?? null)}
+                      {formatActiveMinutes(ownActivityStats?.previousDayWorkedMinutes ?? null, language)}
                     </dd>
                   </div>
                   <div>
-                    <dt>周平均在线时长</dt>
+                    <dt>{t('account.weekAverageActivity')}</dt>
                     <dd>
-                      {formatActiveMinutes(ownActivityStats?.weekAverageDailyWorkedMinutes ?? null)}
+                      {formatActiveMinutes(ownActivityStats?.weekAverageDailyWorkedMinutes ?? null, language)}
                     </dd>
                   </div>
                   <div>
-                    <dt>月平均在线时长</dt>
+                    <dt>{t('account.monthAverageActivity')}</dt>
                     <dd>
                       {formatActiveMinutes(
                         ownActivityStats?.monthAverageDailyWorkedMinutes ?? null,
+                        language,
                       )}
                     </dd>
                   </div>

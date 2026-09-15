@@ -5,6 +5,7 @@ import { updateUserProfile } from '../../lib/auth-api';
 import { fetchOwnAttendanceStats, type AttendanceUserStats } from '../../lib/attendance-api';
 import { uploadUserAvatar } from '../../lib/groups-api';
 import { validateNewPassword } from '../../lib/password-policy';
+import { useTranslation } from 'react-i18next';
 
 type UserSettingsDialogState = {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export function useUserSettingsDialogController({
   onProfileUpdated,
   onShowNotice,
 }: UserSettingsDialogControllerOptions) {
+  const { t } = useTranslation();
   const auth = useOptionalAuth();
   const avatarFileRef = useRef<HTMLInputElement | null>(null);
   const [cropFile, setCropFile] = useState<File | null>(null);
@@ -62,12 +64,12 @@ export function useUserSettingsDialogController({
       .catch((error: unknown) => {
         if (cancelled) return;
         setActivityStats(null);
-        setActivityError(error instanceof Error ? error.message : '加载我的活跃度失败。');
+        setActivityError(error instanceof Error ? error.message : t('account.activityLoadFailed'));
       });
     return () => {
       cancelled = true;
     };
-  }, [accessToken, currentUser.displayName, dialog.initialMode, dialog.isOpen]);
+  }, [accessToken, currentUser.displayName, dialog.initialMode, dialog.isOpen, t]);
 
   const changePassword = async () => {
     const policyError = validateNewPassword(newPassword);
@@ -76,11 +78,11 @@ export function useUserSettingsDialogController({
       return;
     }
     if (newPassword !== confirmPassword) {
-      setPasswordNotice({ tone: 'error', text: '两次输入的新密码不一致。' });
+      setPasswordNotice({ tone: 'error', text: t('account.passwordMismatch') });
       return;
     }
     if (!auth?.changeOwnPassword) {
-      setPasswordNotice({ tone: 'error', text: '当前登录状态无法修改密码，请刷新后重试。' });
+      setPasswordNotice({ tone: 'error', text: t('account.passwordUnavailable') });
       return;
     }
 
@@ -91,11 +93,11 @@ export function useUserSettingsDialogController({
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      setPasswordNotice({ tone: 'success', text: '密码已修改，其他设备的登录已失效。' });
+      setPasswordNotice({ tone: 'success', text: t('account.passwordChanged') });
     } catch (error) {
       setPasswordNotice({
         tone: 'error',
-        text: error instanceof Error ? error.message : '修改密码失败。',
+        text: error instanceof Error ? error.message : t('account.passwordChangeFailed'),
       });
     } finally {
       setIsChangingPassword(false);
@@ -107,9 +109,9 @@ export function useUserSettingsDialogController({
     try {
       await uploadUserAvatar(accessToken, blob);
       onProfileUpdated?.();
-      onShowNotice?.('success', '头像已更新。');
+      onShowNotice?.('success', t('account.avatarUpdated'));
     } catch (error) {
-      onShowNotice?.('error', error instanceof Error ? error.message : '头像上传失败。');
+      onShowNotice?.('error', error instanceof Error ? error.message : t('account.avatarUploadFailed'));
     }
   };
 
@@ -121,9 +123,9 @@ export function useUserSettingsDialogController({
       setDisplayName(nextDisplayName);
       setIsEditingDisplayName(false);
       onProfileUpdated?.();
-      onShowNotice?.('success', '昵称已更新。');
+      onShowNotice?.('success', t('account.displayNameUpdated'));
     } catch (error) {
-      onShowNotice?.('error', error instanceof Error ? error.message : '更新昵称失败。');
+      onShowNotice?.('error', error instanceof Error ? error.message : t('account.displayNameUpdateFailed'));
     } finally {
       setIsSavingDisplayName(false);
     }

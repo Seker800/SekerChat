@@ -3,6 +3,7 @@ import type { MentionSuggestion } from './useComposer';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import type { MessageResponse } from '../../lib/messages-files-api';
 import styles from './Composer.module.css';
+import { useTranslation } from 'react-i18next';
 
 interface ComposerProps {
   channelName: string;
@@ -76,6 +77,7 @@ export function Composer({
   onMentionSelect,
   onMentionDismiss,
 }: ComposerProps) {
+  const { t } = useTranslation();
   const isNarrowViewport = useMediaQuery('(max-width: 880px)');
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const mediaInputId = 'composer-media-input';
@@ -110,9 +112,11 @@ export function Composer({
       {replyTarget ? (
         <div className={styles.reply} data-testid="reply-banner">
           <div className={styles.bannerCopy}>
-            <strong>回复中</strong>
+            <strong>{t('composer.replying')}</strong>
             <span>
-              正在回复 {replyTarget.sender.displayName || replyTarget.sender.email}
+              {t('composer.replyingTo', {
+                name: replyTarget.sender.displayName || replyTarget.sender.email,
+              })}
               {replyTarget.attachment
                 ? replyTarget.attachment.kind === 'image'
                   ? ` · 🖼 ${replyTarget.attachment.originalName}`
@@ -121,7 +125,7 @@ export function Composer({
             </span>
           </div>
           <button className={styles.bannerButton} type="button" onClick={onClearReply}>
-            关闭
+            {t('common.close')}
           </button>
         </div>
       ) : null}
@@ -156,7 +160,7 @@ export function Composer({
           <label
             className={styles.attachButton}
             htmlFor={mediaInputId}
-            title={isNarrowViewport ? '上传图片或视频' : '上传附件'}
+            title={isNarrowViewport ? t('composer.uploadMedia') : t('composer.uploadAttachment')}
           >
             <span>+</span>
           </label>
@@ -164,7 +168,7 @@ export function Composer({
             <label
               className={styles.fileButton}
               htmlFor={fileInputId}
-              title="上传文件"
+              title={t('composer.uploadFile')}
             >
               <svg viewBox="0 0 16 16" aria-hidden="true" className={styles.fileIcon}>
                 <path
@@ -186,7 +190,7 @@ export function Composer({
               data-testid="message-composer"
               rows={1}
               wrap="soft"
-              placeholder={`发送消息到 #${channelName}`}
+              placeholder={t('composer.placeholder', { channelName })}
               value={text}
               onChange={(event) => onChange(event.target.value)}
               onPaste={(event) => {
@@ -253,7 +257,7 @@ export function Composer({
           </div>
           <div className={styles.primaryActions} data-testid="workspace-primary-actions">
             <button className={styles.send} disabled={!text.trim()} onClick={onSend}>
-              {isSending ? '发送中' : '发送'}
+              {isSending ? t('composer.sending') : t('composer.send')}
             </button>
           </div>
         </div>

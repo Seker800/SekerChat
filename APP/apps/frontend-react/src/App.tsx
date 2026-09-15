@@ -7,12 +7,14 @@ import { RequiredPasswordChange } from './components/RequiredPasswordChange';
 import { PublicFileSharePage } from './components/PublicFileSharePage';
 import { LanguageProvider } from './i18n/LanguageProvider';
 import { useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 function AuthenticatedRoute() {
   const auth = useAuthSession();
+  const { t } = useTranslation();
 
   if (auth.bootstrapState === 'loading') {
-    return <WorkspaceStartupScreen message="正在恢复登录状态..." />;
+    return <WorkspaceStartupScreen message={t('app.restoringSession')} />;
   }
 
   if (!auth.isAuthenticated || !auth.session || !auth.currentUser) {

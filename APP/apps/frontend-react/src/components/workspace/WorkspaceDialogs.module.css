@@ -306,6 +306,12 @@
   gap: 18px;
 }
 
+.languageSection {
+  padding: 12px 0;
+  border-top: 1px solid var(--border-subtle, #2a2d32);
+  border-bottom: 1px solid var(--border-subtle, #2a2d32);
+}
+
 .accountSummary {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
