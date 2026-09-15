@@ -2,6 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MessageResponse } from '../../lib/messages-files-api';
+import { appI18n } from '../../i18n/i18n';
 import { MessagePane } from './MessagePane';
 import { clearPrivateMediaCache } from './media/privateMediaRepository';
 
@@ -3036,6 +3037,33 @@ describe('MessagePane text rendering', () => {
     );
 
     expect(screen.getAllByTestId('message-skeleton-row').length).toBeGreaterThanOrEqual(4);
+  });
+
+  it('renders message status and empty-state chrome in English', async () => {
+    await appI18n.changeLanguage('en');
+    const { rerender } = render(
+      <MessagePane
+        accessToken="token"
+        activeGroupId="group-1"
+        messages={[{ ...textMessageAfterSystem, editedAt: '2026-04-28T08:02:00.000Z' }]}
+        currentUserId="user-1"
+        onReply={() => undefined}
+      />,
+    );
+
+    expect(screen.getByText('edited')).toBeInTheDocument();
+
+    rerender(
+      <MessagePane
+        accessToken="token"
+        activeGroupId="group-1"
+        messages={[]}
+        currentUserId="user-1"
+        onReply={() => undefined}
+      />,
+    );
+
+    expect(screen.getByText('No messages yet.')).toBeInTheDocument();
   });
 
   it('highlights only the self mention inside a text message', () => {
