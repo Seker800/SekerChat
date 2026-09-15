@@ -55,7 +55,7 @@ export function ServerRail({
     ? [
         {
           key: 'create-server',
-          label: t('serverRail.create'),
+          label: t('serverRail.createMenu'),
           disabled: !canCreateServers,
           onSelect: onOpenCreateServer,
         },

@@ -110,7 +110,8 @@ export const resources = {
       },
       serverRail: {
         create: '新建 Server',
-        openSettings: '打开 Server 设置',
+        createMenu: '新建 server',
+        openSettings: '打开 server 设置',
         activeChannels: '{{count}} 个活跃频道',
         expandActions: '展开 Server 操作',
         collapseActions: '收起 Server 操作',
@@ -305,6 +306,7 @@ export const resources = {
       },
       serverRail: {
         create: 'Create server',
+        createMenu: 'Create server',
         openSettings: 'Open server settings',
         activeChannels: '{{count}} active channels',
         expandActions: 'Expand server actions',
