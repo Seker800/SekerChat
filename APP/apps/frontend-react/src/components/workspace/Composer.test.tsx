@@ -2,6 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup, createEvent, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Composer } from './Composer';
+import { appI18n } from '../../i18n/i18n';
 
 vi.mock('../../hooks/useMediaQuery', () => ({
   useMediaQuery: () => true,
@@ -10,6 +11,30 @@ vi.mock('../../hooks/useMediaQuery', () => ({
 describe('Composer attachment picker', () => {
   afterEach(() => {
     cleanup();
+    void appI18n.changeLanguage('zh-CN');
+  });
+
+  it('renders the primary composing actions in English when selected', async () => {
+    await appI18n.changeLanguage('en');
+
+    render(
+      <Composer
+        channelName="general"
+        text="hello"
+        isSending={false}
+        isUploading={false}
+        replyTarget={null}
+        onChange={() => undefined}
+        onClearReply={() => undefined}
+        onPickAttachments={() => undefined}
+        onSend={() => undefined}
+      />,
+    );
+
+    expect(screen.getByPlaceholderText('Message #general')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Send' })).toBeInTheDocument();
+    expect(screen.getByTitle('Upload image or video')).toBeInTheDocument();
+    expect(screen.getByTitle('Upload file')).toBeInTheDocument();
   });
 
   it('uses separate media and file inputs on narrow viewports', () => {
