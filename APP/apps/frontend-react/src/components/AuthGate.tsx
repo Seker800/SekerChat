@@ -1,8 +1,6 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../i18n/LanguageProvider';
-import type { AppLanguage } from '../i18n/language';
 import styles from './AuthGate.module.css';
 
 interface AuthGateProps {
@@ -26,9 +24,8 @@ function upsertHeadElement(
 }
 
 export function AuthGate(props: AuthGateProps) {
-  const navigate = useNavigate();
   const { t } = useTranslation();
-  const { language, setLanguage } = useLanguage();
+  const { language } = useLanguage();
   const [tab, setTab] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -70,11 +67,6 @@ export function AuthGate(props: AuthGateProps) {
     });
   }, [language, t]);
 
-  function handleLanguageChange(nextLanguage: AppLanguage) {
-    setLanguage(nextLanguage);
-    navigate(nextLanguage === 'en' ? '/en' : '/', { replace: true });
-  }
-
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
     if (tab === 'login') void props.onPasswordLogin(email, password);
@@ -88,19 +80,7 @@ export function AuthGate(props: AuthGateProps) {
         data-testid="auth-gate-panel"
         aria-labelledby="login-title"
       >
-        <div className={styles.cardHeader}>
-          <h1 id="login-title">{tab === 'login' ? t('auth.loginTitle') : t('auth.registerTitle')}</h1>
-          <label className={styles.languageControl}>
-            <span>{t('language.label')}</span>
-            <select
-              value={language}
-              onChange={(event) => handleLanguageChange(event.target.value as AppLanguage)}
-            >
-              <option value="zh-CN">{t('language.chinese')}</option>
-              <option value="en">{t('language.english')}</option>
-            </select>
-          </label>
-        </div>
+        <h1 id="login-title">{tab === 'login' ? t('auth.loginTitle') : t('auth.registerTitle')}</h1>
         <form onSubmit={handleSubmit} className={styles.form}>
           <label>
             <span>{t('auth.email')}</span>
