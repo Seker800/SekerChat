@@ -13,6 +13,7 @@ import { ContextMenu, type ContextMenuItem } from './ContextMenu';
 import { TaskSection } from './TaskSection';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import styles from './RightSidebar.module.css';
+import { useTranslation } from 'react-i18next';
 
 interface ArtifactsPanelModel {
   items: Array<GroupArtifactResponse & { isOptimistic?: boolean; optimisticLabel?: string }>;
@@ -62,8 +63,8 @@ interface RightSidebarProps {
   currentUserRole: string;
 }
 
-function memberLabel(member: GroupResponse['members'][number], currentUserId: string): string {
-  if (member.userId === currentUserId) return '你';
+function memberLabel(member: GroupResponse['members'][number], currentUserId: string, selfLabel: string): string {
+  if (member.userId === currentUserId) return selfLabel;
   return userDisplayName(member);
 }
 
@@ -93,6 +94,7 @@ export function RightSidebar({
   rolePermissions,
   currentUserRole,
 }: RightSidebarProps) {
+  const { t } = useTranslation();
   const resolvedAccessToken = useResolvedAccessToken(accessToken);
   const rp = rolePermissions ?? getDefaultRolePermissions();
   const canManageArtifacts = hasSystemPermission(rp, currentUserRole, 'manage_artifacts');
@@ -123,13 +125,13 @@ export function RightSidebar({
 
   const memberMenuItems: ContextMenuItem[] = activeMember
     ? [
-        { key: 'profile', label: '查看资料', onSelect: () => onOpenMemberProfile(activeMember.userId) },
-        { key: 'mention', label: '@ 提及', onSelect: () => onMentionMember(activeMember.userId) },
+        { key: 'profile', label: t('rightSidebar.profile'), onSelect: () => onOpenMemberProfile(activeMember.userId) },
+        { key: 'mention', label: t('rightSidebar.mention'), onSelect: () => onMentionMember(activeMember.userId) },
         ...(activeMember.userId !== currentUserId
-          ? [{ key: 'dm', label: '私聊', onSelect: () => { void startDM(activeMember.userId); } }]
+          ? [{ key: 'dm', label: t('rightSidebar.dm'), onSelect: () => { void startDM(activeMember.userId); } }]
           : []),
         {
-          key: 'remove', label: '移出频道', danger: true,
+          key: 'remove', label: t('rightSidebar.remove'), danger: true,
           disabled: !hasSystemPermission(rp, currentUserRole, 'remove_members') || activeMember.userId === currentUserId,
           separatorBefore: true,
           onSelect: () => onRequestRemoveMember(activeMember.userId),
@@ -138,11 +140,11 @@ export function RightSidebar({
     : [];
 
   const inviteItems: ContextMenuItem[] = isInvitableUsersLoading
-    ? [{ key: 'loading', label: '加载中...', disabled: true, onSelect: () => {} }]
+    ? [{ key: 'loading', label: t('rightSidebar.loading'), disabled: true, onSelect: () => {} }]
     : invitableUsersError
       ? [{
           key: 'reload',
-          label: '加载失败，点击重试',
+          label: t('rightSidebar.retryLoad'),
           hint: invitableUsersError,
           onSelect: () => onRefreshInvitableUsers?.(),
         }]
@@ -153,7 +155,7 @@ export function RightSidebar({
             hint: user.email,
             onSelect: () => onInviteByEmail(user.email),
           }))
-        : [{ key: 'empty', label: '暂无可邀请成员', disabled: true, onSelect: () => {} }];
+        : [{ key: 'empty', label: t('rightSidebar.noInvitable'), disabled: true, onSelect: () => {} }];
 
   async function startDM(memberUserId: string) {
     try {
@@ -162,7 +164,7 @@ export function RightSidebar({
       setWorkspaceMode('dm');
       void navigate(`/dm/${dmGroup.id}`);
     } catch (error) {
-      onShowNotice?.('error', error instanceof Error ? error.message : '打开私聊失败。');
+      onShowNotice?.('error', error instanceof Error ? error.message : t('rightSidebar.dmFailed'));
     } finally {
       setPendingDmUserId('');
     }
@@ -190,7 +192,7 @@ export function RightSidebar({
       {isOverlay ? (
         <div className={styles.header}>
           <button className={styles.closeButton} data-testid="right-sidebar-close-button" type="button" onClick={onClose}>
-            关闭
+            {t('common.close')}
           </button>
         </div>
       ) : null}
@@ -230,13 +232,13 @@ export function RightSidebar({
             type="button"
             onClick={(e) => { e.stopPropagation(); onJoinGroup?.(); }}
           >
-            加入频道
+            {t('rightSidebar.join')}
           </button>
         ) : null}
 
         <div className={styles.sectionFlat}>
           <div className={styles.sectionHead}>
-            <span className={styles.sectionLabel}>成员</span>
+            <span className={styles.sectionLabel}>{t('rightSidebar.members')}</span>
             {!group.isDM && hasSystemPermission(rp, currentUserRole, 'invite_members') ? (
               <button
                 className={styles.addBtn}
@@ -247,7 +249,7 @@ export function RightSidebar({
                   const rect = e.currentTarget.getBoundingClientRect();
                   setInviteAnchor({ x: rect.right, y: rect.bottom });
                 }}
-                title={isInvitableUsersRefreshing ? '邀请成员（刷新中）' : '邀请成员'}
+                title={isInvitableUsersRefreshing ? t('rightSidebar.inviteRefreshing') : t('rightSidebar.invite')}
               >
                 {isInvitableUsersRefreshing ? '…' : '+'}
               </button>
@@ -266,14 +268,14 @@ export function RightSidebar({
                 <div className={styles.memberAvatar}>
                   <Avatar
                     avatarUrl={member.avatarUrl}
-                    name={memberLabel(member, currentUserId)}
+                    name={memberLabel(member, currentUserId, t('rightSidebar.you'))}
                     size={32}
                     accessToken={resolvedAccessToken}
                     isOnline={member.isOnline}
                     isDnd={member.isDnd}
                   />
                 </div>
-                <span className={styles.memberName}>{memberLabel(member, currentUserId)}</span>
+                <span className={styles.memberName}>{memberLabel(member, currentUserId, t('rightSidebar.you'))}</span>
                 {member.userId !== currentUserId ? (
                   <button
                     className={styles.dmBtn}
@@ -284,7 +286,7 @@ export function RightSidebar({
                       void startDM(member.userId);
                     }}
                   >
-                    {pendingDmUserId === member.userId ? '...' : '私聊'}
+                    {pendingDmUserId === member.userId ? '...' : t('rightSidebar.dm')}
                   </button>
                 ) : null}
                 {member.userId === currentUserId ? (
@@ -292,7 +294,7 @@ export function RightSidebar({
                     className={styles.removeBtn}
                     type="button"
                     onClick={(e) => { e.stopPropagation(); onLeaveGroup?.(); }}
-                    title="退出频道"
+                    title={t('rightSidebar.leave')}
                   >
                     ✕
                   </button>
@@ -301,7 +303,7 @@ export function RightSidebar({
                     className={styles.removeBtn}
                     type="button"
                     onClick={(e) => { e.stopPropagation(); onRequestRemoveMember(member.userId); }}
-                    title="移出频道"
+                    title={t('rightSidebar.remove')}
                   >
                     ✕
                   </button>
@@ -317,14 +319,14 @@ export function RightSidebar({
 
             <div className={styles.sectionFlat}>
               <div className={styles.sectionHead}>
-                <span className={styles.sectionLabel}>产出</span>
+                <span className={styles.sectionLabel}>{t('rightSidebar.artifacts')}</span>
                 <div className={styles.sectionActions}>
                   <button
                     className={styles.addBtn}
                     type="button"
                     disabled={artifacts.isUploading || Boolean(artifacts.pendingDeleteArtifactId)}
                     onClick={() => artifacts.onRefresh()}
-                    title="刷新文件状态"
+                    title={t('rightSidebar.refreshArtifacts')}
                   >
                     {artifacts.isUploading || artifacts.pendingDeleteArtifactId ? '…' : '↻'}
                   </button>
@@ -344,12 +346,12 @@ export function RightSidebar({
                     }}
                     title={
                       artifacts.isLocked
-                        ? '当前产出已确认，请先解除确认'
+                        ? t('rightSidebar.locked')
                         : artifacts.isUploading
-                          ? '产出文件上传中'
+                          ? t('rightSidebar.uploading')
                           : isNarrowViewport
-                            ? '上传图片或视频'
-                            : '上传产出文件'
+                            ? t('composer.uploadMedia')
+                            : t('rightSidebar.uploadArtifact')
                     }
                   >
                     {artifacts.isUploading ? '…' : '+'}
@@ -371,10 +373,10 @@ export function RightSidebar({
                       }}
                       title={
                         artifacts.isLocked
-                          ? '当前产出已确认，请先解除确认'
+                          ? t('rightSidebar.locked')
                           : artifacts.isUploading
-                            ? '产出文件上传中'
-                            : '上传文件'
+                            ? t('rightSidebar.uploading')
+                            : t('composer.uploadFile')
                       }
                     >
                       <svg viewBox="0 0 16 16" aria-hidden="true" className={styles.fileIcon}>
@@ -392,10 +394,10 @@ export function RightSidebar({
                   ) : null}
                 </div>
               </div>
-              <p className={styles.sectionHint}>频道相关的最终交付物和打包文件。</p>
+              <p className={styles.sectionHint}>{t('rightSidebar.description')}</p>
               {artifacts.isLocked ? (
                 <p className={styles.confirmMeta}>
-                  {artifacts.confirmation.confirmedByDisplayName || '某位成员'} 已确认当前产出
+                  {t('rightSidebar.confirmedBy', { name: artifacts.confirmation.confirmedByDisplayName || t('rightSidebar.someone') })}
                   {artifacts.confirmation.confirmedAt ? ` · ${new Date(artifacts.confirmation.confirmedAt).toLocaleString()}` : ''}
                 </p>
               ) : null}
@@ -436,9 +438,9 @@ export function RightSidebar({
                 onDrop={handleArtifactDrop}
                 data-testid="artifact-drop-zone"
               >
-                {artifacts.isLocked ? '当前产出已确认，先解除确认后才能拖拽上传' : '拖拽到产出区上传交付文件'}
+                {artifacts.isLocked ? t('rightSidebar.dropLocked') : t('rightSidebar.drop')}
               </div>
-              {artifacts.isUploading ? <p className={styles.pendingNotice}>产出文件上传中，新文件已先加入列表...</p> : null}
+              {artifacts.isUploading ? <p className={styles.pendingNotice}>{t('rightSidebar.uploadPending')}</p> : null}
               {artifacts.pendingDeleteArtifactId ? (
                 <p className={styles.pendingNotice}>
                   正在删除产出文件{artifacts.pendingDeleteArtifactName ? `「${artifacts.pendingDeleteArtifactName}」` : ''}...
@@ -463,7 +465,7 @@ export function RightSidebar({
                         >
                           {artifact.originalName}
                         </button>
-                        <span>{artifact.isOptimistic ? `${artifact.optimisticLabel || '处理中'} · ${artifact.mimeType}` : artifact.mimeType}</span>
+                        <span>{artifact.isOptimistic ? `${artifact.optimisticLabel || t('rightSidebar.processing')} · ${artifact.mimeType}` : artifact.mimeType}</span>
                           </div>
                         );
                       })()}
@@ -480,15 +482,15 @@ export function RightSidebar({
                         onClick={() => artifacts.onDelete(artifact.id)}
                         title={
                           artifact.isOptimistic
-                            ? '上传完成前无法删除'
+                            ? t('rightSidebar.deleteBeforeUpload')
                             :
                           artifacts.isLocked
-                            ? '当前产出已确认，请先解除确认'
+                            ? t('rightSidebar.locked')
                             : artifacts.pendingDeleteArtifactId === artifact.id
-                              ? '正在删除该产出文件'
+                              ? t('rightSidebar.deleting')
                             : canManageArtifacts
-                              ? '删除'
-                              : '无删除权限'
+                              ? t('rightSidebar.delete')
+                              : t('rightSidebar.noDeletePermission')
                         }
                       >
                         {artifacts.pendingDeleteArtifactId === artifact.id ? '…' : '✕'}
@@ -497,7 +499,7 @@ export function RightSidebar({
                   ))}
                 </div>
               ) : (
-                <p className={styles.subtle}>暂无产出文件</p>
+                <p className={styles.subtle}>{t('rightSidebar.empty')}</p>
               )}
               <div className={styles.confirmFooter}>
                 <button
@@ -507,13 +509,13 @@ export function RightSidebar({
                   disabled={artifacts.isConfirming || !artifacts.canConfirm}
                   title={
                     !artifacts.canConfirm
-                      ? '暂无产出文件，无法确认'
+                      ? t('rightSidebar.cannotConfirmEmpty')
                       : artifacts.isLocked
-                        ? '解除当前产出确认'
-                        : '确认当前产出已就绪'
+                        ? t('rightSidebar.unlock')
+                        : t('rightSidebar.confirmReady')
                   }
                 >
-                  {artifacts.isConfirming ? '处理中' : artifacts.isLocked ? '解除确认' : '确认产出'}
+                  {artifacts.isConfirming ? t('rightSidebar.processing') : artifacts.isLocked ? t('rightSidebar.unlockAction') : t('rightSidebar.confirmAction')}
                 </button>
               </div>
             </div>

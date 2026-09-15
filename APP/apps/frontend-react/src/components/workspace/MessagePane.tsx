@@ -11,6 +11,7 @@ import type { MessageArtifactAction } from './messageArtifactAction';
 import styles from './MessagePane.module.css';
 import { useImagePreviewState } from '../media/image-preview/useImagePreviewState';
 import { useMessageScrollAnchor } from './useMessageScrollAnchor';
+import { useTranslation } from 'react-i18next';
 
 interface MessagePaneProps {
   accessToken?: string;
@@ -61,6 +62,7 @@ export function MessagePane({
   onRetryPendingUpload,
   onRetryPendingMessage,
 }: MessagePaneProps) {
+  const { t } = useTranslation();
   const resolvedAccessToken = useResolvedAccessToken(accessToken);
   const messageRefs = useRef(new Map<string, HTMLElement>());
   const receiptContainerRefs = useRef(new Map<string, HTMLDivElement>());
@@ -176,27 +178,27 @@ export function MessagePane({
   }, [activeGroupId]);
 
   async function copyMessage(item: MessageResponse) {
-    const text = item.text || item.attachment?.originalName || '这条消息没有可复制的文本。';
+    const text = item.text || item.attachment?.originalName || t('messages.noCopyableText');
     try {
       if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(text);
-        onCopyMessage?.('消息内容已复制。');
+        onCopyMessage?.(t('messages.copied'));
         return;
       }
     } catch {}
 
     if (fallbackCopyText(text)) {
-      onCopyMessage?.('消息内容已复制。');
+      onCopyMessage?.(t('messages.copied'));
       return;
     }
 
-    onUnsupportedAction?.('当前环境无法访问剪贴板。');
+    onUnsupportedAction?.(t('messages.clipboardUnavailable'));
   }
 
   function jumpToMessage(messageId: string) {
     const target = messageRefs.current.get(messageId);
     if (!target) {
-      onUnsupportedAction?.('当前找不到原始消息。');
+      onUnsupportedAction?.(t('messages.originalUnavailable'));
       return;
     }
 
@@ -215,7 +217,7 @@ export function MessagePane({
           return [
             {
               key: 'copy',
-              label: '复制',
+              label: t('messages.copy'),
               onSelect: () => {
                 void copyMessage(menuState.item);
               },
@@ -226,12 +228,12 @@ export function MessagePane({
         return [
           {
             key: 'reply',
-            label: '回复',
+            label: t('messages.reply'),
             onSelect: () => onReply(menuState.item.id),
           },
           {
             key: 'copy',
-            label: '复制',
+            label: t('messages.copy'),
             onSelect: () => {
               void copyMessage(menuState.item);
             },
@@ -240,7 +242,7 @@ export function MessagePane({
             ? [
                 {
                   key: 'jump-original' as const,
-                  label: '转到原文',
+                  label: t('messages.jumpOriginal'),
                   onSelect: () => {
                     jumpToMessage(menuState.item.replyTo!.id);
                   },
@@ -251,7 +253,7 @@ export function MessagePane({
             ? [
                 {
                   key: 'edit' as const,
-                  label: '编辑',
+                  label: t('messages.edit'),
                   separatorBefore: true,
                   onSelect: () => {
                     setEditingMessageId(menuState.item.id);
@@ -265,7 +267,7 @@ export function MessagePane({
             ? [
                 {
                   key: 'revoke' as const,
-                  label: '撤回',
+                  label: t('messages.revoke'),
                   danger: true,
                   separatorBefore: !canEdit,
                   onSelect: () => {

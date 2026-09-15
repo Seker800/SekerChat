@@ -4,6 +4,7 @@ import { ContextMenu, type ContextMenuItem } from './ContextMenu';
 import { useSecondaryClickGuard } from './useSecondaryClickGuard';
 import type { CategoryRailItem } from './useServerCategories';
 import styles from './ServerRail.module.css';
+import { useTranslation } from 'react-i18next';
 
 interface ServerRailProps {
   categories: CategoryRailItem[];
@@ -38,6 +39,7 @@ export function ServerRail({
   onOpenCreateServer,
   onOpenCategorySettings,
 }: ServerRailProps) {
+  const { t } = useTranslation();
   const [menuState, setMenuState] = useState<{
     server: CategoryRailItem;
     x: number;
@@ -53,13 +55,13 @@ export function ServerRail({
     ? [
         {
           key: 'create-server',
-          label: '新建 server',
+          label: t('serverRail.create'),
           disabled: !canCreateServers,
           onSelect: onOpenCreateServer,
         },
         {
           key: 'open-server-settings',
-          label: '打开 server 设置',
+          label: t('serverRail.openSettings'),
           disabled: !canManageServerSettings,
           onSelect: () => onOpenCategorySettings(menuState.server),
         },
@@ -75,8 +77,8 @@ export function ServerRail({
           className={`${styles.home} ${isDMMode ? styles.buttonActive : ''}`}
           type="button"
           onClick={onOpenDM}
-          title="收件箱"
-          aria-label="私聊/收件箱"
+          title={t('navigation.inbox')}
+          aria-label={t('navigation.dmInbox')}
         >
           <svg
             width="24"
@@ -122,7 +124,7 @@ export function ServerRail({
               markSecondaryClick();
               setMenuState({ server: category, x: event.clientX, y: event.clientY });
             }}
-            title={`${category.name} · ${category.activeCount} 个活跃频道`}
+            title={`${category.name} · ${t('serverRail.activeChannels', { count: category.activeCount })}`}
           >
             <Avatar
               avatarUrl={category.avatarUrl}
@@ -142,9 +144,9 @@ export function ServerRail({
           type="button"
           aria-controls="server-rail-actions"
           aria-expanded={serverActionsExpanded}
-          aria-label={serverActionsExpanded ? '收起 Server 操作' : '展开 Server 操作'}
+          aria-label={serverActionsExpanded ? t('serverRail.collapseActions') : t('serverRail.expandActions')}
           onClick={() => setServerActionsExpanded((expanded) => !expanded)}
-          title={serverActionsExpanded ? '收起 Server 操作' : '展开 Server 操作'}
+          title={serverActionsExpanded ? t('serverRail.collapseActions') : t('serverRail.expandActions')}
         >
           <svg
             width="14"
@@ -171,8 +173,8 @@ export function ServerRail({
             <button
               className={styles.addButton}
               type="button"
-              aria-label="新建 Server"
-              title={canCreateServers ? '新建 Server' : '暂无创建 Server 权限'}
+              aria-label={t('serverRail.create')}
+              title={canCreateServers ? t('serverRail.create') : t('serverRail.noCreatePermission')}
               disabled={!canCreateServers}
               onClick={onOpenCreateServer}
             >
@@ -212,7 +214,7 @@ export function ServerRail({
                   markSecondaryClick();
                   setMenuState({ server: category, x: event.clientX, y: event.clientY });
                 }}
-                title={`${category.name} · 已归档`}
+                title={`${category.name} · ${t('serverRail.archived')}`}
               >
                 <Avatar
                   avatarUrl={category.avatarUrl}

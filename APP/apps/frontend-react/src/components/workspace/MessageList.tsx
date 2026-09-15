@@ -7,6 +7,7 @@ import { formatDayDivider, isCompactWithPrevious, isSameCalendarDay } from './me
 import styles from './MessagePane.module.css';
 import type { PreviewImage } from '../media/image-preview/useImagePreviewState';
 import type { MessageArtifactAction } from './messageArtifactAction';
+import { useTranslation } from 'react-i18next';
 
 interface MessageListProps {
   accessToken?: string;
@@ -140,6 +141,8 @@ export function MessageList({
   onSetEditingMessageId,
   onSetEditText,
 }: MessageListProps) {
+  const { i18n } = useTranslation();
+  const language = i18n.resolvedLanguage === 'en' ? 'en' : 'zh-CN';
   return (
     <>
       {hasMoreOlderMessages || isLoadingOlderMessages ? (
@@ -155,13 +158,13 @@ export function MessageList({
       {messages.map((item, index) => {
         const previous = messages[index - 1];
         const isCompact = isCompactWithPrevious(previous, item);
-        const showDivider = !isSameCalendarDay(previous, item);
+        const showDivider = !isSameCalendarDay(previous, item, language);
 
         return (
           <Fragment key={item.clientKey ?? item.id}>
             {showDivider ? (
               <div className={styles.dayDivider}>
-                <span>{formatDayDivider(item.createdAt)}</span>
+                <span>{formatDayDivider(item.createdAt, language)}</span>
               </div>
             ) : null}
             <MessageItem

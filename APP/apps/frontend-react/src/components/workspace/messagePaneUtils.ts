@@ -155,23 +155,27 @@ export function isCompactWithPrevious(previous: MessageResponse | undefined, cur
   return currentAt - previousAt < COMPACT_MESSAGE_WINDOW_MS;
 }
 
-export function isSameCalendarDay(previous: MessageResponse | undefined, current: MessageResponse): boolean {
+export function isSameCalendarDay(
+  previous: MessageResponse | undefined,
+  current: MessageResponse,
+  locale = 'zh-CN',
+): boolean {
   if (!previous) return false;
 
-  return new Intl.DateTimeFormat('zh-CN', {
+  return new Intl.DateTimeFormat(locale, {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
   }).format(new Date(previous.createdAt)) ===
-    new Intl.DateTimeFormat('zh-CN', {
+    new Intl.DateTimeFormat(locale, {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
     }).format(new Date(current.createdAt));
 }
 
-export function formatDayDivider(value: string): string {
-  return new Intl.DateTimeFormat('zh-CN', {
+export function formatDayDivider(value: string, locale = 'zh-CN'): string {
+  return new Intl.DateTimeFormat(locale, {
     month: 'long',
     day: 'numeric',
     weekday: 'long',

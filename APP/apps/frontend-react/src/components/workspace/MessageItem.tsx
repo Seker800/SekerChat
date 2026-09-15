@@ -3,6 +3,7 @@ import { downloadFile, resolveApiResourceUrl } from '../../lib/api-core';
 import type { MessageResponse } from '../../lib/messages-files-api';
 import { userDisplayName } from '../../lib/users-api';
 import { formatTimestamp } from '../../utils/time';
+import { useTranslation } from 'react-i18next';
 import { Avatar } from '../shared/Avatar';
 import { FileAttachmentCard } from './FileAttachmentCard';
 import { FileShareDialog, type ManagedFileShare } from './FileShareDialog';
@@ -78,6 +79,8 @@ export function MessageItem({
   onSetEditingMessageId,
   onSetEditText,
 }: MessageItemProps) {
+  const { i18n } = useTranslation();
+  const language = i18n.resolvedLanguage === 'en' ? 'en' : 'zh-CN';
   const [managedShare, setManagedShare] = useState<ManagedFileShare | null>(null);
   const [shareTarget, setShareTarget] = useState<NonNullable<MessageResponse['attachment']> | null>(
     null,
@@ -214,7 +217,7 @@ export function MessageItem({
               <div className={styles.meta}>
                 <span className={styles.sender}>{senderLabel(item)}</span>
                 <span className={styles.time}>
-                  {formatTimestamp(item.createdAt)}
+                  {formatTimestamp(item.createdAt, language)}
                   {item.editedAt && !item.revokedAt ? (
                     <span className={styles.editedMark}> 已编辑</span>
                   ) : null}

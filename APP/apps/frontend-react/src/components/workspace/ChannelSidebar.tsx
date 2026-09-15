@@ -25,12 +25,14 @@ import { userDisplayName } from '../../lib/users-api';
 import { useWorkspaceStore, type WorkspaceMode } from '../../store/workspace-store';
 import {
   DM_SPECIAL_PAGES,
+  DM_ATTENDANCE_PAGE_ID,
   DM_ALBUM_PAGE_ID,
   DM_SUBSCRIPTION_PAGE_ID,
 } from '../../store/dm-special-pages';
 import { useOwnCheckInController } from './useOwnCheckInController';
 import { ChannelSidebarFooter } from './ChannelSidebarFooter';
 import styles from './ChannelSidebar.module.css';
+import { useTranslation } from 'react-i18next';
 
 const DISPLAY_TIMEZONE = 'Asia/Shanghai';
 const CHECKOUT_REMINDER_MINUTES = 8 * 60;
@@ -218,6 +220,8 @@ export function ChannelSidebar({
   onDndChanged,
   attendanceReminderRequest,
 }: ChannelSidebarProps) {
+  const { t, i18n } = useTranslation();
+  const language = i18n.resolvedLanguage === 'en' ? 'en' : 'zh-CN';
   const resolvedAccessToken = useResolvedAccessToken(accessToken);
   const progressTimerRef = useRef<number | null>(null);
   const successTimerRef = useRef<number | null>(null);
@@ -519,7 +523,7 @@ export function ChannelSidebar({
     const actions: ContextMenuItem[] = [
       {
         key: 'open-channel-settings',
-        label: '打开频道设置',
+        label: t('navigation.openChannelSettings'),
         onSelect: () => onOpenChannelSettings(menuState.group.id),
       },
     ];
@@ -527,14 +531,14 @@ export function ChannelSidebar({
     if (canManageCategory) {
       actions.push({
         key: 'adjust-category' as const,
-        label: '所属分类调整',
+        label: t('navigation.adjustCategory'),
         separatorBefore: true,
         onSelect: () => {},
         subItems: serverOptions.map((server) => ({
           key: `set-server-${server.id}`,
           label: server.name,
           disabled: server.id === menuState.group.serverId,
-          hint: server.id === menuState.group.serverId ? '当前' : undefined,
+          hint: server.id === menuState.group.serverId ? t('navigation.current') : undefined,
           onSelect: () => onChangeCategory(menuState.group.id, server.id),
         })),
       });
@@ -543,7 +547,7 @@ export function ChannelSidebar({
     if (canManageStatus) {
       actions.push({
         key: 'adjust-status' as const,
-        label: '调整工作状态',
+        label: t('navigation.adjustStatus'),
         hint: currentStatus,
         separatorBefore: true,
         onSelect: () => {},
@@ -551,7 +555,7 @@ export function ChannelSidebar({
           key: `set-status-${status}`,
           label: status,
           disabled: status === currentStatus,
-          hint: status === currentStatus ? '当前' : undefined,
+          hint: status === currentStatus ? t('navigation.current') : undefined,
           onSelect: () => onSetWorkStatus(menuState.group.id, status),
         })),
       });
@@ -560,7 +564,7 @@ export function ChannelSidebar({
     if (canArchive) {
       actions.push({
         key: 'archive-group' as const,
-        label: isArchived ? '取消归档' : '归档频道',
+        label: isArchived ? t('navigation.unarchiveChannel') : t('navigation.archiveChannel'),
         danger: !isArchived,
         separatorBefore: true,
         onSelect: () => onRequestArchiveGroup(menuState.group.id),
@@ -579,6 +583,7 @@ export function ChannelSidebar({
     onSetWorkStatus,
     onChangeCategory,
     onRequestArchiveGroup,
+    t,
   ]);
 
   function openContextMenu(group: GroupResponse, x: number, y: number) {
@@ -622,8 +627,8 @@ export function ChannelSidebar({
 
   function dmPreview(group: GroupResponse): string {
     const msg = group.latestMessage;
-    if (!msg?.text) return formatRelativeTime(group.updatedAt);
-    const prefix = msg.senderId === currentUser.id ? '你: ' : '';
+    if (!msg?.text) return formatRelativeTime(group.updatedAt, language);
+    const prefix = msg.senderId === currentUser.id ? t('navigation.youPrefix') : '';
     const text = msg.text.length > 42 ? msg.text.slice(0, 42) + '...' : msg.text;
     return prefix + text;
   }
@@ -635,7 +640,7 @@ export function ChannelSidebar({
     >
       <div className={styles.header}>
         <span className={styles.headerTitle} title={categoryName}>
-          {isDMMode ? '收件箱' : categoryName}
+          {isDMMode ? t('navigation.inbox') : categoryName}
         </span>
         <div className={styles.headerActions}>
           {isDMMode && onStartNewDM ? (
@@ -643,8 +648,8 @@ export function ChannelSidebar({
               className={styles.headerAddButton}
               type="button"
               onClick={onStartNewDM}
-              title="新建私聊"
-              aria-label="新建私聊"
+              title={t('navigation.newDm')}
+              aria-label={t('navigation.newDm')}
             >
               +
             </button>
@@ -654,8 +659,8 @@ export function ChannelSidebar({
               className={styles.headerAddButton}
               type="button"
               onClick={onCreateNewChannel}
-              title="新建频道"
-              aria-label="新建频道"
+              title={t('navigation.newChannel')}
+              aria-label={t('navigation.newChannel')}
             >
               +
             </button>
@@ -666,14 +671,14 @@ export function ChannelSidebar({
             hidden={!isMobileSidebarOpen}
             onClick={onCloseMobileSidebar}
           >
-            关闭
+            {t('common.close')}
           </button>
         </div>
       </div>
       <div className={styles.section}>
         {isDMMode ? (
           <div className={styles.specialSection}>
-            <div className={styles.sectionTitle}>功能</div>
+            <div className={styles.sectionTitle}>{t('navigation.features')}</div>
             {DM_SPECIAL_PAGES.map((page) => (
               <button
                 key={page.id}
@@ -686,7 +691,13 @@ export function ChannelSidebar({
               >
                 <div className={styles.groupRowHeader}>
                   <strong className={styles.groupName}>
-                    <span>{page.label}</span>
+                    <span>
+                      {page.id === DM_ATTENDANCE_PAGE_ID
+                        ? t('navigation.special.attendance')
+                        : page.id === DM_SUBSCRIPTION_PAGE_ID
+                          ? t('navigation.special.subscription')
+                          : t('navigation.special.album')}
+                    </span>
                   </strong>
                   {page.id === DM_SUBSCRIPTION_PAGE_ID && subscriptionUnreadCount > 0 ? (
                     <span className={styles.unreadBadge}>
@@ -694,14 +705,16 @@ export function ChannelSidebar({
                     </span>
                   ) : null}
                   {page.id === DM_ALBUM_PAGE_ID && albumHasUpdates ? (
-                    <span className={styles.updateDot} aria-label="相册有新内容" />
+                    <span className={styles.updateDot} aria-label={t('navigation.albumUpdated')} />
                   ) : null}
                 </div>
               </button>
             ))}
           </div>
         ) : null}
-        <div className={styles.sectionTitle}>{isDMMode ? '会话列表' : '频道列表'}</div>
+        <div className={styles.sectionTitle}>
+          {isDMMode ? t('navigation.conversations') : t('navigation.channels')}
+        </div>
         <div className={styles.groupList} data-testid="category-group-list">
           {isDMMode
             ? sortedGroups.map((group) => {
@@ -739,7 +752,7 @@ export function ChannelSidebar({
                     <span
                       className={styles.dmCloseButton}
                       role="button"
-                      aria-label="关闭私聊"
+                      aria-label={t('navigation.closeDm')}
                       onClick={(e) => {
                         e.stopPropagation();
                         e.preventDefault();
@@ -789,13 +802,13 @@ export function ChannelSidebar({
                         </span>
                       ) : null}
                       {group.artifactConfirmation.isConfirmed ? (
-                        <span className={styles.confirmedMarker} title="已打包">
-                          已打包
+                        <span className={styles.confirmedMarker} title={t('navigation.packaged')}>
+                          {t('navigation.packaged')}
                         </span>
                       ) : null}
-                      <span>{group.memberCount ?? group.members.length} 人</span>
+                      <span>{t('navigation.memberCount', { count: group.memberCount ?? group.members.length })}</span>
                       <span className={styles.groupMetaTime}>
-                        {formatRelativeTime(group.updatedAt)}
+                        {formatRelativeTime(group.updatedAt, language)}
                       </span>
                     </div>
                   </button>
@@ -833,7 +846,7 @@ export function ChannelSidebar({
                   strokeLinejoin="round"
                 />
               </svg>
-              已归档 ({sortedArchivedGroups.length})
+              {t('navigation.archived', { count: sortedArchivedGroups.length })}
             </div>
             {archivedExpanded ? (
               <div className={styles.groupList}>
@@ -870,13 +883,13 @@ export function ChannelSidebar({
                           </span>
                         ) : null}
                         {group.artifactConfirmation.isConfirmed ? (
-                          <span className={styles.confirmedMarker} title="已打包">
-                            已打包
+                          <span className={styles.confirmedMarker} title={t('navigation.packaged')}>
+                            {t('navigation.packaged')}
                           </span>
                         ) : null}
-                        <span>{group.memberCount ?? group.members.length} 人</span>
+                        <span>{t('navigation.memberCount', { count: group.memberCount ?? group.members.length })}</span>
                         <span className={styles.groupMetaTime}>
-                          {formatRelativeTime(group.updatedAt)}
+                          {formatRelativeTime(group.updatedAt, language)}
                         </span>
                       </div>
                     </button>
@@ -918,7 +931,7 @@ export function ChannelSidebar({
                   strokeLinejoin="round"
                 />
               </svg>
-              未加入 ({discoverableGroups.length})
+              {t('navigation.notJoined', { count: discoverableGroups.length })}
             </div>
             {discoverableExpanded ? (
               <div className={styles.groupList}>
@@ -942,7 +955,7 @@ export function ChannelSidebar({
                       key={group.id}
                       className={`${styles.groupRow} ${selectedGroupId === group.id ? styles.groupRowActive : ''}`}
                       onClick={() => onSelectGroup(group.id)}
-                      title={`${group.name} · ${group.memberCount ?? 0} 人`}
+                      title={`${group.name} · ${t('navigation.memberCount', { count: group.memberCount ?? 0 })}`}
                     >
                       <div className={styles.groupRowHeader}>
                         <strong className={styles.groupName}>
@@ -958,7 +971,7 @@ export function ChannelSidebar({
                             {workStatus}
                           </span>
                         ) : null}
-                        <span>{group.memberCount ?? 0} 人</span>
+                        <span>{t('navigation.memberCount', { count: group.memberCount ?? 0 })}</span>
                       </div>
                     </button>
                   );

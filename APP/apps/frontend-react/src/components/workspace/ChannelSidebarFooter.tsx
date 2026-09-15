@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import type { CurrentUserResponse } from '../../lib/auth-api';
 import { Avatar } from '../shared/Avatar';
 import styles from './ChannelSidebar.module.css';
+import { useTranslation } from 'react-i18next';
 
 type AttendanceActionKind = 'checkin' | 'checkout';
 type AttendanceActionPhase = 'idle' | 'running' | 'success';
@@ -41,6 +42,7 @@ export function ChannelSidebarFooter({
   onOpenDisplayNameSettings,
   onToggleDnd,
 }: ChannelSidebarFooterProps) {
+  const { t } = useTranslation();
   return (
     <div className={styles.userPanel}>
       {isAttendancePanelMounted ? (
@@ -50,12 +52,12 @@ export function ChannelSidebarFooter({
           data-state={attendancePanelVisualState}
         >
           <div className={styles.attendanceCardHeader}>
-            <span className={styles.attendanceCardLabel}>提醒</span>
+            <span className={styles.attendanceCardLabel}>{t('sidebarFooter.reminder')}</span>
             <button
               type="button"
               className={styles.attendanceCardClose}
               onClick={onCloseAttendancePanel}
-              aria-label="关闭工作状态面板"
+              aria-label={t('sidebarFooter.closeAttendance')}
             >
               ×
             </button>
@@ -65,7 +67,7 @@ export function ChannelSidebarFooter({
             className={`${styles.attendanceCardAction} ${
               attendanceActionPhase === 'running' ? styles.attendanceCardActionRunning : ''
             } ${attendanceActionPhase === 'success' ? styles.attendanceCardActionSuccess : ''}`}
-            aria-label="提醒动作"
+            aria-label={t('sidebarFooter.attendanceAction')}
             onClick={onPerformAttendanceAction}
             disabled={attendanceActionDisabled || attendanceActionPhase !== 'idle'}
           >
@@ -80,11 +82,11 @@ export function ChannelSidebarFooter({
                 ? `${Math.round(attendanceActionProgress)}%`
                 : attendanceActionPhase === 'success'
                   ? attendanceActionKind === 'checkout'
-                    ? '签退成功'
-                    : '签到成功'
+                    ? t('sidebarFooter.checkOutSuccess')
+                    : t('sidebarFooter.checkInSuccess')
                   : attendanceActionKind === 'checkout'
-                    ? '签退'
-                    : '签到'}
+                    ? t('sidebarFooter.checkOut')
+                    : t('sidebarFooter.checkIn')}
             </span>
           </button>
         </div>
@@ -94,8 +96,8 @@ export function ChannelSidebarFooter({
           className={styles.userPanelAccount}
           type="button"
           onClick={onChangeUserAvatar}
-          data-tooltip="点击修改头像"
-          aria-label="修改头像"
+          data-tooltip={t('account.clickToChangeAvatar')}
+          aria-label={t('account.changeAvatar')}
         >
           <Avatar
             avatarUrl={currentUser.avatarUrl}
@@ -105,23 +107,23 @@ export function ChannelSidebarFooter({
             isOnline
             isDnd={isDnd}
           />
-          <span className={styles.tooltipBubble}>点击修改头像</span>
+          <span className={styles.tooltipBubble}>{t('account.clickToChangeAvatar')}</span>
         </button>
         <button
           className={styles.userPanelInfo}
           type="button"
           onClick={onOpenDisplayNameSettings}
-          data-tooltip="点击修改昵称 / ID"
-          aria-label="打开个人设置，修改昵称 / ID"
+          data-tooltip={t('account.changeDisplayName')}
+          aria-label={t('sidebarFooter.openSettings')}
         >
           <span className={styles.userPanelName}>
             {currentUser.displayName || currentUser.email}
           </span>
           <span className={styles.userPanelEmail}>{currentUser.email}</span>
-          <span className={styles.tooltipBubble}>点击修改昵称 / ID</span>
+          <span className={styles.tooltipBubble}>{t('account.changeDisplayName')}</span>
         </button>
         {canAccessAdmin ? (
-          <Link to="/admin" className={styles.userPanelGear} title="管理" aria-label="管理">
+          <Link to="/admin" className={styles.userPanelGear} title={t('sidebarFooter.admin')} aria-label={t('sidebarFooter.admin')}>
             <svg
               width="16"
               height="16"
@@ -140,8 +142,8 @@ export function ChannelSidebarFooter({
         <button
           className={`${styles.userPanelGear} ${isDnd ? styles.userPanelGearActive : ''}`}
           onClick={onToggleDnd}
-          title={isDnd ? '开启通知' : '关闭通知'}
-          aria-label={isDnd ? '开启通知' : '关闭通知'}
+          title={isDnd ? t('sidebarFooter.enableNotifications') : t('sidebarFooter.disableNotifications')}
+          aria-label={isDnd ? t('sidebarFooter.enableNotifications') : t('sidebarFooter.disableNotifications')}
         >
           <svg
             width="16"

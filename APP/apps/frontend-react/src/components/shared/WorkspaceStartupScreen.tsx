@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import styles from './WorkspaceStartupScreen.module.css';
+import { useTranslation } from 'react-i18next';
 
 interface WorkspaceStartupScreenProps {
   message: string;
@@ -10,6 +11,7 @@ export function WorkspaceStartupScreen({
   message,
   messageDelayMs = 500,
 }: WorkspaceStartupScreenProps) {
+  const { t } = useTranslation();
   const [showMessage, setShowMessage] = useState(false);
 
   useEffect(() => {
@@ -27,16 +29,16 @@ export function WorkspaceStartupScreen({
       className={styles.shell}
       data-testid="workspace-startup-screen"
       aria-busy="true"
-      aria-label="SekerChat 工作区正在启动"
+      aria-label={t('app.startupAria')}
     >
-      <section className={styles.serverRail} aria-label="server栏加载占位">
+      <section className={styles.serverRail} aria-label={t('app.serverPlaceholder')}>
         <div className={styles.brand}>S</div>
         <div className={styles.serverItem} />
         <div className={styles.serverItem} />
         <div className={styles.serverItem} />
       </section>
 
-      <section className={styles.channelRail} aria-label="频道栏加载占位">
+      <section className={styles.channelRail} aria-label={t('app.channelPlaceholder')}>
         <div className={styles.channelHeader} />
         <div className={styles.channelBody}>
           <div className={styles.channelSection} />
@@ -48,7 +50,7 @@ export function WorkspaceStartupScreen({
         <div className={styles.userPanel} />
       </section>
 
-      <section className={styles.messagePane} aria-label="消息栏加载占位">
+      <section className={styles.messagePane} aria-label={t('app.messagePlaceholder')}>
         <div className={styles.messageHeader} />
         <div className={styles.messageBody}>
           <div className={styles.messagePlaceholder}>
@@ -63,7 +65,7 @@ export function WorkspaceStartupScreen({
         <div className={styles.composer} />
       </section>
 
-      <section className={styles.infoRail} aria-label="信息栏加载占位">
+      <section className={styles.infoRail} aria-label={t('app.infoPlaceholder')}>
         <div className={styles.infoHeader} />
         <div className={styles.infoCard} />
         <div className={styles.infoLine} />
