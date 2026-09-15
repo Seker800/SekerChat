@@ -77,15 +77,13 @@ describe('AuthGate', () => {
     expect(screen.getByText('邮箱或密码错误')).toBeInTheDocument();
   });
 
-  it('switches the complete login experience to English', async () => {
-    const user = userEvent.setup();
+  it('uses the saved language without showing a language selector on the login page', () => {
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'en');
     renderAuthGate('/');
-
-    await user.selectOptions(screen.getByRole('combobox', { name: '语言' }), 'en');
 
     expect(screen.getByRole('heading', { name: 'Sign in to SekerChat' })).toBeInTheDocument();
     expect(screen.getByLabelText('Email')).toBeInTheDocument();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
     expect(document.documentElement.lang).toBe('en');
-    expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('en');
   });
 });
