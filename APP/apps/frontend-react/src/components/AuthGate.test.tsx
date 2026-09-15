@@ -1,24 +1,43 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { LanguageProvider } from '../i18n/LanguageProvider';
+import { LANGUAGE_STORAGE_KEY } from '../i18n/language';
 import { AuthGate } from './AuthGate';
 
+const defaultProps = {
+  passwordError: '',
+  isPasswordSubmitting: false,
+  onPasswordLogin: vi.fn().mockResolvedValue(undefined),
+  onPasswordRegister: vi.fn().mockResolvedValue(undefined),
+};
+
+function renderAuthGate(
+  path = '/',
+  props: Partial<React.ComponentProps<typeof AuthGate>> = {},
+) {
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <LanguageProvider pathname={path}>
+        <AuthGate {...defaultProps} {...props} />
+      </LanguageProvider>
+    </MemoryRouter>,
+  );
+}
+
 describe('AuthGate', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh-CN');
+    vi.clearAllMocks();
+  });
+
   it('submits the email and password through the login action', async () => {
     const user = userEvent.setup();
     const onPasswordLogin = vi.fn().mockResolvedValue(undefined);
 
-    render(
-      <MemoryRouter initialEntries={['/']}>
-        <AuthGate
-          passwordError=""
-          isPasswordSubmitting={false}
-          onPasswordLogin={onPasswordLogin}
-          onPasswordRegister={vi.fn().mockResolvedValue(undefined)}
-        />
-      </MemoryRouter>,
-    );
+    renderAuthGate('/', { onPasswordLogin });
 
     await user.type(screen.getByLabelText('邮箱'), 'user@example.com');
     await user.type(screen.getByLabelText('密码'), 'Password1');
@@ -32,16 +51,7 @@ describe('AuthGate', () => {
     const user = userEvent.setup();
     const onPasswordRegister = vi.fn().mockResolvedValue(undefined);
 
-    render(
-      <MemoryRouter initialEntries={['/']}>
-        <AuthGate
-          passwordError=""
-          isPasswordSubmitting={false}
-          onPasswordLogin={vi.fn().mockResolvedValue(undefined)}
-          onPasswordRegister={onPasswordRegister}
-        />
-      </MemoryRouter>,
-    );
+    renderAuthGate('/', { onPasswordRegister });
 
     await user.click(screen.getByRole('button', { name: '没有账号？注册' }));
 
@@ -62,17 +72,20 @@ describe('AuthGate', () => {
   });
 
   it('shows an error caused by an actual password login attempt', () => {
-    render(
-      <MemoryRouter initialEntries={['/']}>
-        <AuthGate
-          passwordError="邮箱或密码错误"
-          isPasswordSubmitting={false}
-          onPasswordLogin={vi.fn().mockResolvedValue(undefined)}
-          onPasswordRegister={vi.fn().mockResolvedValue(undefined)}
-        />
-      </MemoryRouter>,
-    );
+    renderAuthGate('/', { passwordError: '邮箱或密码错误' });
 
     expect(screen.getByText('邮箱或密码错误')).toBeInTheDocument();
+  });
+
+  it('switches the complete login experience to English', async () => {
+    const user = userEvent.setup();
+    renderAuthGate('/');
+
+    await user.selectOptions(screen.getByRole('combobox', { name: '语言' }), 'en');
+
+    expect(screen.getByRole('heading', { name: 'Sign in to SekerChat' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Email')).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe('en');
+    expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('en');
   });
 });
