@@ -79,7 +79,7 @@ export function MessageItem({
   onSetEditingMessageId,
   onSetEditText,
 }: MessageItemProps) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const language = i18n.resolvedLanguage === 'en' ? 'en' : 'zh-CN';
   const [managedShare, setManagedShare] = useState<ManagedFileShare | null>(null);
   const [shareTarget, setShareTarget] = useState<NonNullable<MessageResponse['attachment']> | null>(
@@ -160,7 +160,7 @@ export function MessageItem({
       setShareTarget(attachment);
       setManagedShare(share);
     } catch (reason) {
-      setShareError(reason instanceof Error ? reason.message : '无法打开分享设置。');
+      setShareError(reason instanceof Error ? reason.message : t('messages.shareOpenFailed'));
     }
   }
 
@@ -168,7 +168,11 @@ export function MessageItem({
     if (!artifactAction?.isEnabled) return null;
     const isAdded = artifactAction.addedFileIds.has(attachment.fileId);
     const isPending = artifactAction.pendingFileIds.has(attachment.fileId);
-    const label = isAdded ? '已添加到产出' : isPending ? '添加中' : '添加到产出';
+    const label = isAdded
+      ? t('messages.artifactAddedLabel')
+      : isPending
+        ? t('messages.artifactAddingLabel')
+        : t('messages.artifactAddLabel');
 
     return (
       <button
@@ -176,10 +180,14 @@ export function MessageItem({
         type="button"
         aria-label={label}
         disabled={artifactAction.isLocked || isAdded || isPending}
-        title={artifactAction.isLocked ? '当前产出已确认，请先解除确认' : label}
+        title={artifactAction.isLocked ? t('messages.artifactLocked') : label}
         onClick={() => artifactAction.onAdd(attachment.fileId)}
       >
-        {isAdded ? '✓ 已添加' : isPending ? '添加中…' : '+ 添加到产出'}
+        {isAdded
+          ? t('messages.artifactAdded')
+          : isPending
+            ? t('messages.artifactAdding')
+            : t('messages.artifactAdd')}
       </button>
     );
   }
@@ -219,14 +227,14 @@ export function MessageItem({
                 <span className={styles.time}>
                   {formatTimestamp(item.createdAt, language)}
                   {item.editedAt && !item.revokedAt ? (
-                    <span className={styles.editedMark}> 已编辑</span>
+                    <span className={styles.editedMark}> {t('messages.edited')}</span>
                   ) : null}
                 </span>
               </div>
             )}
 
             {item.revokedAt ? (
-              <div className={styles.revoked}>消息已撤回</div>
+              <div className={styles.revoked}>{t('messages.revoked')}</div>
             ) : (
               <>
                 {item.replyTo ? (
@@ -238,7 +246,7 @@ export function MessageItem({
                         onClick={() => onJumpToMessage?.(item.replyTo!.id)}
                       >
                         <span className={styles.replyLabel}>
-                          回复 {userDisplayName(item.replyTo.sender)}
+                          {t('messages.replyTo', { name: userDisplayName(item.replyTo.sender) })}
                         </span>
                         {item.replyTo.textPreview ? (
                           <span className={styles.replyPreview}>{item.replyTo.textPreview}</span>
@@ -265,7 +273,7 @@ export function MessageItem({
                         onClick={() => onJumpToMessage?.(item.replyTo!.id)}
                       >
                         <span className={styles.replyLabel}>
-                          回复 {userDisplayName(item.replyTo.sender)}
+                          {t('messages.replyTo', { name: userDisplayName(item.replyTo.sender) })}
                         </span>
                         {item.replyTo.textPreview ? (
                           <span className={styles.replyPreview}>{item.replyTo.textPreview}</span>
@@ -319,8 +327,8 @@ export function MessageItem({
                         }
                         aria-haspopup="dialog"
                         aria-expanded={activeReceiptMessageId === item.id}
-                        aria-label={readReceiptAriaLabel(item.readReceipt)}
-                        title={readReceiptAriaLabel(item.readReceipt)}
+                        aria-label={readReceiptAriaLabel(item.readReceipt, language)}
+                        title={readReceiptAriaLabel(item.readReceipt, language)}
                         style={
                           {
                             '--receipt-progress': `${
@@ -363,7 +371,7 @@ export function MessageItem({
                       type="button"
                       onClick={() => onReply(item.id)}
                     >
-                      回复
+                      {t('messages.reply')}
                     </button>
                   ) : null}
                 </div>
@@ -391,7 +399,7 @@ export function MessageItem({
                       autoFocus
                       rows={3}
                     />
-                    <div className={styles.editHint}>Enter 提交 · Esc 取消</div>
+                    <div className={styles.editHint}>{t('messages.editHint')}</div>
                   </div>
                 ) : (
                   <>
@@ -431,7 +439,9 @@ export function MessageItem({
                         />
                       )
                     ) : isAttachmentMessageWithoutAttachment(item) ? (
-                      <div className={styles.attachmentExpired}>该附件已过期回收</div>
+                      <div className={styles.attachmentExpired}>
+                        {t('messages.attachmentExpired')}
+                      </div>
                     ) : null}
                   </>
                 )}
@@ -444,14 +454,14 @@ export function MessageItem({
                       type="button"
                       onClick={() => onRetryPendingMessage?.(item.id)}
                     >
-                      重发
+                      {t('messages.retrySend')}
                     </button>
                     <button
                       className={styles.pendingDismiss}
                       type="button"
                       onClick={() => onClearPendingError?.(item.id)}
                     >
-                      关闭
+                      {t('common.close')}
                     </button>
                   </div>
                 ) : null}

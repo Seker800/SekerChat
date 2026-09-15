@@ -141,19 +141,21 @@ export function MessageList({
   onSetEditingMessageId,
   onSetEditText,
 }: MessageListProps) {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const language = i18n.resolvedLanguage === 'en' ? 'en' : 'zh-CN';
   return (
     <>
       {hasMoreOlderMessages || isLoadingOlderMessages ? (
         <div className={styles.dayDivider} style={{ marginTop: 0, marginBottom: 12 }}>
-          <span>{isLoadingOlderMessages ? '加载更早消息中…' : '向上滚动加载更早消息'}</span>
+          <span>
+            {isLoadingOlderMessages ? t('messages.loadingOlder') : t('messages.loadOlder')}
+          </span>
         </div>
       ) : null}
       {isLoadingMessages ? <LoadingMessageSkeletons /> : null}
       {!isLoadingMessages && loadError ? <div className={styles.empty}>{loadError}</div> : null}
       {!isLoadingMessages && !loadError && !messages.length ? (
-        <div className={styles.empty}>当前会话还没有消息。</div>
+        <div className={styles.empty}>{t('messages.empty')}</div>
       ) : null}
       {messages.map((item, index) => {
         const previous = messages[index - 1];
@@ -221,14 +223,14 @@ export function MessageList({
                         type="button"
                         onClick={() => onRetryPendingUpload?.(pendingUpload.localId)}
                       >
-                        重发
+                        {t('messages.retrySend')}
                       </button>
                       <button
                         className={styles.pendingDismiss}
                         type="button"
                         onClick={() => onClearPendingError?.(pendingUpload.localId)}
                       >
-                        关闭
+                        {t('common.close')}
                       </button>
                     </div>
                   ) : null}

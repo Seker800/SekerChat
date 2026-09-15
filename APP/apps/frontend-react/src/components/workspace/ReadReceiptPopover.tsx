@@ -1,6 +1,7 @@
 import { Avatar } from '../shared/Avatar';
 import type { MessageResponse } from '../../lib/messages-files-api';
 import { userDisplayName } from '../../lib/users-api';
+import { useTranslation } from 'react-i18next';
 import styles from './MessagePane.module.css';
 
 interface ReadReceiptPopoverProps {
@@ -15,8 +16,13 @@ export function receiptMemberLabel(member: {
   return userDisplayName(member);
 }
 
-export function readReceiptAriaLabel(receipt: NonNullable<MessageResponse['readReceipt']>): string {
-  return `已读回执：${receipt.readCount}/${receipt.totalRecipients}`;
+export function readReceiptAriaLabel(
+  receipt: NonNullable<MessageResponse['readReceipt']>,
+  language: 'zh-CN' | 'en' = 'zh-CN',
+): string {
+  return language === 'en'
+    ? `Read receipt: ${receipt.readCount}/${receipt.totalRecipients}`
+    : `已读回执：${receipt.readCount}/${receipt.totalRecipients}`;
 }
 
 export function isReadReceiptComplete(receipt: NonNullable<MessageResponse['readReceipt']>): boolean {
@@ -24,10 +30,13 @@ export function isReadReceiptComplete(receipt: NonNullable<MessageResponse['read
 }
 
 export function ReadReceiptPopover({ receipt, accessToken }: ReadReceiptPopoverProps) {
+  const { t } = useTranslation();
   return (
-    <div className={styles.receiptPopover} role="dialog" aria-label="已读回执">
+    <div className={styles.receiptPopover} role="dialog" aria-label={t('messages.receiptTitle')}>
       <section className={styles.receiptSection}>
-        <div className={styles.receiptHeading}>已读 {receipt.readCount}</div>
+        <div className={styles.receiptHeading}>
+          {t('messages.receiptRead', { count: receipt.readCount })}
+        </div>
         {receipt.readBy.length ? (
           <ul className={styles.receiptList}>
             {receipt.readBy.map((member) => (
@@ -38,11 +47,13 @@ export function ReadReceiptPopover({ receipt, accessToken }: ReadReceiptPopoverP
             ))}
           </ul>
         ) : (
-          <div className={styles.receiptEmpty}>还没有人已读</div>
+          <div className={styles.receiptEmpty}>{t('messages.receiptNobodyRead')}</div>
         )}
       </section>
       <section className={styles.receiptSection}>
-        <div className={styles.receiptHeading}>未读 {receipt.unreadCount}</div>
+        <div className={styles.receiptHeading}>
+          {t('messages.receiptUnread', { count: receipt.unreadCount })}
+        </div>
         {receipt.unreadBy.length ? (
           <ul className={styles.receiptList}>
             {receipt.unreadBy.map((member) => (
@@ -53,7 +64,7 @@ export function ReadReceiptPopover({ receipt, accessToken }: ReadReceiptPopoverP
             ))}
           </ul>
         ) : (
-          <div className={styles.receiptEmpty}>所有人都已读</div>
+          <div className={styles.receiptEmpty}>{t('messages.receiptEveryoneRead')}</div>
         )}
       </section>
     </div>
