@@ -14,16 +14,20 @@ type LanguageContextValue = {
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
-function readInitialLanguage(): AppLanguage {
+type LanguageProviderProps = PropsWithChildren<{
+  pathname?: string;
+}>;
+
+function readInitialLanguage(pathname: string): AppLanguage {
   return resolveInitialLanguage({
-    pathname: window.location.pathname,
+    pathname,
     browserLanguages: navigator.languages,
     storage: window.localStorage,
   });
 }
 
-export function LanguageProvider({ children }: PropsWithChildren) {
-  const [language, setLanguageState] = useState<AppLanguage>(readInitialLanguage);
+export function LanguageProvider({ children, pathname = window.location.pathname }: LanguageProviderProps) {
+  const [language, setLanguageState] = useState<AppLanguage>(() => readInitialLanguage(pathname));
 
   useEffect(() => {
     document.documentElement.lang = language;

@@ -1,68 +1,9 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { useLanguage } from '../i18n/LanguageProvider';
+import type { AppLanguage } from '../i18n/language';
 import styles from './AuthGate.module.css';
-
-interface LoginCopy {
-  language: 'zh-CN' | 'en';
-  title: string;
-  description: string;
-  loginTitle: string;
-  registerTitle: string;
-  email: string;
-  password: string;
-  displayName: string;
-  login: string;
-  register: string;
-  waiting: string;
-  switchToRegister: string;
-  switchToLogin: string;
-  passwordRules: string[];
-}
-
-const LOGIN_COPY: Record<'zh' | 'en', LoginCopy> = {
-  zh: {
-    language: 'zh-CN',
-    title: 'SekerChat',
-    description: '登录 SekerChat。',
-    loginTitle: '登录 SekerChat',
-    registerTitle: '注册 SekerChat',
-    email: '邮箱',
-    password: '密码',
-    displayName: '显示名称（选填）',
-    login: '登录',
-    register: '注册',
-    waiting: '请稍候...',
-    switchToRegister: '没有账号？注册',
-    switchToLogin: '已有账号？登录',
-    passwordRules: [
-      '至少 8 个字符',
-      '至少包含一个大写字母',
-      '至少包含一个小写字母',
-      '至少包含一个数字',
-    ],
-  },
-  en: {
-    language: 'en',
-    title: 'SekerChat',
-    description: 'Sign in to SekerChat.',
-    loginTitle: 'Sign in to SekerChat',
-    registerTitle: 'Create an account',
-    email: 'Email',
-    password: 'Password',
-    displayName: 'Display name (optional)',
-    login: 'Sign in',
-    register: 'Register',
-    waiting: 'Please wait...',
-    switchToRegister: 'Need an account? Register',
-    switchToLogin: 'Already have an account? Sign in',
-    passwordRules: [
-      'At least 8 characters',
-      'One uppercase letter',
-      'One lowercase letter',
-      'One number',
-    ],
-  },
-};
 
 interface AuthGateProps {
   passwordError: string;
@@ -85,31 +26,28 @@ function upsertHeadElement(
 }
 
 export function AuthGate(props: AuthGateProps) {
-  const location = useLocation();
-  const copy =
-    location.pathname === '/en' || location.pathname.startsWith('/en/')
-      ? LOGIN_COPY.en
-      : LOGIN_COPY.zh;
+  const navigate = useNavigate();
+  const { t } = useTranslation();
+  const { language, setLanguage } = useLanguage();
   const [tab, setTab] = useState<'login' | 'register'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [passwordTouched, setPasswordTouched] = useState(false);
   const passwordRules = [
-    { key: 'minLength', label: copy.passwordRules[0], passed: password.length >= 8 },
-    { key: 'uppercase', label: copy.passwordRules[1], passed: /[A-Z]/.test(password) },
-    { key: 'lowercase', label: copy.passwordRules[2], passed: /[a-z]/.test(password) },
-    { key: 'digit', label: copy.passwordRules[3], passed: /[0-9]/.test(password) },
+    { key: 'minLength', label: t('auth.passwordRules.minLength'), passed: password.length >= 8 },
+    { key: 'uppercase', label: t('auth.passwordRules.uppercase'), passed: /[A-Z]/.test(password) },
+    { key: 'lowercase', label: t('auth.passwordRules.lowercase'), passed: /[a-z]/.test(password) },
+    { key: 'digit', label: t('auth.passwordRules.digit'), passed: /[0-9]/.test(password) },
   ];
 
   useEffect(() => {
     const origin = window.location.origin;
-    const canonicalPath = copy.language === 'en' ? '/en' : '/';
-    document.documentElement.lang = copy.language;
-    document.title = copy.title;
+    const canonicalPath = language === 'en' ? '/en' : '/';
+    document.title = t('auth.title');
     upsertHeadElement('meta[name="description"]', 'meta', {
       name: 'description',
-      content: copy.description,
+      content: t('auth.description'),
     });
     upsertHeadElement('link[rel="canonical"]', 'link', {
       rel: 'canonical',
@@ -130,7 +68,12 @@ export function AuthGate(props: AuthGateProps) {
       hreflang: 'x-default',
       href: `${origin}/`,
     });
-  }, [copy]);
+  }, [language, t]);
+
+  function handleLanguageChange(nextLanguage: AppLanguage) {
+    setLanguage(nextLanguage);
+    navigate(nextLanguage === 'en' ? '/en' : '/', { replace: true });
+  }
 
   function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -145,13 +88,25 @@ export function AuthGate(props: AuthGateProps) {
         data-testid="auth-gate-panel"
         aria-labelledby="login-title"
       >
-        <h1 id="login-title">{tab === 'login' ? copy.loginTitle : copy.registerTitle}</h1>
+        <div className={styles.cardHeader}>
+          <h1 id="login-title">{tab === 'login' ? t('auth.loginTitle') : t('auth.registerTitle')}</h1>
+          <label className={styles.languageControl}>
+            <span>{t('language.label')}</span>
+            <select
+              value={language}
+              onChange={(event) => handleLanguageChange(event.target.value as AppLanguage)}
+            >
+              <option value="zh-CN">{t('language.chinese')}</option>
+              <option value="en">{t('language.english')}</option>
+            </select>
+          </label>
+        </div>
         <form onSubmit={handleSubmit} className={styles.form}>
           <label>
-            <span>{copy.email}</span>
+            <span>{t('auth.email')}</span>
             <input
               type="email"
-              placeholder={copy.email}
+              placeholder={t('auth.email')}
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               required
@@ -159,10 +114,10 @@ export function AuthGate(props: AuthGateProps) {
             />
           </label>
           <label>
-            <span>{copy.password}</span>
+            <span>{t('auth.password')}</span>
             <input
               type="password"
-              placeholder={copy.password}
+              placeholder={t('auth.password')}
               value={password}
               onChange={(event) => {
                 setPassword(event.target.value);
@@ -187,10 +142,10 @@ export function AuthGate(props: AuthGateProps) {
           ) : null}
           {tab === 'register' ? (
             <label>
-              <span>{copy.displayName}</span>
+              <span>{t('auth.displayName')}</span>
               <input
                 type="text"
-                placeholder={copy.displayName}
+                placeholder={t('auth.displayName')}
                 value={displayName}
                 onChange={(event) => setDisplayName(event.target.value)}
                 autoComplete="name"
@@ -200,15 +155,15 @@ export function AuthGate(props: AuthGateProps) {
           {props.passwordError ? <p className={styles.error}>{props.passwordError}</p> : null}
           <button type="submit" disabled={props.isPasswordSubmitting}>
             {props.isPasswordSubmitting
-              ? copy.waiting
+              ? t('auth.waiting')
               : tab === 'login'
-                ? copy.login
-                : copy.register}
+                ? t('auth.login')
+                : t('auth.register')}
           </button>
         </form>
         <div className={styles.formFooter}>
           <button type="button" onClick={() => setTab(tab === 'login' ? 'register' : 'login')}>
-            {tab === 'login' ? copy.switchToRegister : copy.switchToLogin}
+            {tab === 'login' ? t('auth.switchToRegister') : t('auth.switchToLogin')}
           </button>
         </div>
       </section>

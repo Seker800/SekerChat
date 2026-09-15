@@ -55,6 +55,8 @@ function lastComponentProps(mock: ReturnType<typeof vi.fn>): Record<string, unkn
 describe('App auth boundary', () => {
   beforeEach(() => {
     sessionStorage.clear();
+    localStorage.clear();
+    localStorage.setItem('sekerchat:language', 'zh-CN');
     vi.clearAllMocks();
     const user = {
       id: 'user-1',
@@ -130,6 +132,7 @@ describe('App auth boundary', () => {
   });
 
   it('renders the English homepage with localized metadata at /en', async () => {
+    localStorage.removeItem('sekerchat:language');
     authApiMocks.getCurrentUser.mockRejectedValue(new Error('Session expired'));
     authApiMocks.refreshSession.mockRejectedValue(new Error('Session expired'));
 

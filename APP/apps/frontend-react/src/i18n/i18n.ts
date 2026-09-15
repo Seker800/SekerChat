@@ -13,5 +13,4 @@ void appI18n.use(initReactI18next).init({
   interpolation: {
     escapeValue: false,
   },
-  initImmediate: false,
 });

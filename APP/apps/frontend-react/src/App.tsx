@@ -5,6 +5,8 @@ import { AuthenticatedApp } from './auth/AuthenticatedApp';
 import { useAuthSession } from './auth/useAuthSession';
 import { RequiredPasswordChange } from './components/RequiredPasswordChange';
 import { PublicFileSharePage } from './components/PublicFileSharePage';
+import { LanguageProvider } from './i18n/LanguageProvider';
+import { useLocation } from 'react-router-dom';
 
 function AuthenticatedRoute() {
   const auth = useAuthSession();
@@ -49,5 +51,10 @@ function AuthenticatedRoute() {
 }
 
 export default function App() {
-  return window.location.pathname === '/s' ? <PublicFileSharePage /> : <AuthenticatedRoute />;
+  const location = useLocation();
+  return (
+    <LanguageProvider pathname={location.pathname}>
+      {location.pathname === '/s' ? <PublicFileSharePage /> : <AuthenticatedRoute />}
+    </LanguageProvider>
+  );
 }
