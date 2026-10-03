@@ -1,10 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { SubscriptionAttachmentStatus, UploadSessionStatus } from '@prisma/client';
+import { Prisma, SubscriptionAttachmentStatus, UploadSessionStatus } from '@prisma/client';
 import { serializeArtifactStorageKey } from '../artifacts/artifact-storage-key';
 import { PrismaService } from '../prisma/prisma.service';
 import { FilesService } from '../files/files.service';
 import { UploadTargetRegistry } from './upload-target-registry';
+import { UPLOAD_SESSION_RESUME_WINDOW_MS } from '@sekerchat/shared';
 
 @Injectable()
 export class UploadCleanupService {
@@ -22,7 +23,7 @@ export class UploadCleanupService {
     waitForCompletion: true,
   })
   async cleanupExpiredInitiatedUploads() {
-    const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const cutoff = new Date(Date.now() - UPLOAD_SESSION_RESUME_WINDOW_MS);
 
     let cleanedCount = 0;
     let cursor: string | undefined;
@@ -111,6 +112,7 @@ export class UploadCleanupService {
       select: {
         id: true,
         objectKey: true,
+        multipartUploadId: true,
         subscriptionAttachmentId: true,
       },
       orderBy: { updatedAt: 'asc' },
@@ -122,7 +124,17 @@ export class UploadCleanupService {
       try {
         if (await this.hasDatabaseReference(session.objectKey)) continue;
 
-        await this.filesService.deleteS3Object(session.objectKey);
+        if (await this.filesService.hasS3Object(session.objectKey)) {
+          if (!(await this.filesService.deleteS3Object(session.objectKey))) {
+            throw new Error('Object deletion failed');
+          }
+        } else {
+          try {
+            await this.filesService.abortMultipartUpload(session.objectKey, session.multipartUploadId);
+          } catch (error) {
+            if (!(error instanceof Error && error.name === 'NoSuchUpload')) throw error;
+          }
+        }
         if (session.subscriptionAttachmentId) {
           await this.prismaService.subscriptionAttachment.deleteMany({
             where: {
@@ -182,6 +194,44 @@ export class UploadCleanupService {
         });
       }
     }
+  }
+
+  @Cron('0 50 3 * * *', {
+    name: 'terminal-upload-session-cleanup',
+    timeZone: 'Asia/Shanghai',
+    waitForCompletion: true,
+  })
+  async cleanupTerminalSessions(): Promise<void> {
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const eligible = {
+      objectCleanupPending: false,
+      AND: [
+        { OR: [
+          { status: UploadSessionStatus.COMPLETED, completedAt: { lt: cutoff } },
+          { status: UploadSessionStatus.ABORTED, abortedAt: { lt: cutoff } },
+        ] },
+        { OR: [
+          { finalizationJob: { is: null } },
+          { finalizationJob: { is: { status: { in: ['COMPLETED', 'FAILED'] } } } },
+        ] },
+      ],
+    } satisfies Prisma.UploadSessionWhereInput;
+    let removed = 0;
+    for (let batch = 0; batch < 100; batch += 1) {
+      const rows = await this.prismaService.uploadSession.findMany({
+        where: eligible,
+        select: { id: true },
+        orderBy: { id: 'asc' },
+        take: 100,
+      });
+      if (!rows.length) break;
+      const result = await this.prismaService.uploadSession.deleteMany({
+        where: { AND: [eligible, { id: { in: rows.map((row) => row.id) } }] },
+      });
+      removed += result.count;
+      if (rows.length < 100 || result.count === 0) break;
+    }
+    if (removed) this.logger.log(`Removed ${removed} terminal upload session(s)`);
   }
 
   private async hasDatabaseReference(objectKey: string): Promise<boolean> {

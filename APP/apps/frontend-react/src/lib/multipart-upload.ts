@@ -1,4 +1,4 @@
-import { DEFAULT_UPLOAD_PART_SIZE_BYTES } from '@sekerchat/shared';
+import { DEFAULT_UPLOAD_PART_SIZE_BYTES, UPLOAD_SESSION_RESUME_WINDOW_MS } from '@sekerchat/shared';
 import {
   abortUpload,
   completeUpload,
@@ -33,6 +33,49 @@ const RETRY_BACKOFF_MS = [2000, 8000, 30000];
 // ── session persistence (localStorage) ──
 
 const SESSION_KEY_PREFIX = 'sekerchat:upload:';
+const MAX_PERSISTED_SESSIONS = 100;
+
+type PersistedSession = { id: string; expiresAt: number };
+
+function parsePersistedSession(value: string): PersistedSession | null {
+  try {
+    const parsed: unknown = JSON.parse(value);
+    if (
+      typeof parsed === 'object' && parsed !== null &&
+      'id' in parsed && typeof parsed.id === 'string' &&
+      'expiresAt' in parsed && typeof parsed.expiresAt === 'number' &&
+      Number.isFinite(parsed.expiresAt)
+    ) return { id: parsed.id, expiresAt: parsed.expiresAt };
+  } catch {
+    // Legacy entries contain only the session ID.
+  }
+  return null;
+}
+
+function prunePersistedSessions(currentKey: string): void {
+  try {
+    const entries: Array<{ key: string; expiresAt: number }> = [];
+    for (let index = 0; index < localStorage.length; index += 1) {
+      const key = localStorage.key(index);
+      if (!key?.startsWith(SESSION_KEY_PREFIX)) continue;
+      const value = localStorage.getItem(key);
+      const session = value ? parsePersistedSession(value) : null;
+      if ((!session && key !== currentKey) || (session && session.expiresAt <= Date.now())) {
+        localStorage.removeItem(key);
+        index -= 1;
+      } else {
+        entries.push({ key, expiresAt: session?.expiresAt ?? 0 });
+      }
+    }
+    entries.sort((left, right) =>
+      left.expiresAt - right.expiresAt || Number(left.key === currentKey) - Number(right.key === currentKey));
+    for (const entry of entries.slice(0, Math.max(0, entries.length - MAX_PERSISTED_SESSIONS))) {
+      localStorage.removeItem(entry.key);
+    }
+  } catch {
+    // Storage may be disabled; resumable uploads remain best-effort.
+  }
+}
 
 function buildSessionKey(
   kind: string,
@@ -51,11 +94,12 @@ function persistSession(
   fileSize: number,
   lastModified: number,
   sessionId: string,
+  createdAt: number,
 ): void {
   try {
     localStorage.setItem(
       buildSessionKey(kind, targetId, fileName, fileSize, lastModified),
-      sessionId,
+      JSON.stringify({ id: sessionId, expiresAt: createdAt + UPLOAD_SESSION_RESUME_WINDOW_MS }),
     );
   } catch {
     // quota exceeded — non-critical, upload can still succeed
@@ -84,7 +128,8 @@ function getPersistedSessionId(
   lastModified: number,
 ): string | null {
   try {
-    return localStorage.getItem(buildSessionKey(kind, targetId, fileName, fileSize, lastModified));
+    const value = localStorage.getItem(buildSessionKey(kind, targetId, fileName, fileSize, lastModified));
+    return value ? (parsePersistedSession(value)?.id ?? value) : null;
   } catch {
     return null;
   }
@@ -128,6 +173,7 @@ export async function uploadFileViaMultipart(
   const persistenceKind = options?.subscriptionUsage
     ? `${kind}:${options.subscriptionUsage}`
     : kind;
+  prunePersistedSessions(buildSessionKey(persistenceKind, targetId, file.name, file.size, file.lastModified));
   const persistedId = getPersistedSessionId(
     persistenceKind,
     targetId,
@@ -167,7 +213,12 @@ export async function uploadFileViaMultipart(
     });
     sessionId = session.id;
     partSizeBytes = session.partSizeBytes || DEFAULT_PART_SIZE_BYTES;
-    persistSession(persistenceKind, targetId, file.name, file.size, file.lastModified, sessionId);
+    const createdAt = Date.parse(session.createdAt);
+    persistSession(
+      persistenceKind, targetId, file.name, file.size, file.lastModified, sessionId,
+      Number.isFinite(createdAt) ? createdAt : Date.now(),
+    );
+    prunePersistedSessions(buildSessionKey(persistenceKind, targetId, file.name, file.size, file.lastModified));
   }
 
   // ── chunk file and filter out completed parts ──

@@ -406,6 +406,43 @@ test('listDailySummaries paginates before loading presence ranges', async () => 
   assert.ok(findManyCalls <= 2, `expected date discovery plus 1 range query, received ${findManyCalls}`);
 });
 
+test('historical daily summary remains available after raw presence logs are compacted', async () => {
+  const service = createAttendanceService({
+    presenceSummaries: [{
+      userId: 'user-1',
+      workDate: '2025-01-06',
+      firstOnlineAt: new Date('2025-01-06T01:00:00.000Z'),
+      lastOnlineAt: new Date('2025-01-06T02:00:00.000Z'),
+      onlineWorkMinutes: 60,
+      endIsOnline: false,
+      endIsDnd: false,
+    }],
+  });
+
+  const stats = await service.getUserStats('user-1', '2025-01-06');
+  assert.equal(stats.dayWorkedMinutes, 60);
+  const daily = await service.listDailySummaries({ userId: 'user-1', workDate: '2025-01-06' });
+  assert.equal(daily.items[0]?.workedMinutes, 60);
+});
+
+test('a compacted day carries its final online state into the next live day', async () => {
+  const service = createAttendanceService({
+    presenceSummaries: [{
+      userId: 'user-1', workDate: '2025-01-06',
+      firstOnlineAt: new Date('2025-01-06T01:00:00.000Z'),
+      lastOnlineAt: new Date('2025-01-06T16:00:00.000Z'),
+      onlineWorkMinutes: 480, endIsOnline: true, endIsDnd: false,
+    }],
+    presenceLogs: [{
+      userId: 'user-1', createdAt: new Date('2025-01-06T18:00:00.000Z'),
+      isOnline: false, isDnd: false,
+    }],
+  });
+
+  const stats = await service.getUserStats('user-1', '2025-01-07');
+  assert.equal(stats.dayWorkedMinutes, 120);
+});
+
 test('attendance migrations backfill historical presence and enforce one open session per day', () => {
   const migrationsRoot = join(process.cwd(), 'prisma', 'migrations');
   const migrationSql = readdirSync(migrationsRoot, { withFileTypes: true })
@@ -431,6 +468,7 @@ test('attendance migrations backfill historical presence and enforce one open se
 
 function createAttendanceService(overrides: {
   presenceLogs?: Array<{ userId: string; createdAt: Date; isOnline: boolean; isDnd: boolean }>;
+  presenceSummaries?: Array<{ userId: string; workDate: string; firstOnlineAt: Date | null; lastOnlineAt: Date | null; onlineWorkMinutes: number; endIsOnline: boolean; endIsDnd: boolean }>;
   checkInSessions?: Array<{ id: string; userId: string; workDate: string; checkInAt: Date | null; checkOutAt: Date | null }>;
   enforceOpenSessionUniqueness?: boolean;
   beforeCheckInSessionLookup?: () => Promise<void> | void;
@@ -438,6 +476,7 @@ function createAttendanceService(overrides: {
   onPresenceFindMany?: () => void;
 } = {}) {
   const presenceLogs = overrides.presenceLogs ?? [];
+  const presenceSummaries = overrides.presenceSummaries ?? [];
   const checkInSessions = overrides.checkInSessions ?? [];
   const prismaService = {
     $transaction: async (callback: (transaction: any) => Promise<unknown>) => callback(prismaService),
@@ -556,6 +595,16 @@ function createAttendanceService(overrides: {
         );
         return items;
       },
+    },
+    presenceDailySummary: {
+      findFirst: async ({ where }: any) => presenceSummaries
+        .filter((item) => item.userId === where.userId && item.workDate < where.workDate.lt)
+        .sort((left, right) => right.workDate.localeCompare(left.workDate))[0] ?? null,
+      findMany: async ({ where }: any = {}) => presenceSummaries.filter((item) =>
+        (!where?.userId || item.userId === where.userId) &&
+        (!where?.workDate?.in || where.workDate.in.includes(item.workDate)) &&
+        (!where?.workDate?.gte || item.workDate >= where.workDate.gte) &&
+        (!where?.workDate?.lte || item.workDate <= where.workDate.lte)),
     },
   };
 

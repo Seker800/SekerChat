@@ -12,6 +12,7 @@ import { GroupLifecycleModule } from '../group-lifecycle/group-lifecycle.module'
 import { ServerLifecycleOutboxHandler } from './server-lifecycle-outbox.handler';
 import { SubscriptionChangedOutboxHandler } from './subscription-changed-outbox.handler';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
+import { OutboxRetentionService } from './outbox-retention.service';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
     GroupLifecycleOutboxHandler,
     OutboxDispatcherService,
     OutboxWorkerService,
+    OutboxRetentionService,
     UserMessageCreatedOutboxHandler,
     ServerLifecycleOutboxHandler,
     SubscriptionChangedOutboxHandler,

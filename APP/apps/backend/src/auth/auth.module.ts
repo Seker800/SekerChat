@@ -20,6 +20,7 @@ import { LegacyAuthTelemetryInterceptor } from './legacy-auth-telemetry.intercep
 import { BrowserOriginGuard } from './guards/browser-origin.guard';
 import { ReminderSecureTransportGuard } from './guards/reminder-secure-transport.guard';
 import { AuthCoreModule } from './auth-core.module';
+import { RefreshTokenCleanupService } from './refresh-token-cleanup.service';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { AuthCoreModule } from './auth-core.module';
     BrowserOriginGuard,
     ReminderSecureTransportGuard,
     JwtStrategy,
+    RefreshTokenCleanupService,
   ],
   exports: [AuthService, AuthCoreModule, ReminderSecureTransportGuard],
 })

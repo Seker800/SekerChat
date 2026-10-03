@@ -349,4 +349,26 @@ describe('uploadFileViaMultipart', () => {
     expect(initiateUploadMock).toHaveBeenCalled();
     expect(result.finalized).toEqual({ kind: 'ARTIFACT', artifact: { id: 'artifact-fresh' } });
   });
+
+  it('drops expired and unrelated legacy sessions while preserving a bounded resume cache', async () => {
+    const file = new File(['x'], 'fresh.bin', { lastModified: 1700000000000 });
+    const currentKey = 'sekerchat:upload:ARTIFACT:group-1:fresh.bin:1:1700000000000';
+    localStorage.setItem(currentKey, JSON.stringify({ id: 'expired', expiresAt: 0 }));
+    localStorage.setItem('sekerchat:upload:legacy', 'old-session');
+    for (let index = 0; index < 110; index += 1) {
+      localStorage.setItem(`sekerchat:upload:other-${index}`, JSON.stringify({
+        id: `other-${index}`, expiresAt: Date.now() + 60_000,
+      }));
+    }
+    initiateUploadMock.mockResolvedValue({ id: 'fresh', partSizeBytes: 5 });
+    uploadPartMock.mockResolvedValue({ uploadSessionId: 'fresh', partNumber: 1, etag: 'etag' });
+    completeUploadMock.mockResolvedValue({ kind: 'ARTIFACT', artifact: { id: 'artifact-1' } });
+
+    await uploadFileViaMultipart('token', 'ARTIFACT', 'group-1', file, () => undefined);
+
+    expect(getUploadedPartsMock).not.toHaveBeenCalled();
+    expect(localStorage.getItem('sekerchat:upload:legacy')).toBeNull();
+    expect(Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
+      .filter((key) => key?.startsWith('sekerchat:upload:')).length).toBeLessThanOrEqual(100);
+  });
 });

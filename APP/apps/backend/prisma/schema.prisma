@@ -165,6 +165,8 @@ model RefreshToken {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, expiresAt])
+  @@index([expiresAt])
+  @@index([revokedAt])
 }
 
 model ReminderDeviceToken {
@@ -341,7 +343,24 @@ model OutboxEvent {
   updatedAt     DateTime          @updatedAt
 
   @@index([status, availableAt])
+  @@index([status, processedAt])
+  @@index([status, updatedAt])
   @@index([aggregateType, aggregateId, createdAt])
+}
+
+model OutboxDeadLetter {
+  id            String   @id @default(uuid())
+  sourceEventId String   @unique
+  eventType     String
+  aggregateType String
+  aggregateId   String
+  payload       Json
+  attempts      Int
+  lastError     String?
+  failedAt      DateTime
+  archivedAt    DateTime @default(now())
+
+  @@index([archivedAt])
 }
 
 model FileObject {
@@ -475,6 +494,8 @@ model UploadSession {
   @@index([uploaderId, createdAt])
   @@index([status, createdAt])
   @@index([status, updatedAt])
+  @@index([status, completedAt])
+  @@index([status, abortedAt])
   @@index([objectCleanupPending, updatedAt])
 }
 
@@ -737,6 +758,22 @@ model PresenceLog {
   @@index([userId, createdAt])
   @@index([createdAt])
   @@index([event, createdAt])
+}
+
+model PresenceDailySummary {
+  id                String   @id @default(uuid())
+  userId            String
+  workDate          String
+  timezone          String
+  firstOnlineAt     DateTime?
+  lastOnlineAt      DateTime?
+  onlineWorkMinutes Int
+  endIsOnline       Boolean
+  endIsDnd          Boolean
+  computedAt        DateTime @default(now())
+
+  @@unique([userId, workDate])
+  @@index([workDate])
 }
 
 model AttendanceUserPolicy {

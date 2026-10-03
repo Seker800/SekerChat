@@ -10,6 +10,7 @@ import { AttendanceRecomputeJob } from './attendance-recompute.job';
 import { AttendanceActionRecorder } from './attendance-action-recorder.service';
 import { AttendanceProjectionService } from './attendance-projection.service';
 import { AttendanceQueryService } from './attendance-query.service';
+import { PresenceRetentionService } from './presence-retention.service';
 
 @Module({
   imports: [PrismaModule, SystemConfigModule],
@@ -22,6 +23,7 @@ import { AttendanceQueryService } from './attendance-query.service';
     AttendanceService,
     AttendanceRecomputeJob,
     AttendanceScheduler,
+    PresenceRetentionService,
     PermissionService,
   ],
   exports: [AttendanceService],

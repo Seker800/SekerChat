@@ -122,8 +122,10 @@ test('failed upload cleanup deletes only old objects without database references
   const service = new UploadCleanupService(
     prisma as never,
     {
+      hasS3Object: async () => true,
       deleteS3Object: async (objectKey: string) => {
         deletedObjectKeys.push(objectKey);
+        return true;
       },
     } as never,
   );
@@ -175,4 +177,48 @@ test('duplicate cleanup removes an orphan even after the referenced album photo 
 
   assert.deepEqual(deletedObjectKeys, ['album/originals/duplicate-object']);
   assert.deepEqual(clearedSessions, ['duplicate-upload']);
+});
+
+test('failed upload cleanup aborts incomplete multipart data before closing the session', async () => {
+  const calls: string[] = [];
+  let queries = 0;
+  const prisma = {
+    uploadSession: {
+      findMany: async () => (++queries === 1 ? [{
+        id: 'failed-1', objectKey: 'orphan.bin', multipartUploadId: 'multipart-1',
+        subscriptionAttachmentId: null,
+      }] : []),
+      updateMany: async () => { calls.push('close'); return { count: 1 }; },
+    },
+    fileObject: { findFirst: async () => null },
+    groupArtifact: { findFirst: async () => null },
+    subscriptionAttachment: { findFirst: async () => null },
+  };
+  const files = {
+    hasS3Object: async () => false,
+    abortMultipartUpload: async () => { calls.push('abort'); },
+    deleteS3Object: async () => { calls.push('delete'); return true; },
+  };
+  await new UploadCleanupService(prisma as never, files as never).cleanupExpiredUnreferencedObjects();
+  assert.deepEqual(calls, ['abort', 'close']);
+});
+
+test('failed upload cleanup keeps the session open when object deletion fails', async () => {
+  let closed = false;
+  let queries = 0;
+  const prisma = {
+    uploadSession: {
+      findMany: async () => (++queries === 1 ? [{
+        id: 'failed-1', objectKey: 'orphan.bin', multipartUploadId: 'multipart-1',
+        subscriptionAttachmentId: null,
+      }] : []),
+      updateMany: async () => { closed = true; return { count: 1 }; },
+    },
+    fileObject: { findFirst: async () => null },
+    groupArtifact: { findFirst: async () => null },
+    subscriptionAttachment: { findFirst: async () => null },
+  };
+  const files = { hasS3Object: async () => true, deleteS3Object: async () => false };
+  await new UploadCleanupService(prisma as never, files as never).cleanupExpiredUnreferencedObjects();
+  assert.equal(closed, false);
 });

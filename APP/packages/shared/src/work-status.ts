@@ -134,6 +134,7 @@ export const MAX_CHAT_ATTACHMENT_MAX_MB = 10 * 1024;
 
 /** Chunk size for multipart uploads (32 MB). */
 export const DEFAULT_UPLOAD_PART_SIZE_BYTES = 32 * 1024 * 1024;
+export const UPLOAD_SESSION_RESUME_WINDOW_MS = 24 * 60 * 60 * 1000;
 export const DEFAULT_SUBSCRIPTION_ATTACHMENT_MAX_MB = 5 * 1024;
 export const MIN_SUBSCRIPTION_ATTACHMENT_MAX_MB = 1;
 export const MAX_SUBSCRIPTION_ATTACHMENT_MAX_MB = 10 * 1024;

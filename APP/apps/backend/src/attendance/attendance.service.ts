@@ -104,15 +104,26 @@ export class AttendanceService {
     await Promise.all(
       [...pairsByUser.entries()].map(async ([userId, userPairs]) => {
         const selectedDates = userPairs.map((pair) => pair.workDate).sort();
-        const firstDate = selectedDates[0];
-        const lastDate = selectedDates[selectedDates.length - 1];
-        if (!firstDate || !lastDate) {
-          return;
+        const summaries = await this.prismaService.presenceDailySummary.findMany({
+          where: { userId, workDate: { in: selectedDates } },
+        });
+        const projections = new Map<string, DailyPresenceProjection>();
+        for (const summary of summaries) {
+          projections.set(summary.workDate, {
+            firstOnlineAt: summary.firstOnlineAt,
+            lastOnlineAt: summary.lastOnlineAt,
+            onlineWorkMinutes: summary.onlineWorkMinutes,
+            segments: [],
+          });
         }
-        projectionsByUser.set(
-          userId,
-          await this.loadDailyPresenceProjections(userId, firstDate, lastDate, config.timezone),
-        );
+        const liveDates = selectedDates.filter((date) => !projections.has(date));
+        if (liveDates.length) {
+          const live = await this.loadDailyPresenceProjections(
+            userId, liveDates[0], liveDates[liveDates.length - 1], config.timezone,
+          );
+          for (const [date, projection] of live) projections.set(date, projection);
+        }
+        projectionsByUser.set(userId, projections);
       }),
     );
 
@@ -955,13 +966,19 @@ export class AttendanceService {
   }
 
   private async listPresenceWorkDates(timezone: string, userId?: string): Promise<string[]> {
-    const logs = await this.prismaService.presenceLog.findMany({
-      where: userId ? { userId } : undefined,
-      select: { createdAt: true },
-      orderBy: { createdAt: 'desc' },
-    });
+    const [logs, summaries] = await Promise.all([
+      this.prismaService.presenceLog.findMany({
+        where: userId ? { userId } : undefined,
+        select: { createdAt: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prismaService.presenceDailySummary.findMany({
+        where: userId ? { userId } : undefined,
+        select: { workDate: true },
+      }),
+    ]);
 
-    const seen = new Set<string>();
+    const seen = new Set(summaries.map((summary) => summary.workDate));
     for (const log of logs) {
       seen.add(zonedDateParts(log.createdAt, timezone).dateKey);
     }
@@ -1006,7 +1023,7 @@ export class AttendanceService {
   ): Promise<Map<string, DailyPresenceProjection>> {
     const rangeStart = getLocalDayBoundaryUtc(startDate, timezone);
     const rangeEnd = getLocalDayBoundaryUtc(shiftDateKey(endDate, 1), timezone);
-    const [previousLog, rangeLogs] = await Promise.all([
+    const [previousLog, previousSummary, rangeLogs, summaries] = await Promise.all([
       this.prismaService.presenceLog.findFirst({
         where: {
           userId,
@@ -1018,6 +1035,11 @@ export class AttendanceService {
           isOnline: true,
           isDnd: true,
         },
+      }),
+      this.prismaService.presenceDailySummary.findFirst({
+        where: { userId, workDate: { lt: startDate } },
+        orderBy: { workDate: 'desc' },
+        select: { endIsOnline: true, endIsDnd: true },
       }),
       this.prismaService.presenceLog.findMany({
         where: {
@@ -1034,9 +1056,34 @@ export class AttendanceService {
           isDnd: true,
         },
       }),
+      this.prismaService.presenceDailySummary.findMany({
+        where: { userId, workDate: { gte: startDate, lte: endDate } },
+        orderBy: { workDate: 'asc' },
+      }),
     ]);
-    const logs = previousLog ? [previousLog, ...rangeLogs] : rangeLogs;
-    return this.projections.projectDailyPresence(logs, startDate, endDate, timezone);
+    const previous = previousLog ?? (previousSummary ? {
+      createdAt: new Date(rangeStart.getTime() - 1),
+      isOnline: previousSummary.endIsOnline,
+      isDnd: previousSummary.endIsDnd,
+    } : null);
+    const summaryBoundaries = summaries.map((summary) => ({
+      createdAt: new Date(getLocalDayBoundaryUtc(shiftDateKey(summary.workDate, 1), timezone).getTime() - 1),
+      isOnline: summary.endIsOnline,
+      isDnd: summary.endIsDnd,
+    }));
+    const logs = previous
+      ? [previous, ...rangeLogs, ...summaryBoundaries]
+      : [...rangeLogs, ...summaryBoundaries];
+    const projections = this.projections.projectDailyPresence(logs, startDate, endDate, timezone);
+    for (const summary of summaries) {
+      projections.set(summary.workDate, {
+        firstOnlineAt: summary.firstOnlineAt,
+        lastOnlineAt: summary.lastOnlineAt,
+        onlineWorkMinutes: summary.onlineWorkMinutes,
+        segments: [],
+      });
+    }
+    return projections;
   }
 
   private getStatsPresenceRange(anchorDate: string, timezone: string): { startDate: string } {
