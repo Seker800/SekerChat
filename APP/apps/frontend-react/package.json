@@ -36,7 +36,7 @@
     "@vitejs/plugin-react": "^4.4.1",
     "@vitest/coverage-v8": "^4.1.11",
     "jsdom": "^27.0.1",
-    "typescript": "^5.9.3",
+    "typescript": "^7.0.2",
     "vite": "^6.0.5",
     "vitest": "^4.1.11"
   }
