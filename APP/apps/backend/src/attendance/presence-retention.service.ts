@@ -21,6 +21,14 @@ export class PresenceRetentionService {
   @Cron('0 40 4 * * *', { name: 'presence-retention', timeZone: 'Asia/Shanghai', waitForCompletion: true })
   async compactOldDays(): Promise<void> {
     const { timezone } = parseAttendanceConfig(await this.config.getRawConfig());
+    const conflictingSummary = await this.prisma.presenceDailySummary.findFirst({
+      where: { timezone: { not: timezone } },
+      select: { id: true },
+    });
+    if (conflictingSummary) {
+      this.logger.error('Presence compaction stopped because historical summaries use another timezone');
+      return;
+    }
     const cutoff = new Date(Date.now() - RAW_RETENTION_MS);
     let compacted = 0;
     for (let batch = 0; batch < MAX_DAYS_PER_RUN; batch += 1) {

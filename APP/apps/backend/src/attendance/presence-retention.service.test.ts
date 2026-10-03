@@ -33,3 +33,44 @@ test('presence compaction preserves daily projection and its next-day boundary s
   assert.equal(saved?.endIsDnd, true);
   assert.equal(events.length, 0);
 });
+
+test('presence compaction stops before deleting events when summary timezones disagree', async () => {
+  let rawRead = false;
+  const prisma = {
+    presenceDailySummary: { findFirst: async () => ({ id: 'summary-1' }) },
+    presenceLog: { findFirst: async () => { rawRead = true; return null; } },
+  };
+  const config = { getRawConfig: async () => ({ attendanceTimezone: 'UTC' }) };
+  await new PresenceRetentionService(
+    prisma as never, config as never, new AttendanceProjectionService(),
+  ).compactOldDays();
+  assert.equal(rawRead, false);
+});
+
+test('presence compaction carries the previous compacted day into a raw event day', async () => {
+  const logs = [{
+    userId: 'user-1', createdAt: new Date('2025-01-06T18:00:00Z'),
+    isOnline: false, isDnd: false,
+  }];
+  let workedMinutes = -1;
+  const prisma = {
+    presenceLog: {
+      findFirst: async ({ where }: any) => where.userId ? null : logs[0] ?? null,
+      findMany: async () => logs,
+      deleteMany: async () => { logs.splice(0); return { count: 1 }; },
+    },
+    presenceDailySummary: {
+      findFirst: async ({ where }: any) => where.timezone ? null : {
+        endIsOnline: true, endIsDnd: false,
+      },
+      upsert: async ({ create }: any) => { workedMinutes = create.onlineWorkMinutes; },
+    },
+    $transaction: async (operation: (tx: unknown) => Promise<void>) => operation(prisma),
+  };
+  const config = { getRawConfig: async () => ({ attendanceTimezone: 'Asia/Shanghai' }) };
+  await new PresenceRetentionService(
+    prisma as never, config as never, new AttendanceProjectionService(),
+  ).compactOldDays();
+  assert.equal(workedMinutes, 120);
+  assert.equal(logs.length, 0);
+});

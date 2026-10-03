@@ -75,8 +75,8 @@ export class SystemConfigService {
       }
     }
 
-    await this.workStatusConfigService.updateFromDto(dto);
     await this.attendanceConfigService.updateFromDto(dto);
+    await this.workStatusConfigService.updateFromDto(dto);
     await this.dndConfigService.updateFromDto(dto);
     await this.fileUploadConfigService.updateFromDto(dto);
     await this.retentionConfigService.updateFromDto(dto);
