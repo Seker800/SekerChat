@@ -22,7 +22,7 @@ RUN rm -rf apps/frontend-react/dist \
   && npm run build --workspace @sekerchat/frontend-react \
   && node ./scripts/precompress-frontend-assets.mjs apps/frontend-react/dist
 
-FROM nginx:stable-alpine@sha256:97d490c12ba55b4946b01546d1c3ed324e8d41ab1c9fcb2a616aa470620e5b46 AS runner
+FROM nginx:stable-alpine@sha256:dc5069ad14f19660b141b21236140b91656bf89bbc3e2417c70ae650cd66104c AS runner
 
 RUN rm -f /etc/nginx/conf.d/default.conf
 COPY apps/frontend-react/nginx.conf.template /etc/nginx/templates/default.conf.template
