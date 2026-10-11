@@ -25,44 +25,48 @@ function timeLabel(value: string | null, timezone: string): string {
 function ScoreCard({
   label,
   percent,
-  actual,
-  target,
+  detail,
   tone,
 }: {
   label: string;
   percent: number | null;
-  actual?: number;
-  target?: number;
+  detail: string;
   tone: 'overall' | 'online' | 'checkin';
 }) {
+  const detailId = `monthly-${tone}-detail`;
   return (
     <article className={`${styles.scoreCard} ${styles[tone]}`}>
-      <span className={styles.cardLabel}>{label}</span>
-      <strong className={styles.score}>{percent === null ? '—' : `${percent}%`}</strong>
-      {actual !== undefined && target !== undefined ? (
-        <span className={styles.cardDetail}>
-          {duration(actual)} <span>/ 目标 {duration(target)}</span>
+      <button
+        type="button"
+        className={styles.scoreTrigger}
+        aria-label={`${label} ${percent === null ? '暂无数据' : `${percent}%`}，查看详情`}
+        aria-describedby={detailId}
+      >
+        <span className={styles.cardLabel}>
+          {label}
+          <span className={styles.infoMark} aria-hidden="true">
+            ⓘ
+          </span>
         </span>
-      ) : (
-        <span className={styles.cardDetail}>在线与打卡完成度的平均值</span>
-      )}
-      <div className={styles.progressTrack} aria-hidden="true">
-        <div style={{ width: `${percent ?? 0}%` }} />
-      </div>
+        <strong className={styles.score}>{percent === null ? '—' : `${percent}%`}</strong>
+        <span className={styles.progressTrack} aria-hidden="true">
+          <span style={{ width: `${Math.min(percent ?? 0, 100)}%` }} />
+        </span>
+      </button>
+      <span className={styles.metricTooltip} id={detailId} role="tooltip">
+        {detail}
+      </span>
     </article>
   );
 }
 
 function DailyRecords({ report }: { report: MonthlyAttendanceReport }) {
   return (
-    <section className={styles.records}>
-      <div className={styles.sectionHeading}>
-        <div>
-          <span className={styles.eyebrow}>每日记录</span>
-          <h3>这个月的每一天</h3>
-        </div>
+    <details className={styles.records}>
+      <summary className={styles.recordsSummary}>
+        <span>查看每日记录</span>
         <span className={styles.sectionAside}>共 {report.days.length} 天</span>
-      </div>
+      </summary>
       {report.days.length === 0 ? (
         <p className={styles.empty}>此月份没有可统计的日期。</p>
       ) : (
@@ -89,7 +93,7 @@ function DailyRecords({ report }: { report: MonthlyAttendanceReport }) {
           ))}
         </div>
       )}
-    </section>
+    </details>
   );
 }
 
@@ -110,15 +114,33 @@ export function DmAttendanceMonthlyReport({ accessToken }: { accessToken: string
     staleTime: Infinity,
   });
   const report = reportQuery.data;
+  const archivedDate = report
+    ? new Intl.DateTimeFormat('zh-CN', {
+        timeZone: report.timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(new Date(report.generatedAt))
+    : null;
   return (
     <div className={styles.page} data-testid="attendance-monthly-report">
-      <header className={styles.header}>
-        <div>
-          <span className={styles.eyebrow}>个人出勤 · 月度档案</span>
-          <h2>我的月报</h2>
-          <p>每月结束后生成并保存。默认展示最近一个完整月份。</p>
-        </div>
-      </header>
+      <div className={styles.toolbar}>
+        <span>月报档案</span>
+        {items.length > 0 && month ? (
+          <select
+            className={styles.monthSelect}
+            aria-label="选择月报月份"
+            value={month}
+            onChange={(event) => setChosenMonth(event.target.value)}
+          >
+            {items.map((item) => (
+              <option key={item.month} value={item.month}>
+                {item.month.replace('-', ' 年 ')} 月
+              </option>
+            ))}
+          </select>
+        ) : null}
+      </div>
       {listQuery.isLoading ? (
         <div className={styles.empty}>正在载入月报档案...</div>
       ) : listQuery.isError ? (
@@ -144,85 +166,48 @@ export function DmAttendanceMonthlyReport({ accessToken }: { accessToken: string
               </button>
             </div>
           ) : (
-            <>
-              <div className={styles.reportTitle}>
+            <article className={styles.reportSheet} aria-label={`${report.month} 个人出勤报告`}>
+              <header className={styles.reportHeader}>
                 <div>
-                  <span className={styles.eyebrow}>月度总结</span>
-                  <h3>{report.month.replace('-', ' 年 ')} 月</h3>
+                  <span className={styles.reportKicker}>SEKERCHAT · MONTHLY ATTENDANCE</span>
+                  <h2>个人出勤报告</h2>
+                  <p>{report.month.replace('-', ' 年 ')} 月</p>
                 </div>
-                <span>
-                  生成于{' '}
-                  {new Intl.DateTimeFormat('zh-CN', {
-                    timeZone: report.timezone,
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit',
-                  }).format(new Date(report.generatedAt))}
-                </span>
+                <span className={styles.archiveStamp}>月结归档</span>
+              </header>
+              <div className={styles.reportMeta}>
+                <span>统计至 {report.range.effectiveEndDate}</span>
+                <span>应出勤 {report.summary.expectedWorkDays} 天</span>
+                <span>生成于 {archivedDate}</span>
               </div>
-              <div className={styles.periodLine}>
-                <span className={styles.periodBadge}>已归档</span>
-                <span>
-                  统计至 {report.range.effectiveEndDate} · 应出勤 {report.summary.expectedWorkDays}{' '}
-                  个工作日
-                </span>
-              </div>
+              <div className={styles.sectionLabel}>01 / 月度结论</div>
               <div className={styles.scoreGrid}>
                 <ScoreCard
                   label="综合完成度"
                   percent={report.summary.overallCompletionPercent}
+                  detail={`在线与打卡完成度的平均值。目标为 ${report.summary.expectedWorkDays} 个工作日，每天 8 小时，单日最多计入 8 小时；首月不含账号创建前的日期。统计至 ${report.range.effectiveEndDate}，生成于 ${archivedDate}，归档后固定保存。`}
                   tone="overall"
                 />
                 <ScoreCard
                   label="在线完成度"
                   percent={report.summary.onlineCompletionPercent}
-                  actual={report.summary.onlineTotalMinutes}
-                  target={report.summary.targetMinutes}
+                  detail={`非免打扰在线 ${duration(report.summary.onlineTotalMinutes)}，目标 ${duration(report.summary.targetMinutes)}。总时长包含休息日，完成度只统计工作日。`}
                   tone="online"
                 />
                 <ScoreCard
                   label="打卡完成度"
                   percent={report.summary.checkInCompletionPercent}
-                  actual={report.summary.checkInTotalMinutes}
-                  target={report.summary.targetMinutes}
+                  detail={`打卡 ${duration(report.summary.checkInTotalMinutes)}，目标 ${duration(report.summary.targetMinutes)}。总时长包含休息日，完成度只统计工作日。`}
                   tone="checkin"
                 />
               </div>
-              <p className={styles.explanation}>
-                参考目标：每个工作日 8 小时。完成度只统计工作日，单日最多计入 8
-                小时；总时长包含休息日。在线时长不含免打扰状态。首月不含账号创建前的日期。报告生成后不会随原始记录变化。
-              </p>
-            </>
+              <div className={styles.sectionLabel}>02 / 逐日记录</div>
+              <DailyRecords report={report} />
+              <footer className={styles.reportFooter}>
+                本报告按月生成并归档 · 详细统计口径可悬停或点击指标查看
+              </footer>
+            </article>
           )}
-          <section className={styles.history} aria-label="过往月报">
-            <div className={styles.sectionHeading}>
-              <div>
-                <span className={styles.eyebrow}>历史月报</span>
-                <h3>已保存的月份</h3>
-              </div>
-              <span className={styles.sectionAside}>共 {items.length} 份</span>
-            </div>
-            <div className={styles.historyGrid}>
-              {items.map((item) => (
-                <button
-                  type="button"
-                  key={item.month}
-                  className={`${styles.historyCard} ${month === item.month ? styles.historyActive : ''}`}
-                  aria-pressed={month === item.month}
-                  onClick={() => setChosenMonth(item.month)}
-                >
-                  <span>{item.month.replace('-', ' 年 ')} 月</span>
-                  <strong>
-                    {item.summary.overallCompletionPercent === null
-                      ? '—'
-                      : `${item.summary.overallCompletionPercent}%`}
-                  </strong>
-                  <small>综合完成度 · {item.summary.expectedWorkDays} 个工作日</small>
-                </button>
-              ))}
-            </div>
-          </section>
-          {report && !reportQuery.isError ? <DailyRecords report={report} /> : null}
         </>
       )}
     </div>

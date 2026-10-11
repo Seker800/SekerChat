@@ -119,16 +119,19 @@ describe('DmAttendancePage', () => {
     expect(screen.getByTestId('timeline-checkout-marker')).toHaveTextContent('签退');
   });
 
-  it('切换到个人月报，展示完成度和逐日记录', async () => {
+  it('切换到个人月报，展示完成度并可选择历史月份', async () => {
     renderPage();
     fireEvent.click(screen.getByRole('tab', { name: '我的月报' }));
     expect(await screen.findByText('综合完成度')).toBeInTheDocument();
     expect(screen.getByTestId('attendance-monthly-report')).toHaveTextContent('56%');
     expect(screen.getByTestId('attendance-monthly-report')).toHaveTextContent('08-11');
-    expect(screen.getByTestId('attendance-monthly-report')).toHaveTextContent('已保存的月份');
+    expect(screen.getByRole('combobox', { name: '选择月报月份' })).toHaveValue('2026-08');
+    expect(screen.getByText('查看每日记录')).toBeInTheDocument();
     expect(fetchOwnMonthlyAttendanceReports).toHaveBeenCalledWith('token');
     expect(fetchOwnMonthlyAttendanceReport).toHaveBeenCalledWith('token', '2026-08');
-    fireEvent.click(screen.getByRole('button', { name: /2026 年 07 月/ }));
+    fireEvent.change(screen.getByRole('combobox', { name: '选择月报月份' }), {
+      target: { value: '2026-07' },
+    });
     expect(fetchOwnMonthlyAttendanceReport).toHaveBeenCalledWith('token', '2026-07');
   });
 });

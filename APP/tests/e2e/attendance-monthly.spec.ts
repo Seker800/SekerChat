@@ -73,13 +73,16 @@ test('personal monthly report shows completion and daily records at desktop and 
   const report = page.getByTestId('attendance-monthly-report');
   await expect(report).toContainText('综合完成度');
   await expect(report).toContainText('94%');
-  await expect(report).toContainText('09-24');
-  await expect(report).not.toContainText('2026 年 10 月');
+  await expect(report.getByRole('combobox', { name: '选择月报月份' })).toHaveValue('2026-09');
   await expect(report.locator('[class*="recordRow"]')).toHaveCount(24);
-  await page.getByRole('button', { name: /2026 年 08 月/ }).click();
-  await expect(report).toContainText('08-24');
-  await page.getByRole('button', { name: /2026 年 09 月/ }).click();
-  await expect(report).toContainText('09-24');
+  await expect(report.locator('[class*="recordRow"]').first()).toBeHidden();
+  await report.getByRole('combobox', { name: '选择月报月份' }).selectOption('2026-08');
+  await report.getByRole('button', { name: /综合完成度/ }).hover();
+  await expect(report.getByRole('tooltip')).toContainText('2026-08-24');
+  await report.getByRole('combobox', { name: '选择月报月份' }).selectOption('2026-09');
+  await report.getByRole('button', { name: /综合完成度/ }).hover();
+  await expect(report.getByRole('tooltip')).toContainText('2026-09-24');
+  await page.screenshot({ path: testInfo.outputPath('monthly-tooltip-desktop.png') });
   const overall = report.locator('[class*="overall"]').first();
   const online = report.locator('[class*="online"]').first();
   const overallBox = await overall.boundingBox();
@@ -88,14 +91,36 @@ test('personal monthly report shows completion and daily records at desktop and 
   expect(onlineBox).not.toBeNull();
   expect(overallBox!.width).toBeGreaterThan(onlineBox!.width);
   expect(overallBox!.height).toBeGreaterThan(onlineBox!.height);
+  await page.mouse.move(0, 0);
   await report.evaluate((element) => element.scrollIntoView({ block: 'start' }));
   await page.screenshot({ path: testInfo.outputPath('monthly-desktop.png') });
+
+  await page.setViewportSize({ width: 850, height: 720 });
+  await report.getByRole('button', { name: /在线完成度/ }).hover();
+  const narrowTooltip = await report.getByRole('tooltip').boundingBox();
+  expect(narrowTooltip).not.toBeNull();
+  expect(narrowTooltip!.x + narrowTooltip!.width).toBeLessThanOrEqual(850);
+  await page.mouse.move(0, 0);
+  await page.screenshot({ path: testInfo.outputPath('monthly-narrow-desktop.png') });
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(report).toBeVisible();
   await expect(report).toContainText('94%');
   await report.evaluate((element) => element.scrollIntoView({ block: 'start' }));
   await page.screenshot({ path: testInfo.outputPath('monthly-mobile.png') });
+  await report.getByRole('button', { name: /综合完成度/ }).click();
+  await expect(report.getByRole('tooltip')).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('monthly-overall-tooltip-mobile.png') });
+  expect(
+    await report
+      .getByRole('tooltip')
+      .evaluate((element) => element.scrollHeight > element.clientHeight),
+  ).toBe(false);
+  await report.getByRole('button', { name: /在线完成度/ }).click();
+  await expect(report.getByRole('tooltip')).toContainText('非免打扰在线 126 小时 00 分');
+  await page.screenshot({ path: testInfo.outputPath('monthly-tooltip-mobile.png') });
+  await report.getByText('查看每日记录').click();
+  await expect(report.locator('[class*="recordRow"]').first()).toBeVisible();
   await report.locator('[class*="recordRow"]').last().scrollIntoViewIfNeeded();
   await page.screenshot({
     path: testInfo.outputPath('monthly-mobile-records.png'),

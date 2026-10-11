@@ -297,6 +297,7 @@
   --attendance-online: #77d5a5;
   --attendance-checkin: #9bb8ed;
   --attendance-border: rgba(255, 255, 255, 0.09);
+  align-content: start;
   background: #292b30;
   gap: 14px;
 }
