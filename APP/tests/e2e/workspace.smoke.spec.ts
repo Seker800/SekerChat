@@ -946,11 +946,15 @@ test.describe('review web smoke', () => {
     const secondaryCharts = page.getByTestId('attendance-secondary-charts');
     await expect(secondaryCharts).toBeVisible();
     const distributionViewport = page.getByTestId('time-distribution-viewport');
-    const heatmapGrid = page.getByRole('img', { name: '过去一年综合活跃强度图' });
+    const heatmapGrid = page.getByRole('group', { name: '过去一年综合活跃强度图' });
     await expect(page.getByRole('heading', { name: '过去一年有 365 天活跃' })).toBeVisible();
-    expect(await heatmapGrid.locator('[title]').count()).toBe(365);
+    expect(await heatmapGrid.getByRole('button').count()).toBe(365);
+    await heatmapGrid.getByRole('button').nth(180).hover();
+    await expect(page.getByRole('tooltip')).toContainText('综合平均：');
+    await expect(page.getByRole('tooltip')).toContainText('非免打扰在线：');
+    await page.screenshot({ path: 'test-results/attendance-tooltip.png', animations: 'disabled' });
 
-    for (const width of [1080, 960]) {
+    for (const width of [1440, 1080, 960]) {
       await page.setViewportSize({ width, height: 960 });
       const metrics = await secondaryCharts.evaluate((node) => {
         const [heatmapCard, distributionCard] = Array.from(node.children) as HTMLElement[];
@@ -970,9 +974,14 @@ test.describe('review web smoke', () => {
       expect(Math.abs(metrics.heatmapWidth - metrics.distributionWidth)).toBeLessThanOrEqual(1);
       expect(metrics.distributionTop).toBeGreaterThan(metrics.heatmapBottom);
       await expect(distributionViewport).toHaveCSS('height', '260px');
+      if (width === 1440) {
+        const graphWidth = await heatmapGrid.evaluate((node) => node.getBoundingClientRect().width);
+        const containerWidth = await heatmapGrid.locator('..').evaluate((node) => node.clientWidth);
+        expect(Math.abs(graphWidth - containerWidth)).toBeLessThanOrEqual(1);
+      }
     }
 
-    await page.setViewportSize({ width: 840, height: 960 });
+    await page.setViewportSize({ width: 600, height: 960 });
     const mobileColumnCount = await secondaryCharts.evaluate(
       (node) => getComputedStyle(node).gridTemplateColumns.split(' ').length,
     );
@@ -981,5 +990,6 @@ test.describe('review web smoke', () => {
       (node) => node.scrollWidth > node.clientWidth,
     );
     expect(heatmapScrolls).toBe(true);
+    await page.screenshot({ path: 'test-results/attendance-mobile.png', animations: 'disabled', fullPage: true });
   });
 });

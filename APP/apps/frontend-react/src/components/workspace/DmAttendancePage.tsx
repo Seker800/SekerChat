@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   fetchOwnAttendancePanel,
@@ -163,6 +164,17 @@ function AttendanceHeatMatrix({
   onlineSeries: CheckInPanelResponse['onlineSeries'];
   checkInSeries: CheckInPanelResponse['checkInSeries'];
 }) {
+  type HeatDay = CheckInPanelResponse['statusSeries'][number] & {
+    onlineMinutes: number;
+    checkInMinutes: number;
+    averageMinutes: number;
+  };
+  const [tooltip, setTooltip] = useState<{ day: HeatDay; x: number; y: number } | null>(null);
+  const showTooltip = (day: HeatDay, x: number, y: number) => {
+    const left = Math.max(8, Math.min(x + 14, window.innerWidth - 232));
+    const top = y + 130 < window.innerHeight ? y + 14 : Math.max(8, y - 126);
+    setTooltip({ day, x: left, y: top });
+  };
   const onlineMap = useMemo(
     () => new Map(onlineSeries.map((item) => [item.workDate, item.onlineMinutes])),
     [onlineSeries],
@@ -173,7 +185,7 @@ function AttendanceHeatMatrix({
   );
 
   const { days, firstWeek, weekCount, monthLabels, activeDays } = useMemo(() => {
-    const days = statusSeries.map((item) => {
+    const days: HeatDay[] = statusSeries.map((item) => {
       const onlineMinutes = onlineMap.get(item.workDate) ?? 0;
       const checkInMinutes = checkInMap.get(item.workDate) ?? 0;
       return {
@@ -221,8 +233,8 @@ function AttendanceHeatMatrix({
       <div className={styles.heatmapShell}>
         <div
           className={styles.heatmapGrid}
-          style={{ gridTemplateColumns: `28px repeat(${weekCount}, 12px)` }}
-          role="img"
+          style={{ gridTemplateColumns: `28px repeat(${weekCount}, minmax(10px, 1fr))` }}
+          role="group"
           aria-label="过去一年综合活跃强度图"
         >
           {monthLabels.map((month) => (
@@ -238,11 +250,23 @@ function AttendanceHeatMatrix({
           {days.map((day) => {
             const column = Math.round((parseDateKey(getWeekStartDate(day.workDate)).getTime() - parseDateKey(firstWeek).getTime()) / 604_800_000) + 2;
             return (
-              <span
+              <button
                 key={day.workDate}
+                type="button"
                 className={`${styles.heatmapCell} ${styles[`heatCellLevel${getHeatLevel(day.averageMinutes)}`]}`}
                 style={{ gridColumn: column, gridRow: getWeekdayIndex(day.workDate) + 2 }}
-                title={`${day.workDate} · 综合平均 ${formatDuration(day.averageMinutes)} · 打卡 ${formatDuration(day.checkInMinutes)} · 非免打扰在线 ${formatDuration(day.onlineMinutes)}`}
+                aria-label={`${day.workDate}，综合平均 ${formatDuration(day.averageMinutes)}，打卡 ${formatDuration(day.checkInMinutes)}，非免打扰在线 ${formatDuration(day.onlineMinutes)}`}
+                aria-describedby={tooltip?.day.workDate === day.workDate ? 'attendance-heatmap-tooltip' : undefined}
+                onPointerEnter={(event) => showTooltip(day, event.clientX, event.clientY)}
+                onPointerMove={(event) => showTooltip(day, event.clientX, event.clientY)}
+                onPointerLeave={(event) => {
+                  if (document.activeElement !== event.currentTarget) setTooltip(null);
+                }}
+                onFocus={(event) => {
+                  const rect = event.currentTarget.getBoundingClientRect();
+                  showTooltip(day, rect.left + rect.width / 2, rect.top);
+                }}
+                onBlur={() => setTooltip(null)}
               />
             );
           })}
@@ -256,6 +280,21 @@ function AttendanceHeatMatrix({
         <span>多</span>
         <span className={styles.heatmapLegendNote}>颜色按当天打卡与非免打扰在线时长的平均值计算</span>
       </div>
+      {tooltip && createPortal(
+        <div
+          id="attendance-heatmap-tooltip"
+          className={styles.heatmapTooltip}
+          style={{ left: tooltip.x, top: tooltip.y }}
+          role="tooltip"
+        >
+          <strong>{tooltip.day.workDate}</strong>
+          <span>综合平均：{formatDuration(tooltip.day.averageMinutes)}</span>
+          <span>打卡：{formatDuration(tooltip.day.checkInMinutes)}</span>
+          <span>非免打扰在线：{formatDuration(tooltip.day.onlineMinutes)}</span>
+          <span>状态：{getCheckInStatusText(tooltip.day.status)}</span>
+        </div>,
+        document.body,
+      )}
     </section>
   );
 }

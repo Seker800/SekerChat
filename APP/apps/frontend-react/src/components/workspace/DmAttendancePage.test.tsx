@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DmAttendancePage } from './DmAttendancePage';
 
@@ -87,7 +87,11 @@ describe('DmAttendancePage', () => {
     expect(secondaryCharts).toContainElement(screen.getByRole('heading', { name: '签到 / 签退时间分布' }));
     expect(secondaryCharts.children).toHaveLength(2);
     expect(fetchOwnCheckInPanel).toHaveBeenCalledWith('token', 365);
-    expect(screen.getByTitle(/综合平均 1h 45m · 打卡 2h 00m · 非免打扰在线 1h 30m/)).toBeInTheDocument();
+    const day = screen.getByRole('button', { name: /2026-08-11，综合平均 1h 45m，打卡 2h 00m，非免打扰在线 1h 30m/ });
+    fireEvent.pointerEnter(day, { clientX: 100, clientY: 100 });
+    expect(screen.getByRole('tooltip')).toHaveTextContent('综合平均：1h 45m');
+    expect(screen.getByRole('tooltip')).toHaveTextContent('打卡：2h 00m');
+    expect(screen.getByRole('tooltip')).toHaveTextContent('非免打扰在线：1h 30m');
   });
 
   it('在签到与签退之间绘制连接并把两个气泡标记放在时间轴上', async () => {
