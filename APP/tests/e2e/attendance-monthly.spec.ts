@@ -44,6 +44,7 @@ test('personal monthly report shows completion and daily records at desktop and 
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
+        userId: 'a0b1c2d3-e4f5-4678-9012-3456789abcde',
         month,
         generatedAt: '2026-10-01T00:05:00.000Z',
         timezone: 'Asia/Shanghai',
@@ -73,6 +74,7 @@ test('personal monthly report shows completion and daily records at desktop and 
   const report = page.getByTestId('attendance-monthly-report');
   await expect(report).toContainText('综合完成度');
   await expect(report).toContainText('94%');
+  await expect(report).toContainText('用户 ID · a0b1c2d3-e4f5-4678-9012-3456789abcde');
   await expect(report.getByRole('combobox', { name: '选择月报月份' })).toHaveValue('2026-09');
   await expect(report.locator('[class*="recordRow"]')).toHaveCount(24);
   await expect(report.locator('[class*="recordRow"]').first()).toBeHidden();

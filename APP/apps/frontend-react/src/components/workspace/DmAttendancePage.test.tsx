@@ -53,6 +53,7 @@ describe('DmAttendancePage', () => {
       { month: '2026-07', generatedAt: '2026-08-01T00:05:00.000Z', summary: { overallCompletionPercent: 72, expectedWorkDays: 22 }, dayCount: 31 },
     ] });
     fetchOwnMonthlyAttendanceReport.mockResolvedValue({
+      userId: 'user-1',
       month: '2026-08', generatedAt: '2026-09-01T00:05:00.000Z',
       timezone: 'Asia/Shanghai', targetDailyMinutes: 480,
       range: { startDate: '2026-08-01', endDate: '2026-08-31', effectiveStartDate: '2026-08-01', effectiveEndDate: '2026-08-11' },
@@ -124,6 +125,7 @@ describe('DmAttendancePage', () => {
     fireEvent.click(screen.getByRole('tab', { name: '我的月报' }));
     expect(await screen.findByText('综合完成度')).toBeInTheDocument();
     expect(screen.getByTestId('attendance-monthly-report')).toHaveTextContent('56%');
+    expect(screen.getByTestId('attendance-monthly-report')).toHaveTextContent('用户 ID · user-1');
     expect(screen.getByTestId('attendance-monthly-report')).toHaveTextContent('08-11');
     expect(screen.getByRole('combobox', { name: '选择月报月份' })).toHaveValue('2026-08');
     expect(screen.getByText('查看每日记录')).toBeInTheDocument();

@@ -76,6 +76,7 @@ test('closed-month report is saved once and later reads do not recalculate it', 
   );
   assert.equal(listed.items[0].summary.overallCompletionPercent, 50);
   const saved = await service.getOwnReport(own, '2026-09');
+  assert.equal(saved.userId, 'user-1');
   assert.equal(saved.summary.overallCompletionPercent, 50);
   assert.equal(calculations, 1);
   await assert.rejects(service.getOwnReport({ ...own, sub: 'user-2' }, '2026-09'), /尚未生成/);

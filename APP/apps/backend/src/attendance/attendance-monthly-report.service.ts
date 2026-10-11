@@ -45,10 +45,10 @@ export class AttendanceMonthlyReportService {
     }
     const row = await this.prisma.attendanceMonthlyReport.findUnique({
       where: { userId_month: { userId: actor.sub, month } },
-      select: { generatedAt: true, snapshot: true },
+      select: { userId: true, generatedAt: true, snapshot: true },
     });
     if (!row) throw new NotFoundException('该月报告尚未生成。');
-    return { ...(row.snapshot as MonthlySnapshot), generatedAt: row.generatedAt };
+    return { ...(row.snapshot as MonthlySnapshot), userId: row.userId, generatedAt: row.generatedAt };
   }
 
   async generateMissingReports(maxHistoricalReports = 50, now = new Date()): Promise<number> {

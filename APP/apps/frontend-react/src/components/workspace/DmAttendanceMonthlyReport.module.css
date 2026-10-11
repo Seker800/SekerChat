@@ -78,6 +78,11 @@
   color: #657168;
   font-size: 11px;
 }
+.reportUserId {
+  flex-basis: 100%;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
 .sectionLabel {
   padding-bottom: 10px;
   border-bottom: 1px solid #d9ddd6;

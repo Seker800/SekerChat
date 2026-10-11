@@ -227,6 +227,7 @@ export async function fetchOwnAttendancePanel(
 }
 
 export interface MonthlyAttendanceReport {
+  userId: string;
   month: string;
   generatedAt: string;
   timezone: string;
