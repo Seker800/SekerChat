@@ -770,7 +770,7 @@ test.describe('review web smoke', () => {
     expect(attendanceBounds).not.toBeNull();
     expect(monthlyReportBounds).not.toBeNull();
     expect(monthlyReportBounds!.y).toBeGreaterThan(attendanceBounds!.y);
-    expect(monthlyReportBounds!.x).toBeGreaterThan(attendanceBounds!.x);
+    expect(monthlyReportBounds!.x).toBe(attendanceBounds!.x);
     await sidebar.screenshot({
       path: testInfo.outputPath('dm-sidebar.png'),
       animations: 'disabled',

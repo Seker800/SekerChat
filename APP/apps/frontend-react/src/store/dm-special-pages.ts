@@ -14,7 +14,6 @@ export interface DmSpecialPageDefinition {
   labelKey: string;
   description: string;
   route: string;
-  parentId?: string;
 }
 
 export const DM_SPECIAL_PAGES: readonly DmSpecialPageDefinition[] = [
@@ -31,7 +30,6 @@ export const DM_SPECIAL_PAGES: readonly DmSpecialPageDefinition[] = [
     labelKey: 'navigation.special.monthlyReport',
     description: '个人出勤月报档案',
     route: DM_MONTHLY_REPORT_ROUTE,
-    parentId: DM_ATTENDANCE_PAGE_ID,
   },
   {
     id: DM_SUBSCRIPTION_PAGE_ID,

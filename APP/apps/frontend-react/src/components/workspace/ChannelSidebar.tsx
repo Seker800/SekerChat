@@ -681,7 +681,7 @@ export function ChannelSidebar({
             {DM_SPECIAL_PAGES.map((page) => (
               <button
                 key={page.id}
-                className={`${styles.groupRow} ${styles.specialRow} ${page.parentId ? styles.specialChildRow : ''} ${selectedSpecialPageId === page.id ? styles.groupRowActive : ''}`}
+                className={`${styles.groupRow} ${styles.specialRow} ${selectedSpecialPageId === page.id ? styles.groupRowActive : ''}`}
                 type="button"
                 onClick={() => {
                   onSelectSpecialPage?.(page.id);

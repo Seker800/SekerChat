@@ -13,7 +13,7 @@ import {
 } from './dm-special-pages';
 
 describe('dm special page registry', () => {
-  it('registers the monthly report directly under attendance', () => {
+  it('registers attendance and monthly report as peer pages', () => {
     expect(isDmSpecialPageId(DM_ATTENDANCE_PAGE_ID)).toBe(true);
     expect(isDmSpecialPageId(DM_MONTHLY_REPORT_PAGE_ID)).toBe(true);
     expect(isDmSpecialPageId(DM_SUBSCRIPTION_PAGE_ID)).toBe(true);
@@ -21,7 +21,6 @@ describe('dm special page registry', () => {
     expect(DM_SPECIAL_PAGES.map((page) => page.label)).toEqual(['出勤', '月报', '文章', '相册']);
     expect(getDmSpecialPage(DM_MONTHLY_REPORT_PAGE_ID)).toMatchObject({
       route: DM_MONTHLY_REPORT_ROUTE,
-      parentId: DM_ATTENDANCE_PAGE_ID,
     });
     expect(getDmSpecialPage(DM_SUBSCRIPTION_PAGE_ID)).toMatchObject({
       label: '文章',
