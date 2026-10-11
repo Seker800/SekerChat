@@ -182,6 +182,30 @@ test('getOwnCheckInPanel month and total averages use projected workdays from fi
   assert.equal(panel.summary.averages.checkIn.totalAverageMinutes, 60);
 });
 
+test('getOwnCheckInPanel includes previous-year days without changing current-year averages', async () => {
+  const service = createAttendanceService({
+    checkInSessions: [
+      {
+        id: 'previous-year', userId: 'user-1', workDate: '2025-12-31',
+        checkInAt: new Date('2025-12-31T01:00:00.000Z'),
+        checkOutAt: new Date('2025-12-31T03:00:00.000Z'),
+      },
+      {
+        id: 'current-year', userId: 'user-1', workDate: '2026-01-02',
+        checkInAt: new Date('2026-01-02T01:00:00.000Z'),
+        checkOutAt: new Date('2026-01-02T02:00:00.000Z'),
+      },
+    ],
+  });
+  const panel = await withMockedNow('2026-01-02T04:00:00.000Z', () =>
+    service.getOwnCheckInPanel({ sub: 'user-1', role: 'MEMBER' } as any, 365),
+  );
+
+  assert.equal(panel.range.days, 365);
+  assert.equal(panel.checkInSeries.find((day) => day.workDate === '2025-12-31')?.checkInMinutes, 120);
+  assert.equal(panel.summary.averages.checkIn.totalAverageMinutes, 60);
+});
+
 test('checkIn and checkOut allow multiple sessions in one day and accumulate minutes', async () => {
   const service = createAttendanceService({
     checkInSessions: [

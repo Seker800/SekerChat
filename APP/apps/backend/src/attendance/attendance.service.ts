@@ -296,25 +296,27 @@ export class AttendanceService {
     const dateKeys = this.enumerateDateKeys(startDate, today);
     const currentYearStartDate = `${today.slice(0, 4)}-01-01`;
     const yearDateKeys = this.enumerateDateKeys(currentYearStartDate, today);
-    const [yearRecords, dailyProjections] = await Promise.all([
+    const recordStartDate = startDate < currentYearStartDate ? startDate : currentYearStartDate;
+    const [panelRecords, dailyProjections] = await Promise.all([
       this.prismaService.checkInSession.findMany({
         where: {
           userId: actor.sub,
           workDate: {
-            gte: currentYearStartDate,
+            gte: recordStartDate,
             lte: today,
           },
         },
       }),
       this.loadDailyPresenceProjections(
         actor.sub,
-        currentYearStartDate,
+        recordStartDate,
         today,
         config.timezone,
       ),
     ]);
-    const records = yearRecords.filter((record) => record.workDate >= startDate);
-    const todaySessions = yearRecords.filter((record) => record.workDate === today);
+    const records = panelRecords.filter((record) => record.workDate >= startDate);
+    const yearRecords = panelRecords.filter((record) => record.workDate >= currentYearStartDate);
+    const todaySessions = panelRecords.filter((record) => record.workDate === today);
     const todayState = {
       ...this.summarizeCheckInSessions(today, todaySessions, { now: new Date() }),
       onlineMinutes: dailyProjections.get(today)?.onlineWorkMinutes ?? 0,
@@ -1109,7 +1111,7 @@ export class AttendanceService {
     if (!Number.isFinite(days)) {
       return 30;
     }
-    return Math.max(7, Math.min(Math.trunc(days), 90));
+    return Math.max(7, Math.min(Math.trunc(days), 365));
   }
 
   private normalizePageLimit(limit: number | undefined): number {

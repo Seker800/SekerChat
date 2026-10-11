@@ -78,14 +78,16 @@ describe('DmAttendancePage', () => {
     });
   });
 
-  it('移除趋势主图并让两张副图共用等分布局', async () => {
+  it('按打卡和非免打扰在线时长的日均值显示全年活跃图', async () => {
     renderPage();
 
     const secondaryCharts = await screen.findByTestId('attendance-secondary-charts');
     expect(screen.queryByRole('heading', { name: '打卡/在线时长趋势' })).not.toBeInTheDocument();
-    expect(secondaryCharts).toContainElement(screen.getByRole('heading', { name: '在线强度热力矩阵' }));
+    expect(secondaryCharts).toContainElement(screen.getByRole('heading', { name: '过去一年有 1 天活跃' }));
     expect(secondaryCharts).toContainElement(screen.getByRole('heading', { name: '签到 / 签退时间分布' }));
     expect(secondaryCharts.children).toHaveLength(2);
+    expect(fetchOwnCheckInPanel).toHaveBeenCalledWith('token', 365);
+    expect(screen.getByTitle(/综合平均 1h 45m · 打卡 2h 00m · 非免打扰在线 1h 30m/)).toBeInTheDocument();
   });
 
   it('在签到与签退之间绘制连接并把两个气泡标记放在时间轴上', async () => {

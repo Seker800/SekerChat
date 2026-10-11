@@ -328,7 +328,7 @@
 
 .attendanceSecondaryCharts {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
   min-width: 0;
 }
@@ -626,200 +626,73 @@
   gap: 6px;
 }
 
-.heatmapSummary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.heatmapSummaryItem {
-  display: grid;
-  gap: 4px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02)),
-    rgba(7, 11, 18, 0.72);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.heatmapSummaryItem span {
-  color: var(--text-dim);
-  font-size: 10px;
-  letter-spacing: 0.06em;
-}
-
-.heatmapSummaryItem strong {
-  color: var(--text-strong);
-  font-size: 14px;
-}
-
 .heatmapShell {
   overflow-x: auto;
-  padding: 8px 10px 10px;
+  padding: 8px 0 10px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0.01)),
-    rgba(10, 14, 20, 0.62);
 }
 
 .heatmapGrid {
-  display: inline-grid;
-  gap: 3px 4px;
-  min-width: 100%;
-}
-
-.heatmapCorner {
-  min-height: 10px;
-}
-
-.heatmapColHead {
-  color: var(--text-dim);
-  font-size: 9px;
-  text-align: center;
-  letter-spacing: 0.08em;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.heatmapMonthSep {
-  grid-column: 1 / -1;
-  padding: 8px 0 2px;
-  color: var(--text-soft);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
-}
-
-.heatmapWeekLabel {
   display: grid;
-  align-items: center;
-  color: var(--text-dim);
-  font-size: 9px;
-  letter-spacing: 0.06em;
+  width: max-content;
+  grid-template-rows: 16px repeat(7, 12px);
+  gap: 3px;
 }
 
-.heatmapCell,
-.heatmapCellEmpty {
-  min-width: 30px;
-  min-height: 26px;
-  border-radius: 6px;
+.heatmapMonthLabel,
+.heatmapWeekdayLabel {
+  color: var(--text-dim);
+  font-size: 9px;
+  white-space: nowrap;
+}
+
+.heatmapWeekdayLabel {
+  align-self: center;
 }
 
 .heatmapCell {
-  display: grid;
-  place-items: center;
-  position: relative;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
-  overflow: hidden;
-  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
-}
-
-.heatmapDateValue {
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  line-height: 1;
-}
-
-.heatmapCellEmpty {
-  background: rgba(255, 255, 255, 0.015);
-  border: 1px dashed rgba(255, 255, 255, 0.03);
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
 .heatCellLevel0 {
-  background: rgba(255, 255, 255, 0.018);
+  background: #161b22;
 }
 
 .heatCellLevel1 {
-  background: rgba(19, 41, 32, 0.84);
+  background: #0e4429;
 }
 
 .heatCellLevel2 {
-  background: rgba(24, 101, 72, 0.9);
+  background: #006d32;
 }
 
 .heatCellLevel3 {
-  background: rgba(27, 128, 91, 0.94);
+  background: #26a641;
 }
 
 .heatCellLevel4 {
-  background: rgba(37, 170, 117, 0.98);
-}
-
-.heatmapCellIdle {
-  border-color: rgba(255, 255, 255, 0.03);
-  box-shadow: none;
-}
-
-.heatmapCellIdle .heatmapDateValue {
-  color: rgba(255, 255, 255, 0.56);
-}
-
-.heatCellDone {
-  border-color: rgba(94, 234, 212, 0.44);
-}
-
-.heatCellOpen {
-  border-color: rgba(96, 165, 250, 0.48);
-}
-
-.heatCellMiss {
-  border-color: rgba(255, 255, 255, 0.08);
-}
-
-.heatToneLevel0 {
-  border-color: rgba(58, 86, 74, 0.46);
-  color: rgba(58, 86, 74, 0.46);
-}
-
-.heatToneLevel1 {
-  border-color: rgba(88, 132, 113, 0.72);
-  color: rgba(88, 132, 113, 0.72);
-}
-
-.heatToneLevel2 {
-  border-color: rgba(42, 146, 106, 0.9);
-  color: rgba(42, 146, 106, 0.9);
-}
-
-.heatToneLevel3 {
-  border-color: rgba(56, 184, 132, 0.96);
-  color: rgba(56, 184, 132, 0.96);
-}
-
-.heatToneLevel4 {
-  border-color: rgba(103, 243, 183, 0.98);
-  color: rgba(103, 243, 183, 0.98);
-}
-
-.legendSwatch.heatToneLevel0,
-.legendSwatch.heatToneLevel1,
-.legendSwatch.heatToneLevel2,
-.legendSwatch.heatToneLevel3,
-.legendSwatch.heatToneLevel4 {
-  background: transparent;
-  box-shadow: inset 0 0 0 2px currentColor;
+  background: #39d353;
 }
 
 .heatmapLegend {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 4px;
   margin-top: 10px;
   color: var(--text-dim);
-  font-size: 9px;
+  font-size: 10px;
 }
 
-.heatmapLegend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+.heatmapLegendSwatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.heatmapLegendNote {
+  margin-left: auto;
 }
 
 .checkInDotLegend,
@@ -1178,10 +1051,6 @@
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .heatmapSummary {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
   .boardSide {
     order: -1;
   }
@@ -1259,15 +1128,6 @@
     font-size: 10px;
   }
 
-  .heatmapGrid {
-    gap: 3px 4px;
-  }
-
-  .heatmapCell,
-  .heatmapCellEmpty {
-    min-width: 28px;
-    min-height: 24px;
-  }
 }
 
 @media (max-width: 480px) {

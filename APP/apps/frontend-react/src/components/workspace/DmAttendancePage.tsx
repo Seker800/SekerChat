@@ -1,11 +1,9 @@
-import { type ReactNode, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   fetchOwnAttendancePanel,
   fetchOwnCheckInPanel,
-  type AttendancePanelDay,
   type AttendancePanelResponse,
-  type CheckInPanelDay,
   type CheckInPanelResponse,
 } from '../../lib/attendance-api';
 import { getCheckInStatusText, useOwnCheckInController } from './useOwnCheckInController';
@@ -14,7 +12,7 @@ import styles from './WorkspaceShell.module.css';
 
 type RangeKey = 7 | 30 | 90;
 const DISPLAY_TIMEZONE = 'Asia/Shanghai';
-const HEATMAP_WEEKDAY_LABELS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+const HEATMAP_WEEKDAY_LABELS = ['', '周一', '', '周三', '', '周五', ''];
 
 function formatDuration(value: number | null | undefined): string {
   if (value === null || value === undefined) return '--';
@@ -68,16 +66,11 @@ function shiftDateKey(workDate: string, days: number): string {
 }
 
 function getWeekdayIndex(workDate: string): number {
-  const day = parseDateKey(workDate).getUTCDay();
-  return day === 0 ? 6 : day - 1;
+  return parseDateKey(workDate).getUTCDay();
 }
 
 function getWeekStartDate(workDate: string): string {
   return shiftDateKey(workDate, -getWeekdayIndex(workDate));
-}
-
-function formatShortDate(workDate: string): string {
-  return workDate.slice(5).replace('-', '/');
 }
 
 function CheckInTimeDistribution({
@@ -162,17 +155,13 @@ function CheckInTimeDistribution({
 }
 
 function AttendanceHeatMatrix({
-  range,
-  onRangeChange,
   statusSeries,
   onlineSeries,
   checkInSeries,
 }: {
-  range: RangeKey;
-  onRangeChange: (next: RangeKey) => void;
   statusSeries: CheckInPanelResponse['statusSeries'];
-  onlineSeries: AttendancePanelDay[];
-  checkInSeries: CheckInPanelDay[];
+  onlineSeries: CheckInPanelResponse['onlineSeries'];
+  checkInSeries: CheckInPanelResponse['checkInSeries'];
 }) {
   const onlineMap = useMemo(
     () => new Map(onlineSeries.map((item) => [item.workDate, item.onlineMinutes])),
@@ -183,38 +172,34 @@ function AttendanceHeatMatrix({
     [checkInSeries],
   );
 
-  type HeatCell = {
-    workDate: string;
-    onlineMinutes: number;
-    checkInMinutes: number;
-    status: CheckInPanelResponse['statusSeries'][number]['status'];
-  };
-
-  const weekRows = useMemo(() => {
-    const grouped = new Map<string, HeatCell[]>();
-
-    for (const item of statusSeries) {
-      const weekStartDate = getWeekStartDate(item.workDate);
-      const bucket = grouped.get(weekStartDate) ?? [];
-      bucket.push({
-        workDate: item.workDate,
-        onlineMinutes: onlineMap.get(item.workDate) ?? 0,
-        checkInMinutes: checkInMap.get(item.workDate) ?? 0,
-        status: item.status,
-      });
-      grouped.set(weekStartDate, bucket);
-    }
-
-    return [...grouped.entries()]
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([weekStartDate, items]) => {
-        const cells = Array.from({ length: 7 }, () => null as null | HeatCell);
-        for (const item of items) {
-          cells[getWeekdayIndex(item.workDate)] = item;
-        }
-        const monthLabel = weekStartDate.slice(0, 7);
-        return { weekStartDate, monthLabel, cells };
-      });
+  const { days, firstWeek, weekCount, monthLabels, activeDays } = useMemo(() => {
+    const days = statusSeries.map((item) => {
+      const onlineMinutes = onlineMap.get(item.workDate) ?? 0;
+      const checkInMinutes = checkInMap.get(item.workDate) ?? 0;
+      return {
+        ...item,
+        onlineMinutes,
+        checkInMinutes,
+        averageMinutes: Math.round((onlineMinutes + checkInMinutes) / 2),
+      };
+    });
+    const firstWeek = days[0] ? getWeekStartDate(days[0].workDate) : '';
+    const lastDay = days[days.length - 1];
+    const lastWeek = lastDay ? getWeekStartDate(lastDay.workDate) : '';
+    const weekCount = firstWeek && lastWeek
+      ? Math.round((parseDateKey(lastWeek).getTime() - parseDateKey(firstWeek).getTime()) / 604_800_000) + 1
+      : 0;
+    const monthLabels = days.filter((day, index) => index === 0 || day.workDate.endsWith('-01'));
+    return {
+      days,
+      firstWeek,
+      weekCount,
+      monthLabels: monthLabels.map((day) => ({
+        label: `${Number(day.workDate.slice(5, 7))}月`,
+        column: Math.round((parseDateKey(getWeekStartDate(day.workDate)).getTime() - parseDateKey(firstWeek).getTime()) / 604_800_000) + 2,
+      })),
+      activeDays: days.filter((day) => day.averageMinutes > 0).length,
+    };
   }, [checkInMap, onlineMap, statusSeries]);
 
   const getHeatLevel = (minutes: number): 0 | 1 | 2 | 3 | 4 => {
@@ -225,106 +210,51 @@ function AttendanceHeatMatrix({
     return 1;
   };
 
-  const getHeatClass = (minutes: number): string => styles[`heatCellLevel${getHeatLevel(minutes)}`];
-  const getHeatToneClass = (minutes: number): string => styles[`heatToneLevel${getHeatLevel(minutes)}`];
-
-  const showMonthSeps =
-    weekRows.length > 1 &&
-    weekRows[0].monthLabel !== weekRows[weekRows.length - 1].monthLabel;
-
-  const monthDisplay = (label: string): string => `${Number(label.slice(5))}月`;
-
   return (
     <section className={styles.panelCard}>
       <div className={styles.panelCardHeader}>
         <div>
           <div className={styles.panelEyebrow}>副图</div>
-          <h3>在线强度热力矩阵</h3>
-        </div>
-        <div className={styles.trendHeaderAside}>
-          <div className={styles.rangeTabs}>
-            {[7, 30, 90].map((value) => (
-              <button
-                key={value}
-                type="button"
-                className={`${styles.rangeTab} ${range === value ? styles.rangeTabActive : ''}`}
-                onClick={() => onRangeChange(value as RangeKey)}
-              >
-                {value === 7 ? '1周' : value === 30 ? '1月' : '3月'}
-              </button>
-            ))}
-          </div>
+          <h3>过去一年有 {activeDays} 天活跃</h3>
         </div>
       </div>
       <div className={styles.heatmapShell}>
         <div
           className={styles.heatmapGrid}
-          style={{ gridTemplateColumns: `48px repeat(7, minmax(34px, 1fr))` }}
+          style={{ gridTemplateColumns: `28px repeat(${weekCount}, 12px)` }}
           role="img"
-          aria-label="出勤在线强度热力矩阵"
+          aria-label="过去一年综合活跃强度图"
         >
-          {/* header row: corner + weekday labels */}
-          <div className={styles.heatmapCorner} />
-          {HEATMAP_WEEKDAY_LABELS.map((label) => (
-            <div key={label} className={styles.heatmapColHead}>
-              {label}
-            </div>
+          {monthLabels.map((month) => (
+            <span key={`${month.label}-${month.column}`} className={styles.heatmapMonthLabel} style={{ gridColumn: month.column, gridRow: 1 }}>
+              {month.label}
+            </span>
           ))}
-
-          {/* body: flat list — month separators (span full row) + week rows (8 items each) */}
-          {weekRows.flatMap((row, ri) => {
-            const prevMonth = ri > 0 ? weekRows[ri - 1].monthLabel : '';
-            const items: ReactNode[] = [];
-
-            if (showMonthSeps && row.monthLabel !== prevMonth) {
-              items.push(
-                <div key={`msep-${row.monthLabel}`} className={styles.heatmapMonthSep}>
-                  {monthDisplay(row.monthLabel)}
-                </div>,
-              );
-            }
-
-            items.push(
-              <div key={`wl-${row.weekStartDate}`} className={styles.heatmapWeekLabel}>
-                {formatShortDate(row.weekStartDate)}
-              </div>,
+          {HEATMAP_WEEKDAY_LABELS.map((label, index) => (
+            <span key={index} className={styles.heatmapWeekdayLabel} style={{ gridColumn: 1, gridRow: index + 2 }}>
+              {label}
+            </span>
+          ))}
+          {days.map((day) => {
+            const column = Math.round((parseDateKey(getWeekStartDate(day.workDate)).getTime() - parseDateKey(firstWeek).getTime()) / 604_800_000) + 2;
+            return (
+              <span
+                key={day.workDate}
+                className={`${styles.heatmapCell} ${styles[`heatCellLevel${getHeatLevel(day.averageMinutes)}`]}`}
+                style={{ gridColumn: column, gridRow: getWeekdayIndex(day.workDate) + 2 }}
+                title={`${day.workDate} · 综合平均 ${formatDuration(day.averageMinutes)} · 打卡 ${formatDuration(day.checkInMinutes)} · 非免打扰在线 ${formatDuration(day.onlineMinutes)}`}
+              />
             );
-
-            for (let ci = 0; ci < 7; ci++) {
-              const cell = row.cells[ci];
-              if (!cell) {
-                items.push(
-                  <div
-                    key={`${row.weekStartDate}-e${ci}`}
-                    className={styles.heatmapCellEmpty}
-                    aria-hidden="true"
-                  />,
-                );
-              } else {
-                const checkInToneClass = getHeatToneClass(cell.checkInMinutes);
-                const isIdleDay = cell.onlineMinutes <= 0 && cell.checkInMinutes <= 0;
-                items.push(
-                  <div
-                    key={cell.workDate}
-                    className={`${styles.heatmapCell} ${getHeatClass(cell.onlineMinutes)} ${isIdleDay ? styles.heatmapCellIdle : ''} ${checkInToneClass}`}
-                    title={`${cell.workDate} · 在线 ${formatDuration(cell.onlineMinutes)} · 打卡 ${formatDuration(cell.checkInMinutes)} · ${getCheckInStatusText(cell.status)}`}
-                  >
-                    <span className={styles.heatmapDateValue}>{cell.workDate.slice(-2)}</span>
-                  </div>,
-                );
-              }
-            }
-
-            return items;
           })}
         </div>
       </div>
       <div className={styles.heatmapLegend}>
-        <span><i className={`${styles.legendSwatch} ${styles.heatCellLevel1}`} />主色：在线 &lt;4h</span>
-        <span><i className={`${styles.legendSwatch} ${styles.heatCellLevel2}`} />主色：在线 4-6h</span>
-        <span><i className={`${styles.legendSwatch} ${styles.heatCellLevel3}`} />主色：在线 6-8h</span>
-        <span><i className={`${styles.legendSwatch} ${styles.heatCellLevel4}`} />主色：在线 8h+</span>
-        <span><i className={`${styles.legendSwatch} ${styles.heatToneLevel4}`} />边框：打卡时长同档分色</span>
+        <span>少</span>
+        {[0, 1, 2, 3, 4].map((level) => (
+          <i key={level} className={`${styles.heatmapLegendSwatch} ${styles[`heatCellLevel${level}`]}`} />
+        ))}
+        <span>多</span>
+        <span className={styles.heatmapLegendNote}>颜色按当天打卡与非免打扰在线时长的平均值计算</span>
       </div>
     </section>
   );
@@ -439,13 +369,13 @@ export function DmAttendancePage({ accessToken }: { accessToken: string }) {
   const [range, setRange] = useState<RangeKey>(30);
   const checkInController = useOwnCheckInController(accessToken);
   const onlinePanelQuery = useQuery({
-    queryKey: ['attendance', 'me', 'panel', range],
-    queryFn: () => fetchOwnAttendancePanel(accessToken, range),
+    queryKey: ['attendance', 'me', 'panel', 30],
+    queryFn: () => fetchOwnAttendancePanel(accessToken, 30),
     ...LIVE_ATTENDANCE_QUERY_POLICY,
   });
   const checkInPanelQuery = useQuery({
-    queryKey: ['attendance', 'me', 'checkin-panel', range],
-    queryFn: () => fetchOwnCheckInPanel(accessToken, range),
+    queryKey: ['attendance', 'me', 'checkin-panel', 365],
+    queryFn: () => fetchOwnCheckInPanel(accessToken, 365),
     ...LIVE_ATTENDANCE_QUERY_POLICY,
   });
 
@@ -541,17 +471,15 @@ export function DmAttendancePage({ accessToken }: { accessToken: string }) {
               data-testid="attendance-secondary-charts"
             >
               <AttendanceHeatMatrix
-                range={range}
-                onRangeChange={setRange}
                 statusSeries={checkInPanel.statusSeries}
-                onlineSeries={onlinePanel.dailySeries}
+                onlineSeries={checkInPanel.onlineSeries}
                 checkInSeries={checkInPanel.checkInSeries}
               />
 
               <CheckInTimeDistribution
                 range={range}
                 onRangeChange={setRange}
-                data={checkInPanel.statusSeries}
+                data={checkInPanel.statusSeries.slice(-range)}
               />
             </div>
 

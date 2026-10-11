@@ -775,7 +775,7 @@ test.describe('review web smoke', () => {
     await expect(page.getByText('值班同学')).toBeVisible();
   });
 
-  test('renders the clocked timeline and equal-width attendance charts', async ({ page }) => {
+  test('renders the clocked timeline and yearly contribution calendar', async ({ page }) => {
     await installAuthenticatedAppWithOptions(page, {
       currentUserOverride: {
         id: 'user-newcomer',
@@ -843,6 +843,9 @@ test.describe('review web smoke', () => {
         }),
       });
     });
+    const graphDates = Array.from({ length: 365 }, (_, index) =>
+      new Date(Date.UTC(2025, 3, 11 + index)).toISOString().slice(0, 10),
+    );
     await page.route('**/api/attendance/me/checkin/panel**', async (route) => {
       await route.fulfill({
         status: 200,
@@ -856,15 +859,19 @@ test.describe('review web smoke', () => {
             checkInMinutes: 245,
             onlineMinutes: 315,
           },
-          checkInSeries: Array.from({ length: 30 }, (_, index) => ({
-            workDate: `2026-03-${String(index + 1).padStart(2, '0')}`,
+          checkInSeries: graphDates.map((workDate, index) => ({
+            workDate,
             checkInMinutes: 150 + ((index * 13) % 240),
           })),
-          statusSeries: Array.from({ length: 30 }, (_, index) => ({
-            workDate: `2026-03-${String(index + 1).padStart(2, '0')}`,
+          onlineSeries: graphDates.map((workDate, index) => ({
+            workDate,
+            onlineMinutes: 180 + ((index * 17) % 240),
+          })),
+          statusSeries: graphDates.map((workDate) => ({
+            workDate,
             status: 'CHECKED_OUT',
-            checkInAt: `2026-03-${String(index + 1).padStart(2, '0')}T00:15:00.000Z`,
-            checkOutAt: `2026-03-${String(index + 1).padStart(2, '0')}T09:05:00.000Z`,
+            checkInAt: `${workDate}T00:15:00.000Z`,
+            checkOutAt: `${workDate}T09:05:00.000Z`,
           })),
           recentRecords: Array.from({ length: 7 }, (_, index) => ({
             workDate: `2026-04-${String(index + 1).padStart(2, '0')}`,
@@ -939,7 +946,9 @@ test.describe('review web smoke', () => {
     const secondaryCharts = page.getByTestId('attendance-secondary-charts');
     await expect(secondaryCharts).toBeVisible();
     const distributionViewport = page.getByTestId('time-distribution-viewport');
-    const heatmapViewport = page.getByRole('img', { name: '出勤在线强度热力矩阵' }).locator('..');
+    const heatmapGrid = page.getByRole('img', { name: '过去一年综合活跃强度图' });
+    await expect(page.getByRole('heading', { name: '过去一年有 365 天活跃' })).toBeVisible();
+    expect(await heatmapGrid.locator('[title]').count()).toBe(365);
 
     for (const width of [1080, 960]) {
       await page.setViewportSize({ width, height: 960 });
@@ -952,21 +961,15 @@ test.describe('review web smoke', () => {
           columnCount: getComputedStyle(node).gridTemplateColumns.split(' ').length,
           heatmapWidth: heatmapRect.width,
           distributionWidth: distributionRect.width,
-          heatmapTop: heatmapRect.top,
+          heatmapBottom: heatmapRect.bottom,
           distributionTop: distributionRect.top,
         };
       });
 
-      expect(metrics.columnCount).toBe(2);
+      expect(metrics.columnCount).toBe(1);
       expect(Math.abs(metrics.heatmapWidth - metrics.distributionWidth)).toBeLessThanOrEqual(1);
-      expect(Math.abs(metrics.heatmapTop - metrics.distributionTop)).toBeLessThanOrEqual(1);
+      expect(metrics.distributionTop).toBeGreaterThan(metrics.heatmapBottom);
       await expect(distributionViewport).toHaveCSS('height', '260px');
-
-      const [distributionHeight, heatmapHeight] = await Promise.all([
-        distributionViewport.evaluate((node) => node.getBoundingClientRect().height),
-        heatmapViewport.evaluate((node) => node.getBoundingClientRect().height),
-      ]);
-      expect(Math.abs(distributionHeight - heatmapHeight)).toBeLessThanOrEqual(20);
     }
 
     await page.setViewportSize({ width: 840, height: 960 });
@@ -974,5 +977,9 @@ test.describe('review web smoke', () => {
       (node) => getComputedStyle(node).gridTemplateColumns.split(' ').length,
     );
     expect(mobileColumnCount).toBe(1);
+    const heatmapScrolls = await heatmapGrid.locator('..').evaluate(
+      (node) => node.scrollWidth > node.clientWidth,
+    );
+    expect(heatmapScrolls).toBe(true);
   });
 });
