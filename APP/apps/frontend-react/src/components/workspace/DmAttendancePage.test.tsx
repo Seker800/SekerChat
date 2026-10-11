@@ -6,11 +6,13 @@ import { DmAttendancePage } from './DmAttendancePage';
 const fetchOwnAttendancePanel = vi.fn();
 const fetchOwnCheckInPanel = vi.fn();
 const fetchOwnMonthlyAttendanceReport = vi.fn();
+const fetchOwnMonthlyAttendanceReports = vi.fn();
 
 vi.mock('../../lib/attendance-api', () => ({
   fetchOwnAttendancePanel: (...args: unknown[]) => fetchOwnAttendancePanel(...args),
   fetchOwnCheckInPanel: (...args: unknown[]) => fetchOwnCheckInPanel(...args),
   fetchOwnMonthlyAttendanceReport: (...args: unknown[]) => fetchOwnMonthlyAttendanceReport(...args),
+  fetchOwnMonthlyAttendanceReports: (...args: unknown[]) => fetchOwnMonthlyAttendanceReports(...args),
 }));
 
 vi.mock('./useOwnCheckInController', () => ({
@@ -46,8 +48,12 @@ function renderPage() {
 describe('DmAttendancePage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    fetchOwnMonthlyAttendanceReports.mockResolvedValue({ items: [
+      { month: '2026-08', generatedAt: '2026-09-01T00:05:00.000Z', summary: { overallCompletionPercent: 56, expectedWorkDays: 7 }, dayCount: 1 },
+      { month: '2026-07', generatedAt: '2026-08-01T00:05:00.000Z', summary: { overallCompletionPercent: 72, expectedWorkDays: 22 }, dayCount: 31 },
+    ] });
     fetchOwnMonthlyAttendanceReport.mockResolvedValue({
-      month: '2026-08', currentMonth: '2026-08', firstAvailableMonth: '2025-10', isCurrentMonth: true,
+      month: '2026-08', generatedAt: '2026-09-01T00:05:00.000Z',
       timezone: 'Asia/Shanghai', targetDailyMinutes: 480,
       range: { startDate: '2026-08-01', endDate: '2026-08-31', effectiveStartDate: '2026-08-01', effectiveEndDate: '2026-08-11' },
       summary: { expectedWorkDays: 7, targetMinutes: 3360, onlineTotalMinutes: 1680, checkInTotalMinutes: 2100, onlineCompletionPercent: 50, checkInCompletionPercent: 63, overallCompletionPercent: 56 },
@@ -119,6 +125,10 @@ describe('DmAttendancePage', () => {
     expect(await screen.findByText('综合完成度')).toBeInTheDocument();
     expect(screen.getByTestId('attendance-monthly-report')).toHaveTextContent('56%');
     expect(screen.getByTestId('attendance-monthly-report')).toHaveTextContent('08-11');
-    expect(fetchOwnMonthlyAttendanceReport).toHaveBeenCalledWith('token', expect.any(String));
+    expect(screen.getByTestId('attendance-monthly-report')).toHaveTextContent('已保存的月份');
+    expect(fetchOwnMonthlyAttendanceReports).toHaveBeenCalledWith('token');
+    expect(fetchOwnMonthlyAttendanceReport).toHaveBeenCalledWith('token', '2026-08');
+    fireEvent.click(screen.getByRole('button', { name: /2026 年 07 月/ }));
+    expect(fetchOwnMonthlyAttendanceReport).toHaveBeenCalledWith('token', '2026-07');
   });
 });

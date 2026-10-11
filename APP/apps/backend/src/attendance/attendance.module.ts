@@ -10,6 +10,8 @@ import { AttendanceRecomputeJob } from './attendance-recompute.job';
 import { AttendanceActionRecorder } from './attendance-action-recorder.service';
 import { AttendanceProjectionService } from './attendance-projection.service';
 import { AttendanceQueryService } from './attendance-query.service';
+import { AttendanceMonthlyReportService } from './attendance-monthly-report.service';
+import { AttendanceMonthlyReportScheduler } from './attendance-monthly-report.scheduler';
 import { PresenceRetentionService } from './presence-retention.service';
 
 @Module({
@@ -20,6 +22,8 @@ import { PresenceRetentionService } from './presence-retention.service';
     AttendanceActionRecorder,
     AttendanceProjectionService,
     AttendanceQueryService,
+    AttendanceMonthlyReportService,
+    AttendanceMonthlyReportScheduler,
     AttendanceService,
     AttendanceRecomputeJob,
     AttendanceScheduler,

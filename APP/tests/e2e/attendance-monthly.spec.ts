@@ -5,8 +5,30 @@ test('personal monthly report shows completion and daily records at desktop and 
   page,
 }, testInfo) => {
   await installAuthenticatedApp(page);
-  await page.route('**/api/attendance/me/monthly**', async (route) => {
-    const month = new URL(route.request().url()).searchParams.get('month') ?? '2026-10';
+  await page.route('**/api/attendance/me/monthly', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        items: [
+          {
+            month: '2026-09',
+            generatedAt: '2026-10-01T00:05:00.000Z',
+            summary: { expectedWorkDays: 18, overallCompletionPercent: 94 },
+            dayCount: 24,
+          },
+          {
+            month: '2026-08',
+            generatedAt: '2026-09-01T00:05:00.000Z',
+            summary: { expectedWorkDays: 20, overallCompletionPercent: 72 },
+            dayCount: 24,
+          },
+        ],
+      }),
+    });
+  });
+  await page.route('**/api/attendance/me/monthly/*', async (route) => {
+    const month = route.request().url().split('/').at(-1)!;
     const days = Array.from({ length: 24 }, (_, index) => ({
       workDate: `${month}-${String(index + 1).padStart(2, '0')}`,
       isWorkday: index % 7 < 5,
@@ -23,9 +45,7 @@ test('personal monthly report shows completion and daily records at desktop and 
       contentType: 'application/json',
       body: JSON.stringify({
         month,
-        currentMonth: '2026-10',
-        firstAvailableMonth: '2025-10',
-        isCurrentMonth: month === '2026-10',
+        generatedAt: '2026-10-01T00:05:00.000Z',
         timezone: 'Asia/Shanghai',
         targetDailyMinutes: 480,
         range: {
@@ -53,13 +73,13 @@ test('personal monthly report shows completion and daily records at desktop and 
   const report = page.getByTestId('attendance-monthly-report');
   await expect(report).toContainText('综合完成度');
   await expect(report).toContainText('94%');
-  await expect(report).toContainText('10-24');
-  await expect(report.locator('[class*="recordRow"]')).toHaveCount(24);
-  await page.getByRole('button', { name: '上个月' }).click();
-  await expect(report).toContainText('2026 年 09 月');
   await expect(report).toContainText('09-24');
-  await page.getByRole('button', { name: '下个月' }).click();
-  await expect(report).toContainText('2026 年 10 月');
+  await expect(report).not.toContainText('2026 年 10 月');
+  await expect(report.locator('[class*="recordRow"]')).toHaveCount(24);
+  await page.getByRole('button', { name: /2026 年 08 月/ }).click();
+  await expect(report).toContainText('08-24');
+  await page.getByRole('button', { name: /2026 年 09 月/ }).click();
+  await expect(report).toContainText('09-24');
   await page.screenshot({ path: testInfo.outputPath('monthly-desktop.png'), fullPage: true });
 
   await page.setViewportSize({ width: 390, height: 844 });

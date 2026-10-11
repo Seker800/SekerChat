@@ -28,38 +28,60 @@
   color: #aab0ba;
   font-size: 13px;
 }
-.monthPicker {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px;
+.history {
+  min-width: 0;
+  border: 1px solid #3a3e45;
+  border-radius: 12px;
+  background: #22252a;
+}
+.historyGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+  gap: 10px;
+  padding: 0 18px 18px;
+}
+.historyCard {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+  padding: 14px;
   border: 1px solid #41454d;
   border-radius: 9px;
-  background: #24262b;
-  white-space: nowrap;
-}
-.monthPicker strong {
-  min-width: 100px;
-  text-align: center;
-  font-size: 13px;
-}
-.monthPicker button {
-  width: 30px;
-  height: 30px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: #e7eaee;
+  background: #292c32;
+  color: #d5dae1;
   cursor: pointer;
-  font-size: 22px;
+  text-align: left;
+}
+.historyCard:hover {
+  border-color: #659c78;
+}
+.historyActive {
+  border-color: #79bf91;
+  background: #28392f;
+}
+.historyCard strong {
+  color: #9ae2b2;
+  font-size: 25px;
   line-height: 1;
 }
-.monthPicker button:hover:not(:disabled) {
-  background: #393c43;
+.historyCard small {
+  color: #a8b1bb;
+  font-size: 10px;
 }
-.monthPicker button:disabled {
-  color: #727781;
-  cursor: default;
+.reportTitle {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 12px;
+  padding: 2px;
+}
+.reportTitle h3 {
+  margin: 5px 0 0;
+  font-size: 20px;
+}
+.reportTitle > span {
+  color: #aab0ba;
+  font-size: 12px;
 }
 .periodLine {
   display: flex;

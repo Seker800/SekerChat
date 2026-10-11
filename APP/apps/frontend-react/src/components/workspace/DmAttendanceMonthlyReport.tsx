@@ -2,24 +2,10 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   fetchOwnMonthlyAttendanceReport,
+  fetchOwnMonthlyAttendanceReports,
   type MonthlyAttendanceReport,
 } from '../../lib/attendance-api';
 import styles from './DmAttendanceMonthlyReport.module.css';
-
-function shanghaiMonth(): string {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Shanghai',
-    year: 'numeric',
-    month: '2-digit',
-  }).formatToParts(new Date());
-  return `${parts.find((part) => part.type === 'year')?.value}-${parts.find((part) => part.type === 'month')?.value}`;
-}
-
-function adjacentMonth(month: string, offset: number): string {
-  const [year, monthNumber] = month.split('-').map(Number);
-  const date = new Date(Date.UTC(year, monthNumber - 1 + offset, 1));
-  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
-}
 
 function duration(minutes: number): string {
   return `${Math.floor(minutes / 60)} 小时 ${String(minutes % 60).padStart(2, '0')} 分`;
@@ -108,88 +94,135 @@ function DailyRecords({ report }: { report: MonthlyAttendanceReport }) {
 }
 
 export function DmAttendanceMonthlyReport({ accessToken }: { accessToken: string }) {
-  const [month, setMonth] = useState(shanghaiMonth);
+  const [chosenMonth, setChosenMonth] = useState<string | null>(null);
+  const listQuery = useQuery({
+    queryKey: ['attendance', 'me', 'monthly-list'],
+    queryFn: () => fetchOwnMonthlyAttendanceReports(accessToken),
+    staleTime: 60_000,
+    refetchInterval: 300_000,
+  });
+  const items = listQuery.data?.items ?? [];
+  const month = chosenMonth ?? items[0]?.month ?? null;
   const reportQuery = useQuery({
     queryKey: ['attendance', 'me', 'monthly', month],
-    queryFn: () => fetchOwnMonthlyAttendanceReport(accessToken, month),
-    staleTime: 30_000,
-    refetchInterval: month === shanghaiMonth() ? 60_000 : false,
+    queryFn: () => fetchOwnMonthlyAttendanceReport(accessToken, month!),
+    enabled: month !== null,
+    staleTime: Infinity,
   });
   const report = reportQuery.data;
   return (
     <div className={styles.page} data-testid="attendance-monthly-report">
       <header className={styles.header}>
         <div>
-          <span className={styles.eyebrow}>个人出勤 · 月度报告</span>
+          <span className={styles.eyebrow}>个人出勤 · 月度档案</span>
           <h2>我的月报</h2>
-          <p>在线与打卡，按天记录，按月回看。</p>
-        </div>
-        <div className={styles.monthPicker} aria-label="选择月份">
-          <button
-            type="button"
-            onClick={() => setMonth(adjacentMonth(month, -1))}
-            disabled={month <= (report?.firstAvailableMonth ?? month)}
-            aria-label="上个月"
-          >
-            ‹
-          </button>
-          <strong>{month.replace('-', ' 年 ')} 月</strong>
-          <button
-            type="button"
-            onClick={() => setMonth(adjacentMonth(month, 1))}
-            disabled={month >= (report?.currentMonth ?? shanghaiMonth())}
-            aria-label="下个月"
-          >
-            ›
-          </button>
+          <p>每月结束后生成并保存。默认展示最近一个完整月份。</p>
         </div>
       </header>
-      {reportQuery.isLoading ? (
-        <div className={styles.empty}>正在载入月报...</div>
-      ) : reportQuery.isError || !report ? (
+      {listQuery.isLoading ? (
+        <div className={styles.empty}>正在载入月报档案...</div>
+      ) : listQuery.isError ? (
         <div className={styles.empty} role="alert">
-          <p>{reportQuery.error instanceof Error ? reportQuery.error.message : '月报加载失败。'}</p>
-          <button type="button" onClick={() => void reportQuery.refetch()}>
+          <p>{listQuery.error instanceof Error ? listQuery.error.message : '月报列表加载失败。'}</p>
+          <button type="button" onClick={() => void listQuery.refetch()}>
             重试
           </button>
         </div>
+      ) : items.length === 0 ? (
+        <div className={styles.empty}>还没有已归档月报。首份报告会在完整月份结束后生成。</div>
       ) : (
         <>
-          <div className={styles.periodLine}>
-            <span className={styles.periodBadge}>
-              {report.isCurrentMonth ? '进行中' : '已结束'}
-            </span>
-            <span>
-              统计至 {report.range.effectiveEndDate} · 应出勤 {report.summary.expectedWorkDays}{' '}
-              个工作日
-            </span>
-          </div>
-          <div className={styles.scoreGrid}>
-            <ScoreCard
-              label="综合完成度"
-              percent={report.summary.overallCompletionPercent}
-              tone="overall"
-            />
-            <ScoreCard
-              label="在线完成度"
-              percent={report.summary.onlineCompletionPercent}
-              actual={report.summary.onlineTotalMinutes}
-              target={report.summary.targetMinutes}
-              tone="online"
-            />
-            <ScoreCard
-              label="打卡完成度"
-              percent={report.summary.checkInCompletionPercent}
-              actual={report.summary.checkInTotalMinutes}
-              target={report.summary.targetMinutes}
-              tone="checkin"
-            />
-          </div>
-          <p className={styles.explanation}>
-            参考目标：每个工作日 8 小时。完成度只统计工作日，单日最多计入 8
-            小时；总时长包含休息日。在线时长不含免打扰状态。当前月目标只算到今天，不含账号创建前的日期。
-          </p>
-          <DailyRecords report={report} />
+          <section className={styles.history} aria-label="过往月报">
+            <div className={styles.sectionHeading}>
+              <div>
+                <span className={styles.eyebrow}>历史月报</span>
+                <h3>已保存的月份</h3>
+              </div>
+              <span className={styles.sectionAside}>共 {items.length} 份</span>
+            </div>
+            <div className={styles.historyGrid}>
+              {items.map((item) => (
+                <button
+                  type="button"
+                  key={item.month}
+                  className={`${styles.historyCard} ${month === item.month ? styles.historyActive : ''}`}
+                  aria-pressed={month === item.month}
+                  onClick={() => setChosenMonth(item.month)}
+                >
+                  <span>{item.month.replace('-', ' 年 ')} 月</span>
+                  <strong>
+                    {item.summary.overallCompletionPercent === null
+                      ? '—'
+                      : `${item.summary.overallCompletionPercent}%`}
+                  </strong>
+                  <small>综合完成度 · {item.summary.expectedWorkDays} 个工作日</small>
+                </button>
+              ))}
+            </div>
+          </section>
+          {reportQuery.isLoading ? (
+            <div className={styles.empty}>正在打开月报...</div>
+          ) : reportQuery.isError || !report ? (
+            <div className={styles.empty} role="alert">
+              <p>
+                {reportQuery.error instanceof Error ? reportQuery.error.message : '月报加载失败。'}
+              </p>
+              <button type="button" onClick={() => void reportQuery.refetch()}>
+                重试
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className={styles.reportTitle}>
+                <div>
+                  <span className={styles.eyebrow}>月度总结</span>
+                  <h3>{report.month.replace('-', ' 年 ')} 月</h3>
+                </div>
+                <span>
+                  生成于{' '}
+                  {new Intl.DateTimeFormat('zh-CN', {
+                    timeZone: report.timezone,
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                  }).format(new Date(report.generatedAt))}
+                </span>
+              </div>
+              <div className={styles.periodLine}>
+                <span className={styles.periodBadge}>已归档</span>
+                <span>
+                  统计至 {report.range.effectiveEndDate} · 应出勤 {report.summary.expectedWorkDays}{' '}
+                  个工作日
+                </span>
+              </div>
+              <div className={styles.scoreGrid}>
+                <ScoreCard
+                  label="综合完成度"
+                  percent={report.summary.overallCompletionPercent}
+                  tone="overall"
+                />
+                <ScoreCard
+                  label="在线完成度"
+                  percent={report.summary.onlineCompletionPercent}
+                  actual={report.summary.onlineTotalMinutes}
+                  target={report.summary.targetMinutes}
+                  tone="online"
+                />
+                <ScoreCard
+                  label="打卡完成度"
+                  percent={report.summary.checkInCompletionPercent}
+                  actual={report.summary.checkInTotalMinutes}
+                  target={report.summary.targetMinutes}
+                  tone="checkin"
+                />
+              </div>
+              <p className={styles.explanation}>
+                参考目标：每个工作日 8 小时。完成度只统计工作日，单日最多计入 8
+                小时；总时长包含休息日。在线时长不含免打扰状态。首月不含账号创建前的日期。报告生成后不会随原始记录变化。
+              </p>
+              <DailyRecords report={report} />
+            </>
+          )}
         </>
       )}
     </div>

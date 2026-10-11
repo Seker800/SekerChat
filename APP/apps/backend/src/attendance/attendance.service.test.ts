@@ -469,20 +469,19 @@ test('a compacted day carries its final online state into the next live day', as
 
 test('personal monthly report combines capped workday completion and preserves daily records', async () => {
   const service = createAttendanceService({
-    userCreatedAt: new Date('2026-07-01T00:00:00.000Z'),
+    userCreatedAt: new Date('2026-06-29T00:00:00.000Z'),
     presenceSummaries: [
-      { userId: 'user-1', workDate: '2026-07-01', firstOnlineAt: null, lastOnlineAt: null, onlineWorkMinutes: 480, endIsOnline: false, endIsDnd: false },
-      { userId: 'user-1', workDate: '2026-07-02', firstOnlineAt: null, lastOnlineAt: null, onlineWorkMinutes: 240, endIsOnline: false, endIsDnd: false },
+      { userId: 'user-1', workDate: '2026-06-29', firstOnlineAt: null, lastOnlineAt: null, onlineWorkMinutes: 480, endIsOnline: false, endIsDnd: false },
+      { userId: 'user-1', workDate: '2026-06-30', firstOnlineAt: null, lastOnlineAt: null, onlineWorkMinutes: 240, endIsOnline: false, endIsDnd: false },
     ],
     checkInSessions: [{
-      id: 'session-1', userId: 'user-1', workDate: '2026-07-01',
-      checkInAt: new Date('2026-07-01T01:00:00.000Z'),
-      checkOutAt: new Date('2026-07-01T11:00:00.000Z'),
+      id: 'session-1', userId: 'user-1', workDate: '2026-06-29',
+      checkInAt: new Date('2026-06-29T01:00:00.000Z'),
+      checkOutAt: new Date('2026-06-29T11:00:00.000Z'),
     }],
   });
-  const actor = { sub: 'user-1', role: 'MEMBER' } as any;
   const report = await withMockedNow('2026-07-02T12:00:00.000Z', () =>
-    service.getOwnMonthlyReport(actor, '2026-07'));
+    service.calculateClosedMonthlyReport('user-1', '2026-06'));
 
   assert.equal(report.summary.expectedWorkDays, 2);
   assert.equal(report.summary.onlineCompletionPercent, 75);
@@ -491,12 +490,12 @@ test('personal monthly report combines capped workday completion and preserves d
   assert.equal(report.summary.checkInTotalMinutes, 480);
   assert.equal(report.days.length, 2);
   await assert.rejects(
-    withMockedNow('2026-07-02T12:00:00.000Z', () => service.getOwnMonthlyReport(actor, '2026-13')),
-    /月份必须/,
+    withMockedNow('2026-07-02T12:00:00.000Z', () => service.calculateClosedMonthlyReport('user-1', '2026-13')),
+    /只能结算/,
   );
   await assert.rejects(
-    withMockedNow('2026-07-02T12:00:00.000Z', () => service.getOwnMonthlyReport(actor, '2026-08')),
-    /月份必须/,
+    withMockedNow('2026-07-02T12:00:00.000Z', () => service.calculateClosedMonthlyReport('user-1', '2026-07')),
+    /只能结算/,
   );
 });
 

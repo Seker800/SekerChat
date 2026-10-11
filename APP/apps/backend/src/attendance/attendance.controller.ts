@@ -6,6 +6,7 @@ import type { AuthenticatedUser } from '../auth/types/authenticated-user.type';
 import { AttendanceConfigService } from '../system-config/attendance-config.service';
 import { PermissionService } from '../system-config/permission.service';
 import { AttendanceService } from './attendance.service';
+import { AttendanceMonthlyReportService } from './attendance-monthly-report.service';
 import { UpdateAttendanceConfigDto } from './dto/update-attendance-config.dto';
 import { UpdateAttendancePolicyDto } from './dto/update-attendance-policy.dto';
 
@@ -14,6 +15,7 @@ import { UpdateAttendancePolicyDto } from './dto/update-attendance-policy.dto';
 export class AttendanceController {
   constructor(
     private readonly attendanceService: AttendanceService,
+    private readonly monthlyReports: AttendanceMonthlyReportService,
     private readonly attendanceConfigService: AttendanceConfigService,
     private readonly permissionService: PermissionService,
   ) {}
@@ -85,11 +87,16 @@ export class AttendanceController {
   }
 
   @Get('me/monthly')
+  async listOwnMonthlyReports(@CurrentUser() user: AuthenticatedUser) {
+    return this.monthlyReports.listOwnReports(user);
+  }
+
+  @Get('me/monthly/:month')
   async getOwnMonthlyReport(
     @CurrentUser() user: AuthenticatedUser,
-    @Query('month') month?: string,
+    @Param('month') month: string,
   ) {
-    return this.attendanceService.getOwnMonthlyReport(user, month);
+    return this.monthlyReports.getOwnReport(user, month);
   }
 
   @Get('me/checkin/today')

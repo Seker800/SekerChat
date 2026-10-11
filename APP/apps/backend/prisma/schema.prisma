@@ -128,6 +128,7 @@ model User {
   attendanceEvents           AttendanceActionEvent[]
   attendanceDaily            AttendanceDaily[]
   checkInSessions            CheckInSession[]
+  monthlyAttendanceReports   AttendanceMonthlyReport[]
   subscriptionPosts          SubscriptionPost[]          @relation("SubscriptionPostAuthor")
   subscriptionAttachments    SubscriptionAttachment[]
   subscriptionReadStates     SubscriptionReadState[]
@@ -836,6 +837,18 @@ model CheckInSession {
   @@index([userId, workDate])
   @@index([userId, workDate, checkInAt])
   @@index([userId, workDate, checkOutAt])
+}
+
+model AttendanceMonthlyReport {
+  id          String   @id @default(uuid())
+  userId      String
+  month       String
+  generatedAt DateTime @default(now())
+  version     Int      @default(1)
+  snapshot    Json
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, month])
 }
 
 model Task {

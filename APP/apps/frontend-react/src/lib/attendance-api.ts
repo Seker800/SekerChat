@@ -228,9 +228,7 @@ export async function fetchOwnAttendancePanel(
 
 export interface MonthlyAttendanceReport {
   month: string;
-  currentMonth: string;
-  firstAvailableMonth: string;
-  isCurrentMonth: boolean;
+  generatedAt: string;
   timezone: string;
   targetDailyMinutes: number;
   range: { startDate: string; endDate: string; effectiveStartDate: string; effectiveEndDate: string };
@@ -254,12 +252,27 @@ export interface MonthlyAttendanceReport {
   }>;
 }
 
+export interface MonthlyAttendanceReportListItem {
+  month: string;
+  generatedAt: string;
+  summary: MonthlyAttendanceReport['summary'];
+  dayCount: number;
+}
+
+export async function fetchOwnMonthlyAttendanceReports(
+  accessToken: string,
+): Promise<{ items: MonthlyAttendanceReportListItem[] }> {
+  const response = await fetchApi(`${apiBaseUrl}/attendance/me/monthly`, {
+    headers: bearerHeader(accessToken),
+  });
+  return parseResponse<{ items: MonthlyAttendanceReportListItem[] }>(response);
+}
+
 export async function fetchOwnMonthlyAttendanceReport(
   accessToken: string,
   month: string,
 ): Promise<MonthlyAttendanceReport> {
-  const params = new URLSearchParams({ month });
-  const response = await fetchApi(`${apiBaseUrl}/attendance/me/monthly?${params}`, {
+  const response = await fetchApi(`${apiBaseUrl}/attendance/me/monthly/${encodeURIComponent(month)}`, {
     headers: bearerHeader(accessToken),
   });
   return parseResponse<MonthlyAttendanceReport>(response);
