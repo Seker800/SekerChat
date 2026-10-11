@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { AttendanceMode } from '@prisma/client';
 import { hasSystemPermission } from '@sekerchat/shared';
 import { PrismaService } from '../prisma/prisma.service';
@@ -13,6 +13,7 @@ import type {
 import { isCalendarWorkday } from './workday-calendar';
 import {
   clampDailyWorkedMinutes,
+  MAX_DAILY_ACTIVE_WORKED_MINUTES,
   computeActiveWindowWorkedMinutes,
   computeWorkedMinutes,
   getLocalDayBoundaryUtc,
@@ -247,6 +248,79 @@ export class AttendanceService {
         endDate: today,
         days: normalizedDays,
       },
+    };
+  }
+
+  async getOwnMonthlyReport(actor: AuthenticatedUser, month?: string) {
+    const config = await this.getAttendanceConfig();
+    const now = new Date();
+    const today = zonedDateParts(now, config.timezone).dateKey;
+    const currentMonth = today.slice(0, 7);
+    const selectedMonth = month ?? currentMonth;
+    if (typeof selectedMonth !== 'string' || !/^[1-9]\d{3}-(0[1-9]|1[0-2])$/.test(selectedMonth) || selectedMonth > currentMonth) {
+      throw new BadRequestException('月份必须为不晚于本月的 YYYY-MM。');
+    }
+
+    const user = await this.prismaService.user.findUnique({
+      where: { id: actor.sub },
+      select: { createdAt: true },
+    });
+    if (!user) throw new NotFoundException('用户不存在。');
+
+    const monthRange = monthRangeForDateKey(`${selectedMonth}-01`);
+    const registeredDate = zonedDateParts(user.createdAt, config.timezone).dateKey;
+    const startDate = registeredDate > monthRange.startDate ? registeredDate : monthRange.startDate;
+    const endDate = selectedMonth === currentMonth ? today : monthRange.endDate;
+    const dateKeys = startDate <= endDate ? this.enumerateDateKeys(startDate, endDate) : [];
+    const [sessions, projections] = dateKeys.length > 0
+      ? await Promise.all([
+        this.prismaService.checkInSession.findMany({
+          where: { userId: actor.sub, workDate: { gte: startDate, lte: endDate } },
+        }),
+        this.loadDailyPresenceProjections(actor.sub, startDate, endDate, config.timezone),
+      ])
+      : [[], new Map<string, DailyPresenceProjection>()];
+    const sessionsByDate = this.groupCheckInSessionsByWorkDate(sessions);
+    const days = dateKeys.map((workDate) => {
+      const weekday = this.parseWorkDate(workDate, config.timezone).weekday;
+      const checkIn = this.summarizeCheckInSessions(workDate, sessionsByDate.get(workDate) ?? [], {
+        now: workDate === today ? now : null,
+      });
+      return {
+        ...checkIn,
+        isWorkday: isCalendarWorkday(workDate, weekday, config.workDays),
+        onlineMinutes: projections.get(workDate)?.onlineWorkMinutes ?? 0,
+      };
+    });
+    const expectedWorkDays = days.filter((day) => day.isWorkday).length;
+    const targetMinutes = expectedWorkDays * MAX_DAILY_ACTIVE_WORKED_MINUTES;
+    const onlineTotalMinutes = days.reduce((sum, day) => sum + day.onlineMinutes, 0);
+    const checkInTotalMinutes = days.reduce((sum, day) => sum + day.checkInMinutes, 0);
+    const workdayOnlineMinutes = days.reduce((sum, day) =>
+      sum + (day.isWorkday ? clampDailyWorkedMinutes(day.onlineMinutes) : 0), 0);
+    const workdayCheckInMinutes = days.reduce((sum, day) =>
+      sum + (day.isWorkday ? clampDailyWorkedMinutes(day.checkInMinutes) : 0), 0);
+    const percent = (minutes: number) => targetMinutes > 0
+      ? Math.round((minutes / targetMinutes) * 100) : null;
+
+    return {
+      month: selectedMonth,
+      currentMonth,
+      firstAvailableMonth: registeredDate.slice(0, 7),
+      isCurrentMonth: selectedMonth === currentMonth,
+      timezone: config.timezone,
+      targetDailyMinutes: MAX_DAILY_ACTIVE_WORKED_MINUTES,
+      range: { startDate: monthRange.startDate, endDate: monthRange.endDate, effectiveStartDate: startDate, effectiveEndDate: endDate },
+      summary: {
+        expectedWorkDays,
+        targetMinutes,
+        onlineTotalMinutes,
+        checkInTotalMinutes,
+        onlineCompletionPercent: percent(workdayOnlineMinutes),
+        checkInCompletionPercent: percent(workdayCheckInMinutes),
+        overallCompletionPercent: percent((workdayOnlineMinutes + workdayCheckInMinutes) / 2),
+      },
+      days,
     };
   }
 

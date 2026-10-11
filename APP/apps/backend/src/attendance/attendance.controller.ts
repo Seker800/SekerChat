@@ -84,6 +84,14 @@ export class AttendanceController {
     );
   }
 
+  @Get('me/monthly')
+  async getOwnMonthlyReport(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('month') month?: string,
+  ) {
+    return this.attendanceService.getOwnMonthlyReport(user, month);
+  }
+
   @Get('me/checkin/today')
   async getOwnCheckInToday(@CurrentUser() user: AuthenticatedUser) {
     return this.attendanceService.getOwnCheckInToday(user);

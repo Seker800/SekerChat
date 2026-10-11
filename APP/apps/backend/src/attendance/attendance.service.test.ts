@@ -467,6 +467,39 @@ test('a compacted day carries its final online state into the next live day', as
   assert.equal(stats.dayWorkedMinutes, 120);
 });
 
+test('personal monthly report combines capped workday completion and preserves daily records', async () => {
+  const service = createAttendanceService({
+    userCreatedAt: new Date('2026-07-01T00:00:00.000Z'),
+    presenceSummaries: [
+      { userId: 'user-1', workDate: '2026-07-01', firstOnlineAt: null, lastOnlineAt: null, onlineWorkMinutes: 480, endIsOnline: false, endIsDnd: false },
+      { userId: 'user-1', workDate: '2026-07-02', firstOnlineAt: null, lastOnlineAt: null, onlineWorkMinutes: 240, endIsOnline: false, endIsDnd: false },
+    ],
+    checkInSessions: [{
+      id: 'session-1', userId: 'user-1', workDate: '2026-07-01',
+      checkInAt: new Date('2026-07-01T01:00:00.000Z'),
+      checkOutAt: new Date('2026-07-01T11:00:00.000Z'),
+    }],
+  });
+  const actor = { sub: 'user-1', role: 'MEMBER' } as any;
+  const report = await withMockedNow('2026-07-02T12:00:00.000Z', () =>
+    service.getOwnMonthlyReport(actor, '2026-07'));
+
+  assert.equal(report.summary.expectedWorkDays, 2);
+  assert.equal(report.summary.onlineCompletionPercent, 75);
+  assert.equal(report.summary.checkInCompletionPercent, 50);
+  assert.equal(report.summary.overallCompletionPercent, 63);
+  assert.equal(report.summary.checkInTotalMinutes, 480);
+  assert.equal(report.days.length, 2);
+  await assert.rejects(
+    withMockedNow('2026-07-02T12:00:00.000Z', () => service.getOwnMonthlyReport(actor, '2026-13')),
+    /月份必须/,
+  );
+  await assert.rejects(
+    withMockedNow('2026-07-02T12:00:00.000Z', () => service.getOwnMonthlyReport(actor, '2026-08')),
+    /月份必须/,
+  );
+});
+
 test('attendance migrations backfill historical presence and enforce one open session per day', () => {
   const migrationsRoot = join(process.cwd(), 'prisma', 'migrations');
   const migrationSql = readdirSync(migrationsRoot, { withFileTypes: true })
@@ -491,6 +524,7 @@ test('attendance migrations backfill historical presence and enforce one open se
 });
 
 function createAttendanceService(overrides: {
+  userCreatedAt?: Date;
   presenceLogs?: Array<{ userId: string; createdAt: Date; isOnline: boolean; isDnd: boolean }>;
   presenceSummaries?: Array<{ userId: string; workDate: string; firstOnlineAt: Date | null; lastOnlineAt: Date | null; onlineWorkMinutes: number; endIsOnline: boolean; endIsDnd: boolean }>;
   checkInSessions?: Array<{ id: string; userId: string; workDate: string; checkInAt: Date | null; checkOutAt: Date | null }>;
@@ -505,6 +539,9 @@ function createAttendanceService(overrides: {
   const prismaService = {
     $transaction: async (callback: (transaction: any) => Promise<unknown>) => callback(prismaService),
     user: {
+      findUnique: async ({ where }: any) => where.id === 'user-1'
+        ? { createdAt: overrides.userCreatedAt ?? new Date('2026-01-01T00:00:00.000Z') }
+        : null,
       findMany: async () => [
         { id: 'user-1', email: 'one@example.com', displayName: 'One', role: 'MEMBER' },
       ],

@@ -226,6 +226,45 @@ export async function fetchOwnAttendancePanel(
   return parseResponse<AttendancePanelResponse>(response);
 }
 
+export interface MonthlyAttendanceReport {
+  month: string;
+  currentMonth: string;
+  firstAvailableMonth: string;
+  isCurrentMonth: boolean;
+  timezone: string;
+  targetDailyMinutes: number;
+  range: { startDate: string; endDate: string; effectiveStartDate: string; effectiveEndDate: string };
+  summary: {
+    expectedWorkDays: number;
+    targetMinutes: number;
+    onlineTotalMinutes: number;
+    checkInTotalMinutes: number;
+    onlineCompletionPercent: number | null;
+    checkInCompletionPercent: number | null;
+    overallCompletionPercent: number | null;
+  };
+  days: Array<{
+    workDate: string;
+    isWorkday: boolean;
+    status: 'NOT_CHECKED_IN' | 'CHECKED_IN' | 'CHECKED_OUT';
+    checkInAt: string | null;
+    checkOutAt: string | null;
+    onlineMinutes: number;
+    checkInMinutes: number;
+  }>;
+}
+
+export async function fetchOwnMonthlyAttendanceReport(
+  accessToken: string,
+  month: string,
+): Promise<MonthlyAttendanceReport> {
+  const params = new URLSearchParams({ month });
+  const response = await fetchApi(`${apiBaseUrl}/attendance/me/monthly?${params}`, {
+    headers: bearerHeader(accessToken),
+  });
+  return parseResponse<MonthlyAttendanceReport>(response);
+}
+
 export async function fetchOwnCheckInToday(accessToken: string): Promise<CheckInTodayResponse> {
   const response = await fetchApi(`${apiBaseUrl}/attendance/me/checkin/today`, {
     headers: bearerHeader(accessToken),

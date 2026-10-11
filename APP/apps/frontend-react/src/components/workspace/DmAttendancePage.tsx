@@ -9,6 +9,7 @@ import {
 } from '../../lib/attendance-api';
 import { getCheckInStatusText, useOwnCheckInController } from './useOwnCheckInController';
 import { LIVE_ATTENDANCE_QUERY_POLICY } from './liveAttendanceQuery';
+import { DmAttendanceMonthlyReport } from './DmAttendanceMonthlyReport';
 import styles from './WorkspaceShell.module.css';
 
 type RangeKey = 7 | 30 | 90;
@@ -413,6 +414,7 @@ function TodayOnlineTimeline({
 
 export function DmAttendancePage({ accessToken }: { accessToken: string }) {
   const [range, setRange] = useState<RangeKey>(30);
+  const [activeView, setActiveView] = useState<'overview' | 'monthly'>('overview');
   const checkInController = useOwnCheckInController(accessToken);
   const onlinePanelQuery = useQuery({
     queryKey: ['attendance', 'me', 'panel', 30],
@@ -446,7 +448,11 @@ export function DmAttendancePage({ accessToken }: { accessToken: string }) {
 
   return (
     <section className={`${styles.terminalBoard} ${styles.attendancePage}`} data-testid="dm-attendance-page">
-      {onlinePanelQuery.isLoading || checkInPanelQuery.isLoading ? (
+      <div className={styles.attendanceViewTabs} role="tablist" aria-label="出勤视图">
+        <button type="button" role="tab" aria-selected={activeView === 'overview'} onClick={() => setActiveView('overview')}>概览</button>
+        <button type="button" role="tab" aria-selected={activeView === 'monthly'} onClick={() => setActiveView('monthly')}>我的月报</button>
+      </div>
+      {activeView === 'monthly' ? <DmAttendanceMonthlyReport accessToken={accessToken} /> : onlinePanelQuery.isLoading || checkInPanelQuery.isLoading ? (
         <div className={styles.specialPageEmpty}>正在载入出勤面板...</div>
       ) : onlinePanelQuery.isError || checkInPanelQuery.isError || !onlinePanel || !checkInPanel || !today ? (
         <div className={styles.specialPageEmpty}>
