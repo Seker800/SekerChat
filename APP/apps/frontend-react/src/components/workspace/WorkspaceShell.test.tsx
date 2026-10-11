@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from '../../auth/AuthContext';
 import type { CurrentUserResponse } from '../../lib/auth-api';
 import type { GroupResponse } from '../../lib/groups-api';
-import { DM_ATTENDANCE_ROUTE, DM_SUBSCRIPTION_ROUTE } from '../../store/workspace-store';
+import { DM_ATTENDANCE_ROUTE, DM_MONTHLY_REPORT_ROUTE, DM_SUBSCRIPTION_ROUTE } from '../../store/workspace-store';
 import { WorkspaceShell } from './WorkspaceShell';
 
 const mockUseWorkspaceShellModel = vi.fn();
@@ -103,6 +103,10 @@ vi.mock('./DmSubscriptionPage', () => ({
 vi.mock('./DmAttendancePage', () => ({
   DmAttendancePage: () => <div data-testid="attendance-page" />,
   DmAttendanceSidebar: () => <div data-testid="attendance-info-sidebar" />,
+}));
+
+vi.mock('./DmAttendanceMonthlyReport', () => ({
+  DmAttendanceMonthlyReport: () => <div data-testid="attendance-monthly-report" />,
 }));
 
 vi.mock('./StartDMDialog', () => ({
@@ -559,6 +563,31 @@ describe('WorkspaceShell missing server recovery', () => {
 
     expect(screen.getByTestId('attendance-page')).toBeInTheDocument();
     expect(screen.queryByTestId('attendance-info-sidebar')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('open-info-sidebar-button')).not.toBeInTheDocument();
+  });
+
+  it('renders monthly reports as a standalone page', () => {
+    mockUseWorkspaceShellModel.mockImplementation(() =>
+      createModel({
+        mode: 'dm',
+        selectedGroupId: '__dm_monthly_report__',
+        requestedGroupId: '__dm_monthly_report__',
+        selectedGroup: undefined,
+        groups: [],
+        isDmSpecialPage: true,
+        isDmMonthlyReportPage: true,
+        header: {
+          channelName: '月报',
+          channelMeta: '个人出勤月报档案',
+          userLabel: 'owner@example.com',
+        },
+      }),
+    );
+
+    renderShell({ initialPath: DM_MONTHLY_REPORT_ROUTE, mode: 'dm' });
+
+    expect(screen.getByTestId('attendance-monthly-report')).toBeInTheDocument();
+    expect(screen.queryByTestId('attendance-page')).not.toBeInTheDocument();
     expect(screen.queryByTestId('open-info-sidebar-button')).not.toBeInTheDocument();
   });
 

@@ -302,32 +302,6 @@
   gap: 14px;
 }
 
-.attendanceViewTabs {
-  display: flex;
-  gap: 3px;
-  width: fit-content;
-  padding: 4px;
-  border: 1px solid #41454d;
-  border-radius: 9px;
-  background: #23252a;
-}
-
-.attendanceViewTabs button {
-  padding: 7px 16px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: #aeb5bf;
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 650;
-}
-
-.attendanceViewTabs button[aria-selected='true'] {
-  background: #343a3a;
-  color: #b4e8c5;
-}
-
 .attendancePage .boardMain {
   gap: 14px;
 }

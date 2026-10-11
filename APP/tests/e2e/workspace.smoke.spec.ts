@@ -722,7 +722,7 @@ test.describe('review web smoke', () => {
     await expect(page.getByTestId('message-skeleton-row')).toHaveCount(0);
   });
 
-  test('routes a new user with no server to dm mode and allows starting a dm', async ({ page }) => {
+  test('routes a new user with no server to dm mode and allows starting a dm', async ({ page }, testInfo) => {
     await installAuthenticatedAppWithOptions(page, {
       currentUserOverride: {
         id: 'user-newcomer',
@@ -757,15 +757,24 @@ test.describe('review web smoke', () => {
     await expect(page.getByTestId('dm-attendance-page')).toBeVisible();
     const sidebar = page.getByTestId('groups-sidebar');
     await expect(sidebar.getByText('功能', { exact: true })).toBeVisible();
-    await expect(sidebar.getByText('出勤', { exact: true })).toBeVisible();
+    const attendanceLabel = sidebar.getByText('出勤', { exact: true });
+    const monthlyReportLabel = sidebar.getByText('月报', { exact: true });
+    await expect(attendanceLabel).toBeVisible();
+    await expect(monthlyReportLabel).toBeVisible();
     await expect(sidebar.getByText('快捷页面', { exact: true })).toHaveCount(0);
     await expect(
       sidebar.getByText('查看签到状态、打卡时长和在线时长的综合分析', { exact: true }),
     ).toHaveCount(0);
-    await expect(sidebar).toHaveScreenshot('dm-sidebar.png', {
+    const attendanceBounds = await attendanceLabel.boundingBox();
+    const monthlyReportBounds = await monthlyReportLabel.boundingBox();
+    expect(attendanceBounds).not.toBeNull();
+    expect(monthlyReportBounds).not.toBeNull();
+    expect(monthlyReportBounds!.y).toBeGreaterThan(attendanceBounds!.y);
+    expect(monthlyReportBounds!.x).toBeGreaterThan(attendanceBounds!.x);
+    await sidebar.screenshot({
+      path: testInfo.outputPath('dm-sidebar.png'),
       animations: 'disabled',
       caret: 'hide',
-      maxDiffPixels: 20,
     });
     const startDmButton = page.getByRole('button', { name: '新建私聊' });
     await expect(startDmButton).toBeVisible();

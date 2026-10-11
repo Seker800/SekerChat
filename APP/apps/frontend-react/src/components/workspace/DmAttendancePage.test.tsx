@@ -5,14 +5,10 @@ import { DmAttendancePage } from './DmAttendancePage';
 
 const fetchOwnAttendancePanel = vi.fn();
 const fetchOwnCheckInPanel = vi.fn();
-const fetchOwnMonthlyAttendanceReport = vi.fn();
-const fetchOwnMonthlyAttendanceReports = vi.fn();
 
 vi.mock('../../lib/attendance-api', () => ({
   fetchOwnAttendancePanel: (...args: unknown[]) => fetchOwnAttendancePanel(...args),
   fetchOwnCheckInPanel: (...args: unknown[]) => fetchOwnCheckInPanel(...args),
-  fetchOwnMonthlyAttendanceReport: (...args: unknown[]) => fetchOwnMonthlyAttendanceReport(...args),
-  fetchOwnMonthlyAttendanceReports: (...args: unknown[]) => fetchOwnMonthlyAttendanceReports(...args),
 }));
 
 vi.mock('./useOwnCheckInController', () => ({
@@ -48,19 +44,6 @@ function renderPage() {
 describe('DmAttendancePage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    fetchOwnMonthlyAttendanceReports.mockResolvedValue({ items: [
-      { month: '2026-08', generatedAt: '2026-09-01T00:05:00.000Z', summary: { overallCompletionPercent: 56, expectedWorkDays: 7 }, dayCount: 1 },
-      { month: '2026-07', generatedAt: '2026-08-01T00:05:00.000Z', summary: { overallCompletionPercent: 72, expectedWorkDays: 22 }, dayCount: 31 },
-    ] });
-    fetchOwnMonthlyAttendanceReport.mockResolvedValue({
-      userId: 'user-1',
-      displayName: '测试用户',
-      month: '2026-08', generatedAt: '2026-09-01T00:05:00.000Z',
-      timezone: 'Asia/Shanghai', targetDailyMinutes: 480,
-      range: { startDate: '2026-08-01', endDate: '2026-08-31', effectiveStartDate: '2026-08-01', effectiveEndDate: '2026-08-11' },
-      summary: { expectedWorkDays: 7, targetMinutes: 3360, onlineTotalMinutes: 1680, checkInTotalMinutes: 2100, onlineCompletionPercent: 50, checkInCompletionPercent: 63, overallCompletionPercent: 56 },
-      days: [{ ...today, isWorkday: true }],
-    });
     fetchOwnAttendancePanel.mockResolvedValue({
       summary: {
         dayWorkedMinutes: 90,
@@ -99,6 +82,7 @@ describe('DmAttendancePage', () => {
     renderPage();
 
     const secondaryCharts = await screen.findByTestId('attendance-secondary-charts');
+    expect(screen.queryByRole('tab', { name: '我的月报' })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: '打卡/在线时长趋势' })).not.toBeInTheDocument();
     expect(secondaryCharts).toContainElement(screen.getByRole('heading', { name: '过去一年有 1 天活跃' }));
     expect(secondaryCharts).toContainElement(screen.getByRole('heading', { name: '签到 / 签退时间分布' }));
@@ -121,20 +105,4 @@ describe('DmAttendancePage', () => {
     expect(screen.getByTestId('timeline-checkout-marker')).toHaveTextContent('签退');
   });
 
-  it('切换到个人月报，展示完成度并可选择历史月份', async () => {
-    renderPage();
-    fireEvent.click(screen.getByRole('tab', { name: '我的月报' }));
-    expect(await screen.findByText('综合完成度')).toBeInTheDocument();
-    expect(screen.getByTestId('attendance-monthly-report')).toHaveTextContent('56%');
-    expect(screen.getByTestId('attendance-monthly-report')).toHaveTextContent('用户名 · 测试用户');
-    expect(screen.getByTestId('attendance-monthly-report')).toHaveTextContent('08-11');
-    expect(screen.getByRole('combobox', { name: '选择月报月份' })).toHaveValue('2026-08');
-    expect(screen.getByText('查看每日记录')).toBeInTheDocument();
-    expect(fetchOwnMonthlyAttendanceReports).toHaveBeenCalledWith('token');
-    expect(fetchOwnMonthlyAttendanceReport).toHaveBeenCalledWith('token', '2026-08');
-    fireEvent.change(screen.getByRole('combobox', { name: '选择月报月份' }), {
-      target: { value: '2026-07' },
-    });
-    expect(fetchOwnMonthlyAttendanceReport).toHaveBeenCalledWith('token', '2026-07');
-  });
 });

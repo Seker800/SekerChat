@@ -5,6 +5,7 @@ import { renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useWorkspaceQueries } from './useWorkspaceQueries';
+import { DM_MONTHLY_REPORT_PAGE_ID } from '../../store/dm-special-pages';
 
 const listGroupsMock = vi.fn();
 const listDMsMock = vi.fn();
@@ -236,6 +237,25 @@ describe('useWorkspaceQueries selection recovery', () => {
       expect(result.current.selectedGroupId).toBe('dm-1');
     });
     expect(result.current.requestedGroupId).toBe('missing-dm');
+  });
+
+  it('keeps the monthly report route selected without loading it as a dm', async () => {
+    const { result } = renderHook(
+      () => useWorkspaceQueries({
+        accessToken: 'token',
+        canInviteMembers: false,
+        shouldLoadInvitableUsers: false,
+        isStartDMDialogOpen: false,
+        mode: 'dm',
+        routeDmId: DM_MONTHLY_REPORT_PAGE_ID,
+      }),
+      { wrapper: createWrapper() },
+    );
+
+    await waitFor(() => expect(result.current.isDmMonthlyReportPage).toBe(true));
+    expect(result.current.selectedGroupId).toBe(DM_MONTHLY_REPORT_PAGE_ID);
+    expect(result.current.isDmSpecialPage).toBe(true);
+    expect(getGroupMock).not.toHaveBeenCalled();
   });
 
   it('uses the list response as selected group cache without an immediate detail request', async () => {

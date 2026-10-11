@@ -3,6 +3,8 @@ import {
   DM_ALBUM_PAGE_ID,
   DM_ALBUM_ROUTE,
   DM_ATTENDANCE_PAGE_ID,
+  DM_MONTHLY_REPORT_PAGE_ID,
+  DM_MONTHLY_REPORT_ROUTE,
   DM_SPECIAL_PAGES,
   DM_SUBSCRIPTION_PAGE_ID,
   DM_SUBSCRIPTION_ROUTE,
@@ -11,11 +13,16 @@ import {
 } from './dm-special-pages';
 
 describe('dm special page registry', () => {
-  it('registers attendance, articles and album in the intended order', () => {
+  it('registers the monthly report directly under attendance', () => {
     expect(isDmSpecialPageId(DM_ATTENDANCE_PAGE_ID)).toBe(true);
+    expect(isDmSpecialPageId(DM_MONTHLY_REPORT_PAGE_ID)).toBe(true);
     expect(isDmSpecialPageId(DM_SUBSCRIPTION_PAGE_ID)).toBe(true);
     expect(isDmSpecialPageId(DM_ALBUM_PAGE_ID)).toBe(true);
-    expect(DM_SPECIAL_PAGES.map((page) => page.label)).toEqual(['出勤', '文章', '相册']);
+    expect(DM_SPECIAL_PAGES.map((page) => page.label)).toEqual(['出勤', '月报', '文章', '相册']);
+    expect(getDmSpecialPage(DM_MONTHLY_REPORT_PAGE_ID)).toMatchObject({
+      route: DM_MONTHLY_REPORT_ROUTE,
+      parentId: DM_ATTENDANCE_PAGE_ID,
+    });
     expect(getDmSpecialPage(DM_SUBSCRIPTION_PAGE_ID)).toMatchObject({
       label: '文章',
       route: DM_SUBSCRIPTION_ROUTE,

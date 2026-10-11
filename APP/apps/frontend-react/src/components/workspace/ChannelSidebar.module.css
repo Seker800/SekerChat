@@ -134,6 +134,10 @@
   padding-block: 10px;
 }
 
+.specialChildRow {
+  padding-left: 24px;
+}
+
 .dmRow {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);

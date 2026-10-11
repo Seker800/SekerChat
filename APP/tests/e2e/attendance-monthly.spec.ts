@@ -71,7 +71,12 @@ test('personal monthly report shows completion and daily records at desktop and 
   });
 
   await page.goto('/dm/__dm_attendance__');
-  await page.getByRole('tab', { name: '我的月报' }).click();
+  await expect(page.getByRole('tab', { name: '我的月报' })).toHaveCount(0);
+  await page.getByTestId('groups-sidebar').getByRole('button', { name: '月报' }).click();
+  await expect(page).toHaveURL(/\/dm\/__dm_monthly_report__$/);
+  await expect(page.getByTestId('dm-attendance-monthly-page')).toBeVisible();
+  await page.reload();
+  await expect(page.getByTestId('dm-attendance-monthly-page')).toBeVisible();
   const report = page.getByTestId('attendance-monthly-report');
   await expect(report).toContainText('综合完成度');
   await expect(report.getByRole('heading', { name: '2026 年 09 月出勤报告' })).toBeVisible();

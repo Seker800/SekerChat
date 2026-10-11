@@ -25,7 +25,6 @@ import { userDisplayName } from '../../lib/users-api';
 import { useWorkspaceStore, type WorkspaceMode } from '../../store/workspace-store';
 import {
   DM_SPECIAL_PAGES,
-  DM_ATTENDANCE_PAGE_ID,
   DM_ALBUM_PAGE_ID,
   DM_SUBSCRIPTION_PAGE_ID,
 } from '../../store/dm-special-pages';
@@ -682,7 +681,7 @@ export function ChannelSidebar({
             {DM_SPECIAL_PAGES.map((page) => (
               <button
                 key={page.id}
-                className={`${styles.groupRow} ${styles.specialRow} ${selectedSpecialPageId === page.id ? styles.groupRowActive : ''}`}
+                className={`${styles.groupRow} ${styles.specialRow} ${page.parentId ? styles.specialChildRow : ''} ${selectedSpecialPageId === page.id ? styles.groupRowActive : ''}`}
                 type="button"
                 onClick={() => {
                   onSelectSpecialPage?.(page.id);
@@ -692,11 +691,7 @@ export function ChannelSidebar({
                 <div className={styles.groupRowHeader}>
                   <strong className={styles.groupName}>
                     <span>
-                      {page.id === DM_ATTENDANCE_PAGE_ID
-                        ? t('navigation.special.attendance')
-                        : page.id === DM_SUBSCRIPTION_PAGE_ID
-                          ? t('navigation.special.subscription')
-                          : t('navigation.special.album')}
+                      {t(page.labelKey)}
                     </span>
                   </strong>
                   {page.id === DM_SUBSCRIPTION_PAGE_ID && subscriptionUnreadCount > 0 ? (

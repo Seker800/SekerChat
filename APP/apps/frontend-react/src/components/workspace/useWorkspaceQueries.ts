@@ -9,6 +9,7 @@ import { fetchWorkspaceBootstrap } from '../../lib/workspace-api';
 import { type WorkspaceMode } from '../../store/workspace-store';
 import {
   DM_ATTENDANCE_PAGE_ID,
+  DM_MONTHLY_REPORT_PAGE_ID,
   DM_ALBUM_PAGE_ID,
   DM_SUBSCRIPTION_PAGE_ID,
   isDmSpecialPageId,
@@ -45,6 +46,7 @@ export function useWorkspaceQueries({
 }: UseWorkspaceQueriesOptions) {
   const requestedRouteGroupId = ((mode === 'dm' ? routeDmId : routeGroupId) ?? '').trim();
   const isDmAttendancePage = mode === 'dm' && requestedRouteGroupId === DM_ATTENDANCE_PAGE_ID;
+  const isDmMonthlyReportPage = mode === 'dm' && requestedRouteGroupId === DM_MONTHLY_REPORT_PAGE_ID;
   const isDmAlbumPage = mode === 'dm' && requestedRouteGroupId === DM_ALBUM_PAGE_ID;
   const isDmSubscriptionPage = mode === 'dm' && requestedRouteGroupId === DM_SUBSCRIPTION_PAGE_ID;
   const isDmSpecialPage = mode === 'dm' && isDmSpecialPageId(requestedRouteGroupId);
@@ -191,6 +193,7 @@ export function useWorkspaceQueries({
     workStateQuery,
     workspaceBootstrapQuery,
     isDmAttendancePage,
+    isDmMonthlyReportPage,
     isDmAlbumPage,
     isDmSubscriptionPage,
     isDmSpecialPage,

@@ -104,6 +104,7 @@ export const resources = {
         packaged: '已打包',
         special: {
           attendance: '出勤',
+          monthlyReport: '月报',
           subscription: '文章',
           album: '相册',
         },
@@ -322,6 +323,7 @@ export const resources = {
         packaged: 'Packaged',
         special: {
           attendance: 'Attendance',
+          monthlyReport: 'Monthly reports',
           subscription: 'Articles',
           album: 'Album',
         },

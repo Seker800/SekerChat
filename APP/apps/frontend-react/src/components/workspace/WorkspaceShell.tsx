@@ -15,6 +15,7 @@ import { RightSidebar } from './RightSidebar';
 import { StartDMDialog } from './StartDMDialog';
 import { WorkspaceDialogs } from './WorkspaceDialogs';
 import { DmAttendancePage } from './DmAttendancePage';
+import { DmAttendanceMonthlyReport } from './DmAttendanceMonthlyReport';
 import { DmSubscriptionPage } from './DmSubscriptionPage';
 import { DmAlbumPage } from './album/DmAlbumPage';
 import { LazyAvatarCropDialog } from '../shared/LazyAvatarCropDialog';
@@ -391,7 +392,7 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
               {model.dmCandidatesCount > 0 ? '新建私聊' : '暂无可私聊用户'}
             </button>
           </section>
-        ) : model.isDmAttendancePage ? (
+        ) : model.isDmAttendancePage || model.isDmMonthlyReportPage ? (
           <>
             <header className={styles.header}>
               {model.isNarrowViewport ? (
@@ -409,11 +410,20 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
                 <div className={styles.channelMeta}>{model.header.channelMeta}</div>
               </div>
               <div className={styles.headerActions}>
-                {devHeaderControls}
+                {model.isDmAttendancePage ? devHeaderControls : null}
                 <div className={styles.headerStatus}>{model.header.userLabel}</div>
               </div>
             </header>
-            <DmAttendancePage accessToken={accessToken} />
+            {model.isDmAttendancePage ? (
+              <DmAttendancePage accessToken={accessToken} />
+            ) : (
+              <section
+                className={`${styles.terminalBoard} ${styles.attendancePage}`}
+                data-testid="dm-attendance-monthly-page"
+              >
+                <DmAttendanceMonthlyReport accessToken={accessToken} />
+              </section>
+            )}
           </>
         ) : model.isDmAlbumPage ? (
           <>
