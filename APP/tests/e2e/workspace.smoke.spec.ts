@@ -870,8 +870,8 @@ test.describe('review web smoke', () => {
           statusSeries: graphDates.map((workDate) => ({
             workDate,
             status: 'CHECKED_OUT',
-            checkInAt: `${workDate}T00:15:00.000Z`,
-            checkOutAt: `${workDate}T09:05:00.000Z`,
+            checkInAt: `${workDate}T${workDate === '2026-04-09' ? '14:00' : '00:15'}:00.000Z`,
+            checkOutAt: `${workDate}T${workDate === '2026-04-09' ? '22:00' : '09:05'}:00.000Z`,
           })),
           recentRecords: Array.from({ length: 7 }, (_, index) => ({
             workDate: `2026-04-${String(index + 1).padStart(2, '0')}`,
@@ -945,7 +945,7 @@ test.describe('review web smoke', () => {
     await expect(page.getByRole('heading', { name: '打卡/在线时长趋势' })).toHaveCount(0);
     const secondaryCharts = page.getByTestId('attendance-secondary-charts');
     await expect(secondaryCharts).toBeVisible();
-    const distributionViewport = page.getByTestId('time-distribution-viewport');
+    const distributionList = page.getByTestId('time-distribution-list');
     const heatmapGrid = page.getByRole('group', { name: '过去一年综合活跃强度图' });
     await expect(page.getByRole('heading', { name: '过去一年有 365 天活跃' })).toBeVisible();
     expect(await heatmapGrid.getByRole('button').count()).toBe(365);
@@ -973,13 +973,23 @@ test.describe('review web smoke', () => {
       expect(metrics.columnCount).toBe(1);
       expect(Math.abs(metrics.heatmapWidth - metrics.distributionWidth)).toBeLessThanOrEqual(1);
       expect(metrics.distributionTop).toBeGreaterThan(metrics.heatmapBottom);
-      await expect(distributionViewport).toHaveCSS('height', '260px');
+      expect(await distributionList.evaluate((node) => node.scrollHeight)).toBe(
+        await distributionList.evaluate((node) => node.clientHeight),
+      );
       if (width === 1440) {
         const graphWidth = await heatmapGrid.evaluate((node) => node.getBoundingClientRect().width);
         const containerWidth = await heatmapGrid.locator('..').evaluate((node) => node.clientWidth);
         expect(Math.abs(graphWidth - containerWidth)).toBeLessThanOrEqual(1);
       }
     }
+
+    await page.getByRole('button', { name: '3月', exact: true }).click();
+    expect(await page.getByTestId('time-distribution-row').count()).toBe(90);
+    await expect(page.getByTestId('time-distribution-row').first()).toContainText('04-10');
+    expect(await distributionList.evaluate((node) => node.scrollHeight)).toBe(
+      await distributionList.evaluate((node) => node.clientHeight),
+    );
+    await page.getByRole('button', { name: '1月', exact: true }).click();
 
     await page.setViewportSize({ width: 600, height: 960 });
     const mobileColumnCount = await secondaryCharts.evaluate(
@@ -990,7 +1000,7 @@ test.describe('review web smoke', () => {
       (node) => node.scrollWidth > node.clientWidth,
     );
     expect(heatmapScrolls).toBe(true);
-    await expect(page.getByTestId('mobile-time-distribution')).toBeVisible();
+    await expect(distributionList).toBeVisible();
     const summaryMatrix = page.getByTestId('attendance-summary-matrix');
     const summaryColumns = await summaryMatrix.evaluate(
       (node) => getComputedStyle(node).gridTemplateColumns.split(' ').length,
@@ -1004,9 +1014,16 @@ test.describe('review web smoke', () => {
     );
     expect(narrowSummaryColumns).toBe(4);
     await page.screenshot({ path: 'test-results/attendance-narrow.png', animations: 'disabled', fullPage: true });
-    await page.getByTestId('mobile-time-distribution').scrollIntoViewIfNeeded();
-    await expect(page.getByTestId('mobile-time-distribution').getByText('03-12')).toBeVisible();
-    await page.getByTestId('mobile-time-distribution').screenshot({ path: 'test-results/attendance-distribution-element.png' });
+    await distributionList.scrollIntoViewIfNeeded();
+    await expect(distributionList.getByText('03-12')).toBeVisible();
+    await page.getByRole('button', { name: '1周', exact: true }).click();
+    expect(await page.getByTestId('time-distribution-row').count()).toBe(7);
+    const overnightRow = page.getByTestId('time-distribution-row').filter({ hasText: '04-09' });
+    await expect(overnightRow).toContainText('22:00');
+    await expect(overnightRow).toContainText('06:00');
+    expect(await overnightRow.getByTestId('time-distribution-span').count()).toBe(2);
+    await distributionList.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: 'test-results/attendance-distribution-week.png', animations: 'disabled' });
     await page.getByTestId('dm-attendance-page').evaluate((node) => {
       node.scrollTop = node.scrollHeight;
     });

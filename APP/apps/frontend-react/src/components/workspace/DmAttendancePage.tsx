@@ -83,18 +83,21 @@ function CheckInTimeDistribution({
   onRangeChange: (next: RangeKey) => void;
   data: CheckInPanelResponse['statusSeries'];
 }) {
-  const width = 760;
-  const rowHeight = 18;
-  const chartHeight = Math.max(116, data.length * rowHeight);
-  const leftPad = 58;
-  const plotWidth = width - leftPad - 12;
-  const rows = data.map((item) => {
+  const rows = [...data].reverse().map((item) => {
     const checkIn = getShanghaiTimeParts(item.checkInAt);
     const checkOut = getShanghaiTimeParts(item.checkOutAt);
+    const checkInMinute = checkIn ? checkIn.hours * 60 + checkIn.minutes : null;
+    const checkOutMinute = checkOut ? checkOut.hours * 60 + checkOut.minutes : null;
+    const spans = checkInMinute === null || checkOutMinute === null
+      ? []
+      : checkOutMinute >= checkInMinute
+        ? [{ start: checkInMinute, end: checkOutMinute }]
+        : [{ start: checkInMinute, end: 1440 }, { start: 0, end: checkOutMinute }];
     return {
       item,
-      checkInMinute: checkIn ? checkIn.hours * 60 + checkIn.minutes : null,
-      checkOutMinute: checkOut ? checkOut.hours * 60 + checkOut.minutes : null,
+      checkInMinute,
+      checkOutMinute,
+      spans,
     };
   });
 
@@ -120,64 +123,40 @@ function CheckInTimeDistribution({
           </div>
         </div>
       </div>
-      <div
-        className={`${styles.chartShell} ${styles.timeDistributionViewport}`}
-        data-testid="time-distribution-viewport"
-      >
-        <svg viewBox={`0 0 ${width} ${chartHeight + 28}`} className={styles.chartSvg} role="img" aria-label="签到签退时间分布图">
-          {[0, 6, 12, 18, 24].map((hour) => {
-            const x = leftPad + (hour / 24) * plotWidth;
-            return (
-              <g key={hour}>
-                <line x1={x} x2={x} y1="0" y2={chartHeight} className={styles.chartGrid} />
-                <text x={x} y={chartHeight + 18} textAnchor="middle" className={styles.chartLabel}>
-                  {String(hour).padStart(2, '0')}
-                </text>
-              </g>
-            );
-          })}
-          {rows.map(({ item, checkInMinute, checkOutMinute }, index) => {
-            const y = index * rowHeight + 12;
-            const checkInX = checkInMinute !== null ? leftPad + ((checkInMinute / 1440) * plotWidth) : null;
-            const checkOutX = checkOutMinute !== null ? leftPad + ((checkOutMinute / 1440) * plotWidth) : null;
-            return (
-              <g key={item.workDate}>
-                <text x="0" y={y + 4} className={styles.chartLabel}>{item.workDate.slice(5)}</text>
-                <line x1={leftPad} x2={width - 12} y1={y} y2={y} className={styles.subtleGuide} />
-                {checkInX !== null && checkOutX !== null ? (
-                  <line x1={checkInX} x2={checkOutX} y1={y} y2={y} className={styles.checkInSpanLine} />
-                ) : null}
-                {checkInX ? <circle cx={checkInX} cy={y} r="3.5" className={styles.checkInDot} /> : null}
-                {checkOutX ? <rect x={checkOutX - 3.5} y={y - 3.5} width="7" height="7" rx="2" className={styles.checkOutDot} /> : null}
-              </g>
-            );
-          })}
-        </svg>
-      </div>
-      <div className={styles.mobileDistribution} data-testid="mobile-time-distribution">
-        {rows.map(({ item, checkInMinute, checkOutMinute }) => (
-          <div key={item.workDate} className={styles.mobileDistributionRow}>
-            <div className={styles.mobileDistributionRowHeader}>
-              <strong>{item.workDate.slice(5)}</strong>
-              <span>{formatTimeLabel(item.checkInAt)} – {formatTimeLabel(item.checkOutAt)}</span>
-            </div>
-            <div className={styles.mobileDistributionTrack}>
-              {checkInMinute !== null && checkOutMinute !== null ? (
+      <div className={styles.timeDistributionList} data-testid="time-distribution-list">
+        <div className={styles.timeDistributionAxis} aria-hidden="true">
+          <span className={styles.timeDistributionAxisTicks}>
+            <span>00</span><span>06</span><span>12</span><span>18</span><span>24</span>
+          </span>
+        </div>
+        {rows.map(({ item, checkInMinute, checkOutMinute, spans }) => (
+          <div key={item.workDate} className={styles.timeDistributionRow} data-testid="time-distribution-row">
+            <strong className={styles.timeDistributionDate}>{item.workDate.slice(5)}</strong>
+            <div className={styles.timeDistributionTrack}>
+              {spans.map(({ start, end }) => (
                 <span
-                  className={styles.mobileDistributionSpan}
+                  key={start}
+                  className={styles.timeDistributionSpan}
+                  data-testid="time-distribution-span"
                   style={{
-                    left: `${(Math.min(checkInMinute, checkOutMinute) / 1440) * 100}%`,
-                    width: `${(Math.abs(checkOutMinute - checkInMinute) / 1440) * 100}%`,
+                    left: `${(start / 1440) * 100}%`,
+                    width: `${((end - start) / 1440) * 100}%`,
                   }}
                 />
+              ))}
+              {checkInMinute !== null ? (
+                <i className={styles.timeDistributionCheckIn} style={{ left: `${(checkInMinute / 1440) * 100}%` }} />
               ) : null}
+              {checkOutMinute !== null ? (
+                <i className={styles.timeDistributionCheckOut} style={{ left: `${(checkOutMinute / 1440) * 100}%` }} />
+              ) : null}
+            </div>
+            <div className={styles.timeDistributionTimes}>
+              <span>签到 <strong>{formatTimeLabel(item.checkInAt)}</strong></span>
+              <span>签退 <strong>{formatTimeLabel(item.checkOutAt)}</strong></span>
             </div>
           </div>
         ))}
-      </div>
-      <div className={styles.distributionLegend}>
-        <span><i className={styles.checkInDotLegend} />签到</span>
-        <span><i className={styles.checkOutDotLegend} />签退</span>
       </div>
     </section>
   );

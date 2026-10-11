@@ -692,105 +692,93 @@
   font-size: 10px;
 }
 
-.chartShell {
-  overflow: hidden;
+.timeDistributionList {
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.02);
-  min-width: 0;
-  max-width: 100%;
 }
 
-.timeDistributionViewport {
-  height: 260px;
-  overflow-y: auto;
-  scrollbar-gutter: stable;
-}
-
-.mobileDistribution {
-  display: none;
-}
-
-.mobileDistributionRow {
+.timeDistributionAxis,
+.timeDistributionRow {
   display: grid;
-  gap: 6px;
+  grid-template-columns: 52px minmax(0, 1fr) 172px;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
 }
 
-.mobileDistributionRowHeader {
+.timeDistributionAxis {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-dim);
+  font-size: 10px;
+}
+
+.timeDistributionAxisTicks {
+  grid-column: 2;
+  display: flex;
+  justify-content: space-between;
+}
+
+.timeDistributionRow {
+  min-height: 42px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-size: 11px;
+}
+
+.timeDistributionRow:last-child {
+  border-bottom: 0;
+}
+
+.timeDistributionDate {
+  color: var(--text-soft);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.timeDistributionTrack {
+  position: relative;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.timeDistributionSpan {
+  position: absolute;
+  inset-block: 0;
+  border-radius: 999px;
+  background: rgba(155, 184, 237, 0.8);
+}
+
+.timeDistributionCheckIn,
+.timeDistributionCheckOut {
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  transform: translate(-50%, -50%);
+}
+
+.timeDistributionCheckIn {
+  border-radius: 50%;
+  background: #9bb8ed;
+}
+
+.timeDistributionCheckOut {
+  border-radius: 2px;
+  background: #c9d8f3;
+}
+
+.timeDistributionTimes {
   display: flex;
   justify-content: space-between;
   gap: 8px;
   color: var(--text-dim);
-  font-size: 11px;
+  white-space: nowrap;
 }
 
-.mobileDistributionRowHeader strong {
+.timeDistributionTimes strong {
   color: var(--text-soft);
   font-weight: 600;
-}
-
-.mobileDistributionTrack {
-  position: relative;
-  height: 6px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.mobileDistributionSpan {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  border-radius: 999px;
-  background: #9bb8ed;
-}
-
-.chartSvg {
-  width: 100%;
-  max-width: 100%;
-  height: auto;
-  display: block;
-}
-
-.chartGrid {
-  stroke: rgba(255, 255, 255, 0.06);
-  stroke-width: 1;
-}
-
-.chartLabel {
-  fill: var(--text-dim);
-  font-size: 10px;
-}
-
-.subtleGuide {
-  stroke: rgba(255, 255, 255, 0.08);
-  stroke-width: 1;
-}
-
-.checkInSpanLine {
-  stroke: rgba(155, 184, 237, 0.54);
-  stroke-width: 1.5;
-  stroke-linecap: round;
-}
-
-.checkInDot {
-  fill: #9bb8ed;
-}
-
-.checkOutDot {
-  fill: #c9d8f3;
-}
-
-.distributionLegend {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  color: var(--text-dim);
-  font-size: 10px;
-}
-
-.distributionLegend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
+  font-variant-numeric: tabular-nums;
 }
 
 .heatmapShell {
@@ -1374,18 +1362,25 @@
     font-weight: 400;
   }
 
-  .attendancePage .timeDistributionViewport {
-    display: none;
+  .attendancePage .timeDistributionAxis,
+  .attendancePage .timeDistributionRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 12px;
   }
 
-  .attendancePage .mobileDistribution {
-    display: grid;
-    gap: 14px;
-    max-height: 260px;
-    overflow-y: auto;
-    padding: 12px;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.02);
+  .attendancePage .timeDistributionAxisTicks {
+    grid-column: 1 / -1;
+  }
+
+  .attendancePage .timeDistributionTrack {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .attendancePage .timeDistributionTimes {
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .timelineTicks,
