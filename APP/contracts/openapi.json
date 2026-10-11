@@ -4798,6 +4798,43 @@
         ]
       }
     },
+    "/api/attendance/me/monthly": {
+      "get": {
+        "operationId": "AttendanceController_listOwnMonthlyReports",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Attendance"
+        ]
+      }
+    },
+    "/api/attendance/me/monthly/{month}": {
+      "get": {
+        "operationId": "AttendanceController_getOwnMonthlyReport",
+        "parameters": [
+          {
+            "name": "month",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Attendance"
+        ]
+      }
+    },
     "/api/attendance/me/checkin/today": {
       "get": {
         "operationId": "AttendanceController_getOwnCheckInToday",
