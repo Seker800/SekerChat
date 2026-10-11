@@ -73,6 +73,7 @@ test('personal monthly report shows completion and daily records at desktop and 
   await page.getByRole('tab', { name: '我的月报' }).click();
   const report = page.getByTestId('attendance-monthly-report');
   await expect(report).toContainText('综合完成度');
+  await expect(report.getByRole('heading', { name: '2026 年 09 月出勤报告' })).toBeVisible();
   await expect(report).toContainText('94%');
   await expect(report).toContainText('用户 ID · a0b1c2d3-e4f5-4678-9012-3456789abcde');
   await expect(report.getByRole('combobox', { name: '选择月报月份' })).toHaveValue('2026-09');
@@ -107,6 +108,7 @@ test('personal monthly report shows completion and daily records at desktop and 
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(report).toBeVisible();
+  await expect(report.getByRole('heading', { name: '2026 年 09 月出勤报告' })).toBeVisible();
   await expect(report).toContainText('94%');
   await report.evaluate((element) => element.scrollIntoView({ block: 'start' }));
   await page.screenshot({ path: testInfo.outputPath('monthly-mobile.png') });

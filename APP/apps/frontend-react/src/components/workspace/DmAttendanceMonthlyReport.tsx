@@ -170,8 +170,7 @@ export function DmAttendanceMonthlyReport({ accessToken }: { accessToken: string
               <header className={styles.reportHeader}>
                 <div>
                   <span className={styles.reportKicker}>SEKERCHAT · MONTHLY ATTENDANCE</span>
-                  <h2>个人出勤报告</h2>
-                  <p>{report.month.replace('-', ' 年 ')} 月</p>
+                  <h2>{report.month.replace('-', ' 年 ')} 月出勤报告</h2>
                 </div>
                 <span className={styles.archiveStamp}>月结归档</span>
               </header>
