@@ -178,7 +178,7 @@ export function DmAttendanceMonthlyReport({ accessToken }: { accessToken: string
                 <span>统计至 {report.range.effectiveEndDate}</span>
                 <span>应出勤 {report.summary.expectedWorkDays} 天</span>
                 <span>生成于 {archivedDate}</span>
-                <span className={styles.reportUserId}>用户 ID · {report.userId}</span>
+                <span className={styles.reportUserName}>用户名 · {report.displayName}</span>
               </div>
               <div className={styles.sectionLabel}>01 / 月度结论</div>
               <div className={styles.scoreGrid}>

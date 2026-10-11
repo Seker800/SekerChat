@@ -6,20 +6,31 @@ import { AttendanceMonthlyReportService } from './attendance-monthly-report.serv
 test('closed-month report is saved once and later reads do not recalculate it', async () => {
   const rows: Array<{ userId: string; month: string; generatedAt: Date; snapshot: any }> = [];
   let calculations = 0;
+  let currentDisplayName = '原用户名';
   const prisma = {
     user: {
-      findMany: async () => [{ id: 'user-1', createdAt: new Date('2026-09-03T00:00:00.000Z') }],
+      findMany: async () => [{
+        id: 'user-1',
+        createdAt: new Date('2026-09-03T00:00:00.000Z'),
+        displayName: currentDisplayName,
+        email: 'one@example.com',
+      }],
     },
     attendanceMonthlyReport: {
       findMany: async ({ where }: any) =>
         rows
           .filter((row) => !where.userId || row.userId === where.userId)
           .map((row) => (where.userId ? row : { userId: row.userId, month: row.month })),
-      findUnique: async ({ where }: any) =>
-        rows.find(
+      findUnique: async ({ where }: any) => {
+        const row = rows.find(
           (row) =>
             row.userId === where.userId_month.userId && row.month === where.userId_month.month,
-        ) ?? null,
+        );
+        return row ? {
+          ...row,
+          user: { displayName: currentDisplayName, email: 'one@example.com' },
+        } : null;
+      },
       createMany: async ({ data }: any) => {
         const item = data[0];
         if (rows.some((row) => row.userId === item.userId && row.month === item.month))
@@ -75,27 +86,39 @@ test('closed-month report is saved once and later reads do not recalculate it', 
     ['2026-09'],
   );
   assert.equal(listed.items[0].summary.overallCompletionPercent, 50);
+  currentDisplayName = '新用户名';
   const saved = await service.getOwnReport(own, '2026-09');
   assert.equal(saved.userId, 'user-1');
+  assert.equal(saved.displayName, '原用户名');
   assert.equal(saved.summary.overallCompletionPercent, 50);
   assert.equal(calculations, 1);
+  rows.push({
+    userId: 'user-1', month: '2026-08', generatedAt: now,
+    snapshot: { month: '2026-08', summary: {}, days: [] },
+  });
+  assert.equal((await service.getOwnReport(own, '2026-08')).displayName, '新用户名');
+  currentDisplayName = '';
+  assert.equal((await service.getOwnReport(own, '2026-08')).displayName, 'one@example.com');
   await assert.rejects(service.getOwnReport({ ...own, sub: 'user-2' }, '2026-09'), /尚未生成/);
   await assert.rejects(service.getOwnReport(own, '2026-10'), /尚未生成/);
 });
 
 test('newly closed month is generated for every user even when historical backfill is capped', async () => {
-  const created: string[] = [];
+  const created: Array<{ key: string; displayName: string }> = [];
   const prisma = {
     user: {
       findMany: async () => [
-        { id: 'user-1', createdAt: new Date('2026-08-01T00:00:00.000Z') },
-        { id: 'user-2', createdAt: new Date('2026-08-01T00:00:00.000Z') },
+        { id: 'user-1', createdAt: new Date('2026-08-01T00:00:00.000Z'), displayName: '一号', email: 'one@example.com' },
+        { id: 'user-2', createdAt: new Date('2026-08-01T00:00:00.000Z'), displayName: null, email: 'two@example.com' },
       ],
     },
     attendanceMonthlyReport: {
       findMany: async () => [],
       createMany: async ({ data }: any) => {
-        created.push(`${data[0].userId}:${data[0].month}`);
+        created.push({
+          key: `${data[0].userId}:${data[0].month}`,
+          displayName: data[0].snapshot.displayName,
+        });
         return { count: 1 };
       },
     },
@@ -110,5 +133,8 @@ test('newly closed month is generated for every user even when historical backfi
   );
 
   assert.equal(await service.generateMissingReports(0, new Date('2026-10-11T08:00:00.000Z')), 2);
-  assert.deepEqual(created, ['user-1:2026-09', 'user-2:2026-09']);
+  assert.deepEqual(created, [
+    { key: 'user-1:2026-09', displayName: '一号' },
+    { key: 'user-2:2026-09', displayName: 'two@example.com' },
+  ]);
 });

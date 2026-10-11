@@ -6,7 +6,13 @@ import { AttendanceConfigService } from '../system-config/attendance-config.serv
 import { AttendanceService } from './attendance.service';
 import { parseAttendanceConfig, shiftDateKey, zonedDateParts } from './attendance.utils';
 
-type MonthlySnapshot = Awaited<ReturnType<AttendanceService['calculateClosedMonthlyReport']>>;
+type MonthlySnapshot = Awaited<ReturnType<AttendanceService['calculateClosedMonthlyReport']>> & {
+  displayName?: string;
+};
+
+function reportOwnerName(user: { displayName: string | null; email: string }): string {
+  return user.displayName?.trim() || user.email;
+}
 
 function previousMonth(month: string): string {
   return shiftDateKey(`${month}-01`, -1).slice(0, 7);
@@ -45,10 +51,21 @@ export class AttendanceMonthlyReportService {
     }
     const row = await this.prisma.attendanceMonthlyReport.findUnique({
       where: { userId_month: { userId: actor.sub, month } },
-      select: { userId: true, generatedAt: true, snapshot: true },
+      select: {
+        userId: true,
+        generatedAt: true,
+        snapshot: true,
+        user: { select: { displayName: true, email: true } },
+      },
     });
     if (!row) throw new NotFoundException('该月报告尚未生成。');
-    return { ...(row.snapshot as MonthlySnapshot), userId: row.userId, generatedAt: row.generatedAt };
+    const snapshot = row.snapshot as MonthlySnapshot;
+    return {
+      ...snapshot,
+      userId: row.userId,
+      generatedAt: row.generatedAt,
+      displayName: snapshot.displayName?.trim() || reportOwnerName(row.user),
+    };
   }
 
   async generateMissingReports(maxHistoricalReports = 50, now = new Date()): Promise<number> {
@@ -58,7 +75,7 @@ export class AttendanceMonthlyReportService {
     const [users, existing] = await Promise.all([
       this.prisma.user.findMany({
         where: { isBot: false },
-        select: { id: true, createdAt: true },
+        select: { id: true, createdAt: true, displayName: true, email: true },
         orderBy: { createdAt: 'asc' },
       }),
       this.prisma.attendanceMonthlyReport.findMany({
@@ -71,10 +88,14 @@ export class AttendanceMonthlyReportService {
       users.map((user) => [user.id, zonedDateParts(user.createdAt, timezone).dateKey.slice(0, 7)]),
     );
     let created = 0;
-    const saveIfMissing = async (userId: string, month: string): Promise<number> => {
+    const saveIfMissing = async (user: (typeof users)[number], month: string): Promise<number> => {
+      const userId = user.id;
       const key = `${userId}:${month}`;
       if (existingKeys.has(key)) return 0;
-      const snapshot = await this.attendance.calculateClosedMonthlyReport(userId, month);
+      const snapshot = {
+        ...await this.attendance.calculateClosedMonthlyReport(userId, month),
+        displayName: reportOwnerName(user),
+      };
       const result = await this.prisma.attendanceMonthlyReport.createMany({
         data: [{ userId, month, snapshot: snapshot as Prisma.InputJsonValue }],
         skipDuplicates: true,
@@ -86,7 +107,7 @@ export class AttendanceMonthlyReportService {
     // The newly closed month is due for every user; only older backfill is bounded.
     for (const user of users) {
       if (firstMonthByUser.get(user.id)! <= lastClosedMonth) {
-        created += await saveIfMissing(user.id, lastClosedMonth);
+        created += await saveIfMissing(user, lastClosedMonth);
       }
     }
 
@@ -95,7 +116,7 @@ export class AttendanceMonthlyReportService {
       const firstMonth = firstMonthByUser.get(user.id)!;
       let month = previousMonth(lastClosedMonth);
       while (month >= firstMonth && historicalCreated < maxHistoricalReports) {
-        const count = await saveIfMissing(user.id, month);
+        const count = await saveIfMissing(user, month);
         historicalCreated += count;
         created += count;
         month = previousMonth(month);
