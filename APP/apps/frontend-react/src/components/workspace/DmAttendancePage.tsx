@@ -88,12 +88,21 @@ function CheckInTimeDistribution({
   const chartHeight = Math.max(116, data.length * rowHeight);
   const leftPad = 58;
   const plotWidth = width - leftPad - 12;
+  const rows = data.map((item) => {
+    const checkIn = getShanghaiTimeParts(item.checkInAt);
+    const checkOut = getShanghaiTimeParts(item.checkOutAt);
+    return {
+      item,
+      checkInMinute: checkIn ? checkIn.hours * 60 + checkIn.minutes : null,
+      checkOutMinute: checkOut ? checkOut.hours * 60 + checkOut.minutes : null,
+    };
+  });
 
   return (
     <section className={styles.panelCard}>
       <div className={styles.panelCardHeader}>
         <div>
-          <div className={styles.panelEyebrow}>副图</div>
+          <div className={styles.panelEyebrow}>打卡节奏</div>
           <h3>签到 / 签退时间分布</h3>
         </div>
         <div className={styles.trendHeaderAside}>
@@ -127,12 +136,10 @@ function CheckInTimeDistribution({
               </g>
             );
           })}
-          {data.map((item, index) => {
+          {rows.map(({ item, checkInMinute, checkOutMinute }, index) => {
             const y = index * rowHeight + 12;
-            const checkIn = getShanghaiTimeParts(item.checkInAt);
-            const checkOut = getShanghaiTimeParts(item.checkOutAt);
-            const checkInX = checkIn ? leftPad + (((checkIn.hours * 60 + checkIn.minutes) / 1440) * plotWidth) : null;
-            const checkOutX = checkOut ? leftPad + (((checkOut.hours * 60 + checkOut.minutes) / 1440) * plotWidth) : null;
+            const checkInX = checkInMinute !== null ? leftPad + ((checkInMinute / 1440) * plotWidth) : null;
+            const checkOutX = checkOutMinute !== null ? leftPad + ((checkOutMinute / 1440) * plotWidth) : null;
             return (
               <g key={item.workDate}>
                 <text x="0" y={y + 4} className={styles.chartLabel}>{item.workDate.slice(5)}</text>
@@ -146,6 +153,27 @@ function CheckInTimeDistribution({
             );
           })}
         </svg>
+      </div>
+      <div className={styles.mobileDistribution} data-testid="mobile-time-distribution">
+        {rows.map(({ item, checkInMinute, checkOutMinute }) => (
+          <div key={item.workDate} className={styles.mobileDistributionRow}>
+            <div className={styles.mobileDistributionRowHeader}>
+              <strong>{item.workDate.slice(5)}</strong>
+              <span>{formatTimeLabel(item.checkInAt)} – {formatTimeLabel(item.checkOutAt)}</span>
+            </div>
+            <div className={styles.mobileDistributionTrack}>
+              {checkInMinute !== null && checkOutMinute !== null ? (
+                <span
+                  className={styles.mobileDistributionSpan}
+                  style={{
+                    left: `${(Math.min(checkInMinute, checkOutMinute) / 1440) * 100}%`,
+                    width: `${(Math.abs(checkOutMinute - checkInMinute) / 1440) * 100}%`,
+                  }}
+                />
+              ) : null}
+            </div>
+          </div>
+        ))}
       </div>
       <div className={styles.distributionLegend}>
         <span><i className={styles.checkInDotLegend} />签到</span>
@@ -226,7 +254,7 @@ function AttendanceHeatMatrix({
     <section className={styles.panelCard}>
       <div className={styles.panelCardHeader}>
         <div>
-          <div className={styles.panelEyebrow}>副图</div>
+          <div className={styles.panelEyebrow}>全年活跃</div>
           <h3>过去一年有 {activeDays} 天活跃</h3>
         </div>
       </div>
@@ -324,7 +352,7 @@ function TodayOnlineTimeline({
     <section className={styles.panelCard}>
       <div className={styles.panelCardHeader}>
         <div>
-          <div className={styles.panelEyebrow}>时段</div>
+          <div className={styles.panelEyebrow}>今日动态</div>
           <h3>今日在线时间轴</h3>
         </div>
       </div>
@@ -438,7 +466,7 @@ export function DmAttendancePage({ accessToken }: { accessToken: string }) {
   }, [checkInPanel, onlinePanel]);
 
   return (
-    <section className={styles.terminalBoard} data-testid="dm-attendance-page">
+    <section className={`${styles.terminalBoard} ${styles.attendancePage}`} data-testid="dm-attendance-page">
       {onlinePanelQuery.isLoading || checkInPanelQuery.isLoading ? (
         <div className={styles.specialPageEmpty}>正在载入出勤面板...</div>
       ) : onlinePanelQuery.isError || checkInPanelQuery.isError || !onlinePanel || !checkInPanel || !today ? (
@@ -454,7 +482,7 @@ export function DmAttendancePage({ accessToken }: { accessToken: string }) {
           <section className={styles.checkInHeroCard}>
             <div className={styles.checkInHeroToolbar}>
               <div className={styles.checkInHeroToolbarMain}>
-                <div className={styles.panelEyebrow}>今日</div>
+                <div className={styles.panelEyebrow}>今日概览</div>
                 <div className={styles.checkInHeroStatusInline}>
                   <span className={styles.checkInHeroStatusDot} aria-hidden="true" />
                   <strong className={styles.checkInHeroStatus}>{getCheckInStatusText(today.status)}</strong>
@@ -469,9 +497,9 @@ export function DmAttendancePage({ accessToken }: { accessToken: string }) {
                 {actionLabel}
               </button>
             </div>
-            <div className={styles.heroSummaryMatrix}>
+            <div className={styles.heroSummaryMatrix} data-testid="attendance-summary-matrix">
               <div className={styles.heroSummaryCorner} />
-              <div className={styles.heroSummaryHead}>今日时长</div>
+              <div className={styles.heroSummaryHead}>今天</div>
               <div className={styles.heroSummaryHead}>月平均</div>
               <div className={styles.heroSummaryHead}>总平均</div>
 
@@ -542,10 +570,10 @@ export function DmAttendancePage({ accessToken }: { accessToken: string }) {
                   <div key={item.workDate} className={styles.matrixRow}>
                     <span>{item.workDate}</span>
                     <strong>{getCheckInStatusText(item.status)}</strong>
-                    <span>{formatTimeLabel(item.checkInAt)}</span>
-                    <span>{formatTimeLabel(item.checkOutAt)}</span>
-                    <span className={styles.matrixCheckInTone}>{formatDuration(item.checkInMinutes)}</span>
-                    <span className={styles.matrixOnlineTone}>{formatDuration(item.onlineMinutes)}</span>
+                    <span data-label="签到">{formatTimeLabel(item.checkInAt)}</span>
+                    <span data-label="签退">{formatTimeLabel(item.checkOutAt)}</span>
+                    <span className={styles.matrixCheckInTone} data-label="打卡时长">{formatDuration(item.checkInMinutes)}</span>
+                    <span className={styles.matrixOnlineTone} data-label="在线时长">{formatDuration(item.onlineMinutes)}</span>
                   </div>
                 ))}
               </div>

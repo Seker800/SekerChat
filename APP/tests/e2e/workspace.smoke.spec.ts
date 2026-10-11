@@ -990,6 +990,26 @@ test.describe('review web smoke', () => {
       (node) => node.scrollWidth > node.clientWidth,
     );
     expect(heatmapScrolls).toBe(true);
+    await expect(page.getByTestId('mobile-time-distribution')).toBeVisible();
+    const summaryMatrix = page.getByTestId('attendance-summary-matrix');
+    const summaryColumns = await summaryMatrix.evaluate(
+      (node) => getComputedStyle(node).gridTemplateColumns.split(' ').length,
+    );
+    expect(summaryColumns).toBe(4);
     await page.screenshot({ path: 'test-results/attendance-mobile.png', animations: 'disabled', fullPage: true });
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    const narrowSummaryColumns = await summaryMatrix.evaluate(
+      (node) => getComputedStyle(node).gridTemplateColumns.split(' ').length,
+    );
+    expect(narrowSummaryColumns).toBe(4);
+    await page.screenshot({ path: 'test-results/attendance-narrow.png', animations: 'disabled', fullPage: true });
+    await page.getByTestId('mobile-time-distribution').scrollIntoViewIfNeeded();
+    await expect(page.getByTestId('mobile-time-distribution').getByText('03-12')).toBeVisible();
+    await page.getByTestId('mobile-time-distribution').screenshot({ path: 'test-results/attendance-distribution-element.png' });
+    await page.getByTestId('dm-attendance-page').evaluate((node) => {
+      node.scrollTop = node.scrollHeight;
+    });
+    await page.screenshot({ path: 'test-results/attendance-narrow-records.png', animations: 'disabled' });
   });
 });
