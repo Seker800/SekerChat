@@ -80,12 +80,22 @@ test('personal monthly report shows completion and daily records at desktop and 
   await expect(report).toContainText('08-24');
   await page.getByRole('button', { name: /2026 年 09 月/ }).click();
   await expect(report).toContainText('09-24');
-  await page.screenshot({ path: testInfo.outputPath('monthly-desktop.png'), fullPage: true });
+  const overall = report.locator('[class*="overall"]').first();
+  const online = report.locator('[class*="online"]').first();
+  const overallBox = await overall.boundingBox();
+  const onlineBox = await online.boundingBox();
+  expect(overallBox).not.toBeNull();
+  expect(onlineBox).not.toBeNull();
+  expect(overallBox!.width).toBeGreaterThan(onlineBox!.width);
+  expect(overallBox!.height).toBeGreaterThan(onlineBox!.height);
+  await report.evaluate((element) => element.scrollIntoView({ block: 'start' }));
+  await page.screenshot({ path: testInfo.outputPath('monthly-desktop.png') });
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(report).toBeVisible();
   await expect(report).toContainText('94%');
-  await page.screenshot({ path: testInfo.outputPath('monthly-mobile.png'), fullPage: true });
+  await report.evaluate((element) => element.scrollIntoView({ block: 'start' }));
+  await page.screenshot({ path: testInfo.outputPath('monthly-mobile.png') });
   await report.locator('[class*="recordRow"]').last().scrollIntoViewIfNeeded();
   await page.screenshot({
     path: testInfo.outputPath('monthly-mobile-records.png'),

@@ -132,34 +132,6 @@ export function DmAttendanceMonthlyReport({ accessToken }: { accessToken: string
         <div className={styles.empty}>还没有已归档月报。首份报告会在完整月份结束后生成。</div>
       ) : (
         <>
-          <section className={styles.history} aria-label="过往月报">
-            <div className={styles.sectionHeading}>
-              <div>
-                <span className={styles.eyebrow}>历史月报</span>
-                <h3>已保存的月份</h3>
-              </div>
-              <span className={styles.sectionAside}>共 {items.length} 份</span>
-            </div>
-            <div className={styles.historyGrid}>
-              {items.map((item) => (
-                <button
-                  type="button"
-                  key={item.month}
-                  className={`${styles.historyCard} ${month === item.month ? styles.historyActive : ''}`}
-                  aria-pressed={month === item.month}
-                  onClick={() => setChosenMonth(item.month)}
-                >
-                  <span>{item.month.replace('-', ' 年 ')} 月</span>
-                  <strong>
-                    {item.summary.overallCompletionPercent === null
-                      ? '—'
-                      : `${item.summary.overallCompletionPercent}%`}
-                  </strong>
-                  <small>综合完成度 · {item.summary.expectedWorkDays} 个工作日</small>
-                </button>
-              ))}
-            </div>
-          </section>
           {reportQuery.isLoading ? (
             <div className={styles.empty}>正在打开月报...</div>
           ) : reportQuery.isError || !report ? (
@@ -220,9 +192,37 @@ export function DmAttendanceMonthlyReport({ accessToken }: { accessToken: string
                 参考目标：每个工作日 8 小时。完成度只统计工作日，单日最多计入 8
                 小时；总时长包含休息日。在线时长不含免打扰状态。首月不含账号创建前的日期。报告生成后不会随原始记录变化。
               </p>
-              <DailyRecords report={report} />
             </>
           )}
+          <section className={styles.history} aria-label="过往月报">
+            <div className={styles.sectionHeading}>
+              <div>
+                <span className={styles.eyebrow}>历史月报</span>
+                <h3>已保存的月份</h3>
+              </div>
+              <span className={styles.sectionAside}>共 {items.length} 份</span>
+            </div>
+            <div className={styles.historyGrid}>
+              {items.map((item) => (
+                <button
+                  type="button"
+                  key={item.month}
+                  className={`${styles.historyCard} ${month === item.month ? styles.historyActive : ''}`}
+                  aria-pressed={month === item.month}
+                  onClick={() => setChosenMonth(item.month)}
+                >
+                  <span>{item.month.replace('-', ' 年 ')} 月</span>
+                  <strong>
+                    {item.summary.overallCompletionPercent === null
+                      ? '—'
+                      : `${item.summary.overallCompletionPercent}%`}
+                  </strong>
+                  <small>综合完成度 · {item.summary.expectedWorkDays} 个工作日</small>
+                </button>
+              ))}
+            </div>
+          </section>
+          {report && !reportQuery.isError ? <DailyRecords report={report} /> : null}
         </>
       )}
     </div>
