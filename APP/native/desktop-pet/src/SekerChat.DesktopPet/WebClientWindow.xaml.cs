@@ -179,6 +179,7 @@ public partial class WebClientWindow : FluentWindow
             false;
 #endif
         core.Settings.IsStatusBarEnabled = false;
+        core.Settings.IsPasswordAutosaveEnabled = true;
         core.Settings.AreBrowserAcceleratorKeysEnabled = true;
         core.WebMessageReceived += OnWebMessageReceived;
         core.NavigationCompleted += (_, args) =>
