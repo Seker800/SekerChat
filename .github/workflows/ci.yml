@@ -137,6 +137,22 @@ jobs:
           path: APP/playwright-report
           if-no-files-found: ignore
 
+  desktop-pet:
+    name: Windows desktop pet build and lifecycle tests
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: 10.0.x
+      - run: dotnet run --project native/desktop-pet/tests/SekerChat.DesktopPet.CoreTests/SekerChat.DesktopPet.CoreTests.csproj --configuration Release
+      - run: dotnet publish native/desktop-pet/src/SekerChat.DesktopPet/SekerChat.DesktopPet.csproj --configuration Release --runtime win-x64 --self-contained true --output native/desktop-pet/artifacts/win-x64
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: desktop-pet-win-x64-unsigned-test
+          path: APP/native/desktop-pet/artifacts/win-x64/SekerChat.DesktopPet.exe
+          if-no-files-found: error
+
   image-smoke:
     name: Production image security (${{ matrix.name }})
     runs-on: ubuntu-latest

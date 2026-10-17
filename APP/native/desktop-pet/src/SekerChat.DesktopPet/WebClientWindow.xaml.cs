@@ -19,6 +19,7 @@ public partial class WebClientWindow : FluentWindow
 
     private readonly AppState _state;
     private readonly LocalStorage _storage;
+    private readonly WebClientNavigationState _navigationState = new();
     private bool _initialized;
     private bool _allowClose;
     private bool _bootstrapHidden;
@@ -74,6 +75,7 @@ public partial class WebClientWindow : FluentWindow
         }
 
         await ConfigureBridgeAsync();
+        _navigationState.NavigationStarting(_webBaseUrl);
         Browser.CoreWebView2.Navigate(_webBaseUrl);
     }
 
@@ -90,7 +92,11 @@ public partial class WebClientWindow : FluentWindow
             _webBaseUrl = normalized;
             await ConfigureBridgeAsync();
         }
-        Browser.CoreWebView2.Navigate(_webBaseUrl);
+        if (_navigationState.ShouldNavigate(_webBaseUrl, Browser.CoreWebView2.Source))
+        {
+            _navigationState.NavigationStarting(_webBaseUrl);
+            Browser.CoreWebView2.Navigate(_webBaseUrl);
+        }
     }
 
     public void ShowClient()
@@ -182,8 +188,10 @@ public partial class WebClientWindow : FluentWindow
         core.Settings.IsPasswordAutosaveEnabled = true;
         core.Settings.AreBrowserAcceleratorKeysEnabled = true;
         core.WebMessageReceived += OnWebMessageReceived;
+        core.NavigationStarting += (_, args) => _navigationState.NavigationStarting(args.Uri);
         core.NavigationCompleted += (_, args) =>
         {
+            _navigationState.NavigationCompleted(args.IsSuccess);
             LoadingOverlay.Visibility = Visibility.Collapsed;
             BackMenuItem.IsEnabled = core.CanGoBack;
             ForwardMenuItem.IsEnabled = core.CanGoForward;
@@ -202,7 +210,14 @@ public partial class WebClientWindow : FluentWindow
             }
         };
         core.ProcessFailed += (_, args) =>
+        {
+            if (args.ProcessFailedKind is CoreWebView2ProcessFailedKind.BrowserProcessExited
+                or CoreWebView2ProcessFailedKind.RenderProcessExited)
+            {
+                _navigationState.ProcessFailed();
+            }
             Error?.Invoke($"WebView2 进程异常：{args.ProcessFailedKind}");
+        };
     }
 
     private async Task ConfigureBridgeAsync()

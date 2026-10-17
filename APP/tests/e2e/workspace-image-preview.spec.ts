@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { installAuthenticatedAppWithOptions } from './fixtures/app-fixture';
+import { createLargeRasterPng } from './fixtures/large-raster';
 
 const oversizedSvg = `
   <svg xmlns="http://www.w3.org/2000/svg" width="900" height="2400" viewBox="0 0 900 2400">
@@ -243,6 +244,8 @@ test('keeps image preview loading separate from failure and retries in place', a
 test('shows replied image thumbnails and opens the original through the page origin', async ({
   page,
 }) => {
+  const largeRasterPng = createLargeRasterPng();
+  expect(largeRasterPng.length).toBeGreaterThan(8 * 1024 * 1024);
   await installAuthenticatedAppWithOptions(page, {
     messagesResponse: {
       status: 200,
@@ -273,7 +276,7 @@ test('shows replied image thumbnails and opens the original through the page ori
                 groupId: 'group-1',
                 originalName: 'reply-evidence.png',
                 mimeType: 'image/png',
-                size: 68,
+                size: largeRasterPng.length,
                 width: 900,
                 height: 2400,
                 createdAt: '2026-04-10T11:59:00.000Z',
@@ -302,6 +305,17 @@ test('shows replied image thumbnails and opens the original through the page ori
   });
 
   const requestedPaths: string[] = [];
+  const contentRequestStarts = new Map<string, number>();
+  const completedDownloadMs: number[] = [];
+  page.on('request', (request) => {
+    if (request.url().endsWith('/file-image-origin-1/content')) {
+      contentRequestStarts.set(request.url(), performance.now());
+    }
+  });
+  page.on('requestfinished', (request) => {
+    const started = contentRequestStarts.get(request.url());
+    if (started !== undefined) completedDownloadMs.push(performance.now() - started);
+  });
   await page.route('**/api/groups/group-1/files/file-image-origin-1/thumbnail', async (route) => {
     requestedPaths.push(new URL(route.request().url()).pathname);
     await route.fulfill({
@@ -314,8 +328,8 @@ test('shows replied image thumbnails and opens the original through the page ori
     requestedPaths.push(new URL(route.request().url()).pathname);
     await route.fulfill({
       status: 200,
-      contentType: 'image/svg+xml',
-      body: oversizedSvg,
+      contentType: 'image/png',
+      body: largeRasterPng,
     });
   });
 
@@ -325,24 +339,48 @@ test('shows replied image thumbnails and opens the original through the page ori
   await expect(thumbnail).toBeVisible();
   expect(requestedPaths).toContain('/api/groups/group-1/files/file-image-origin-1/thumbnail');
 
-  await page.getByRole('button', { name: '全屏查看 reply-evidence.png' }).click();
+  const previewButton = page.getByRole('button', { name: '全屏查看 reply-evidence.png' });
+  const coldStart = performance.now();
+  await previewButton.click();
 
   await expect(page.getByRole('dialog', { name: 'reply-evidence.png' })).toBeVisible();
-  await expect(
-    page.getByRole('dialog', { name: 'reply-evidence.png' }).getByRole('img'),
-  ).toBeVisible();
+  const previewImage = page.getByRole('dialog', { name: 'reply-evidence.png' }).getByRole('img');
+  await expect(previewImage).toBeVisible();
+  const coldDecodeStart = performance.now();
+  await previewImage.evaluate(async (image: HTMLImageElement) => {
+    await image.decode();
+    if (image.naturalWidth !== 2048 || image.naturalHeight !== 1536) {
+      throw new Error(`Unexpected raster dimensions: ${image.naturalWidth}x${image.naturalHeight}`);
+    }
+  });
+  const coldDecodedMs = performance.now() - coldStart;
+  const coldDecodeCallMs = performance.now() - coldDecodeStart;
+  expect(completedDownloadMs.length).toBeGreaterThan(0);
   expect(requestedPaths).toContain('/api/groups/group-1/files/file-image-origin-1/content');
   const firstOpenContentRequests = requestedPaths.filter((path) =>
     path.endsWith('/content'),
   ).length;
   await page.getByRole('button', { name: '关闭', exact: true }).click();
-  await page.getByRole('button', { name: '全屏查看 reply-evidence.png' }).click();
-  await expect(
-    page.getByRole('dialog', { name: 'reply-evidence.png' }).getByRole('img'),
-  ).toBeVisible();
+  const warmStart = performance.now();
+  await previewButton.click();
+  await expect(previewImage).toBeVisible();
+  const warmDecodeStart = performance.now();
+  await previewImage.evaluate((image: HTMLImageElement) => image.decode());
+  const warmDecodedMs = performance.now() - warmStart;
+  const warmDecodeCallMs = performance.now() - warmDecodeStart;
   expect(requestedPaths.filter((path) => path.endsWith('/content'))).toHaveLength(
     firstOpenContentRequests,
   );
+  console.log(JSON.stringify({
+    scenario: 'mocked private 2048x1536 PNG',
+    encodedBytes: largeRasterPng.length,
+    firstOpenContentRequests,
+    completedDownloadMs: completedDownloadMs.map(Math.round),
+    coldDecodedMs: Math.round(coldDecodedMs),
+    coldDecodeCallMs: Math.round(coldDecodeCallMs),
+    warmDecodedMs: Math.round(warmDecodedMs),
+    warmDecodeCallMs: Math.round(warmDecodeCallMs),
+  }));
 });
 
 test('reserves image attachment shell height from metadata before the image finishes loading', async ({

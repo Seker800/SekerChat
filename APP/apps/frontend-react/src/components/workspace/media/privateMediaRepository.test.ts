@@ -91,6 +91,8 @@ describe('private media repository', () => {
     expect(revokeObjectUrl).not.toHaveBeenCalled();
     lease.release();
     expect(revokeObjectUrl).toHaveBeenCalledWith('blob:large');
+    (await repository.acquirePreview(request)).release();
+    expect(attempt).toBe(3);
   });
 
   it('invalidates a cached original after decode failure', async () => {

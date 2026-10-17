@@ -55,6 +55,32 @@ Check(
         StringComparison.Ordinal),
     "bridge should forward realtime do-not-disturb changes");
 
+var navigation = new WebClientNavigationState();
+const string originalSite = "https://chat.example.com";
+const string otherSite = "https://other.example.com";
+Check(navigation.ShouldNavigate(originalSite, null), "first client open should navigate");
+navigation.NavigationStarting(originalSite);
+Check(!navigation.ShouldNavigate(originalSite, null), "reopening while initial navigation is pending should not duplicate it");
+navigation.NavigationCompleted(true);
+Check(
+    !navigation.ShouldNavigate(originalSite, originalSite + "/groups/one"),
+    "hiding and reopening a healthy client should preserve its page and image cache");
+Check(
+    navigation.ShouldNavigate(otherSite, originalSite + "/groups/one"),
+    "changing the configured site should navigate");
+navigation.NavigationStarting(otherSite);
+navigation.NavigationCompleted(true);
+Check(
+    navigation.ShouldNavigate(originalSite, otherSite + "/groups/two"),
+    "returning to the original site should navigate");
+navigation.NavigationStarting(originalSite);
+navigation.NavigationCompleted(false);
+Check(navigation.ShouldNavigate(originalSite, originalSite), "a failed page should retry on reopening");
+navigation.NavigationStarting(originalSite);
+navigation.NavigationCompleted(true);
+navigation.ProcessFailed();
+Check(navigation.ShouldNavigate(originalSite, originalSite), "a failed WebView2 process should reload");
+
 Check(
     PetStatePolicy.Compute(false, false, false) == PetState.NotLoggedIn,
     "a missing web session should show the logged-out pet state");
@@ -220,7 +246,7 @@ using (var menu = new DesktopPetMenu(
 }
 
 Check(
-    AppVersion.Current == "0.5.9",
+    AppVersion.Current == "0.5.10",
     "desktop-pet should expose its release version");
 
 Check(
