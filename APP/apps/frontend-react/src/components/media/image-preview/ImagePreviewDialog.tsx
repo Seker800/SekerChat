@@ -2,6 +2,7 @@ import { IconRefresh } from '@tabler/icons-react';
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import styles from './ImagePreviewDialog.module.css';
 import type { PreviewImage } from './useImagePreviewState';
+import { privateMediaRepository } from '../../workspace/media/privateMediaRepository';
 
 interface ImagePreviewDialogProps {
   activeDimensions: { width: number; height: number } | null;
@@ -38,11 +39,53 @@ export function ImagePreviewDialog({
     attempt: number;
     status: PreviewLoadStatus;
   }>({ src: image.src, attempt: 0, status: 'loading' });
+  const [cachedSource, setCachedSource] = useState<{
+    src: string;
+    attempt: number;
+    objectUrl: string;
+  } | null>(null);
   const activeLoadState =
     loadState.src === image.src
       ? loadState
       : { src: image.src, attempt: 0, status: 'loading' as const };
   onWheelRef.current = onWheel;
+
+  useEffect(() => {
+    if (!image.accessToken || !image.viewerId) return;
+    const controller = new AbortController();
+    let release: (() => void) | undefined;
+    void privateMediaRepository
+      .acquirePreview({
+        viewerId: image.viewerId,
+        accessToken: image.accessToken,
+        url: image.src,
+        signal: controller.signal,
+      })
+      .then((lease) => {
+        if (controller.signal.aborted) {
+          lease.release();
+          return;
+        }
+        release = lease.release;
+        setCachedSource({ src: image.src, attempt: activeLoadState.attempt, objectUrl: lease.src });
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        console.warn('Image preview failed:', error);
+        setLoadState({ src: image.src, attempt: activeLoadState.attempt, status: 'error' });
+      });
+    return () => {
+      controller.abort();
+      release?.();
+    };
+  }, [image.accessToken, image.viewerId, image.src, activeLoadState.attempt]);
+
+  const displaySource =
+    image.accessToken && image.viewerId
+      ? cachedSource?.src === image.src && cachedSource.attempt === activeLoadState.attempt
+        ? cachedSource.objectUrl
+        : null
+      : image.src;
 
   useEffect(() => {
     const stage =
@@ -125,41 +168,46 @@ export function ImagePreviewDialog({
             transform: `translate(${offset.x}px, ${offset.y}px)`,
           }}
         >
-          <img
-            key={`${image.src}:${activeLoadState.attempt}`}
-            className={styles.previewImage}
-            src={image.src}
-            alt={image.alt}
-            aria-hidden={activeLoadState.status !== 'loaded'}
-            data-testid="image-preview-image"
-            draggable={false}
-            onLoad={(event) => {
-              setLoadState({
-                src: image.src,
-                attempt: activeLoadState.attempt,
-                status: 'loaded',
-              });
-              onImageLoad({
-                width: event.currentTarget.naturalWidth,
-                height: event.currentTarget.naturalHeight,
-              });
-            }}
-            onError={() => {
-              setLoadState({
-                src: image.src,
-                attempt: activeLoadState.attempt,
-                status: 'error',
-              });
-            }}
-            style={
-              activeDimensions
-                ? {
-                    width: `${activeDimensions.width}px`,
-                    height: `${activeDimensions.height}px`,
-                  }
-                : undefined
-            }
-          />
+          {displaySource ? (
+            <img
+              key={`${image.src}:${activeLoadState.attempt}`}
+              className={styles.previewImage}
+              src={displaySource}
+              alt={image.alt}
+              aria-hidden={activeLoadState.status !== 'loaded'}
+              data-testid="image-preview-image"
+              draggable={false}
+              onLoad={(event) => {
+                setLoadState({
+                  src: image.src,
+                  attempt: activeLoadState.attempt,
+                  status: 'loaded',
+                });
+                onImageLoad({
+                  width: event.currentTarget.naturalWidth,
+                  height: event.currentTarget.naturalHeight,
+                });
+              }}
+              onError={() => {
+                if (image.viewerId && image.accessToken) {
+                  privateMediaRepository.invalidatePreview(image.viewerId, image.src);
+                }
+                setLoadState({
+                  src: image.src,
+                  attempt: activeLoadState.attempt,
+                  status: 'error',
+                });
+              }}
+              style={
+                activeDimensions
+                  ? {
+                      width: `${activeDimensions.width}px`,
+                      height: `${activeDimensions.height}px`,
+                    }
+                  : undefined
+              }
+            />
+          ) : null}
         </button>
       </div>
       <div

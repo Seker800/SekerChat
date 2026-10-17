@@ -241,19 +241,12 @@ export function ProtectedImageAttachment({
 
     try {
       const previewTarget = previewSrc || src || resolvedSrc;
-      if (!previewTarget || !accessToken) {
-        onPreview({ src: previewTarget || resolvedSrc, alt });
-        return;
-      }
-
-      const previewUrl = isGroupFileThumbnailUrl(previewTarget)
-        ? resolvedSrc
-        : await resolveImageUrl(previewTarget, accessToken, undefined, viewerId ?? accessToken);
-      onPreview({ src: previewUrl, alt });
-    } catch (error) {
-      if (isAbortError(error)) return;
-      console.warn('Image preview failed:', error);
-      setLoadState('error');
+      onPreview({
+        src: isGroupFileThumbnailUrl(previewTarget) ? resolvedSrc : previewTarget,
+        alt,
+        accessToken: isGroupFileContentUrl(previewTarget) ? accessToken : undefined,
+        viewerId: viewerId ?? accessToken,
+      });
     } finally {
       setIsOpeningPreview(false);
     }

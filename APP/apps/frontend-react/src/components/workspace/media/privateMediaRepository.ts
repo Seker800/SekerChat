@@ -9,8 +9,12 @@ import {
 const DEFAULT_MAX_ENTRIES = 256;
 const DEFAULT_MAX_BYTES = 32 * 1024 * 1024;
 const ORIGINAL_URL_EXPIRY_SAFETY_MS = 5 * 60 * 1000;
+const PREVIEW_MAX_ENTRIES = 6;
+const PREVIEW_MAX_BYTES = 96 * 1024 * 1024;
+const PREVIEW_IDLE_TTL_MS = 10 * 60 * 1000;
+const PREVIEW_REQUEST_TIMEOUT_MS = 120_000;
 
-type MediaFetcher = (url: string, init?: RequestInit) => Promise<Response>;
+type MediaFetcher = (url: string, init?: RequestInit, timeoutMs?: number) => Promise<Response>;
 
 interface ThumbnailEntry {
   invalidated: boolean;
@@ -38,6 +42,7 @@ interface RepositoryOptions {
   now?: () => number;
   maxEntries?: number;
   maxBytes?: number;
+  previewMaxBytes?: number;
 }
 
 interface ThumbnailRequest {
@@ -63,7 +68,10 @@ function mediaKey(viewerId: string, kind: 'thumbnail' | 'original', url: string)
 }
 
 function viewUrlFromContentUrl(contentUrl: string): string {
-  const viewUrl = contentUrl.replace(/\/content(\?.*)?$/, (_, query: string | undefined) => `/view-url${query ?? ''}`);
+  const viewUrl = contentUrl.replace(
+    /\/content(\?.*)?$/,
+    (_, query: string | undefined) => `/view-url${query ?? ''}`,
+  );
   if (viewUrl === contentUrl) {
     throw new Error('Image content URL format is not supported.');
   }
@@ -79,6 +87,21 @@ export function createPrivateMediaRepository(options: RepositoryOptions = {}) {
   const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
   const thumbnails = new Map<string, ThumbnailEntry>();
   const originals = new Map<string, OriginalUrlEntry>();
+  const previews = new Map<string, ThumbnailEntry>();
+  const previewMaxBytes = options.previewMaxBytes ?? PREVIEW_MAX_BYTES;
+
+  function evictReleasedPreviews() {
+    let bytes = [...previews.values()].reduce((sum, entry) => sum + entry.size, 0);
+    const candidates = [...previews.values()]
+      .filter((entry) => entry.references === 0 && entry.src)
+      .sort((left, right) => left.lastUsed - right.lastUsed);
+    for (const entry of candidates) {
+      if (previews.size <= PREVIEW_MAX_ENTRIES && bytes <= previewMaxBytes) break;
+      previews.delete(entry.key);
+      bytes -= entry.size;
+      revokeObjectUrl(entry.src!);
+    }
+  }
 
   function totalThumbnailBytes() {
     let total = 0;
@@ -183,9 +206,7 @@ export function createPrivateMediaRepository(options: RepositoryOptions = {}) {
       thumbnails.set(key, target);
     }
 
-    const resolved = entry.pending
-      ? await waitForPendingThumbnail(entry, request.signal)
-      : entry;
+    const resolved = entry.pending ? await waitForPendingThumbnail(entry, request.signal) : entry;
     if (request.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
     if (!resolved.src) {
       throw new Error('Thumbnail response produced no object URL.');
@@ -205,6 +226,92 @@ export function createPrivateMediaRepository(options: RepositoryOptions = {}) {
         evictReleasedThumbnails();
       },
     };
+  }
+
+  async function acquirePreview(request: ThumbnailRequest): Promise<ThumbnailLease> {
+    if (request.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+    const key = mediaKey(request.viewerId, 'original', request.url);
+    let entry = previews.get(key);
+    if (entry?.pendingController?.signal.aborted) {
+      previews.delete(key);
+      entry = undefined;
+    }
+    if (entry?.src && entry.references === 0 && now() - entry.lastUsed > PREVIEW_IDLE_TTL_MS) {
+      previews.delete(key);
+      revokeObjectUrl(entry.src);
+      entry = undefined;
+    }
+    if (!entry) {
+      entry = {
+        invalidated: false,
+        key,
+        pendingConsumers: 0,
+        size: 0,
+        references: 0,
+        lastUsed: now(),
+      };
+      const target = entry;
+      const controller = new AbortController();
+      target.pendingController = controller;
+      target.pending = (async () => {
+        const response = await fetcher(
+          request.url,
+          {
+            headers: bearerHeader(request.accessToken),
+            credentials: 'include',
+            cache: 'default',
+            signal: controller.signal,
+          },
+          PREVIEW_REQUEST_TIMEOUT_MS,
+        );
+        if (!response.ok) throw new Error(`Preview request failed: ${response.status}`);
+        const blob = await response.blob();
+        if (target.invalidated) throw new DOMException('Aborted', 'AbortError');
+        target.src = createObjectUrl(blob);
+        target.size = blob.size;
+        target.lastUsed = now();
+        target.pending = undefined;
+        target.pendingController = undefined;
+        return target;
+      })().catch((error) => {
+        if (previews.get(key) === target) previews.delete(key);
+        target.pending = undefined;
+        target.pendingController = undefined;
+        throw error;
+      });
+      previews.set(key, target);
+    }
+    const resolved = entry.pending ? await waitForPendingThumbnail(entry, request.signal) : entry;
+    if (request.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+    if (!resolved.src) throw new Error('Preview response produced no object URL.');
+    resolved.references += 1;
+    resolved.lastUsed = now();
+    evictReleasedPreviews();
+    let released = false;
+    return {
+      src: resolved.src,
+      release() {
+        if (released) return;
+        released = true;
+        resolved.references = Math.max(0, resolved.references - 1);
+        resolved.lastUsed = now();
+        if (resolved.invalidated && resolved.references === 0 && resolved.src) {
+          revokeObjectUrl(resolved.src);
+          return;
+        }
+        evictReleasedPreviews();
+      },
+    };
+  }
+
+  function invalidatePreview(viewerId: string, url: string) {
+    const key = mediaKey(viewerId, 'original', url);
+    const entry = previews.get(key);
+    if (!entry) return;
+    previews.delete(key);
+    entry.invalidated = true;
+    entry.pendingController?.abort();
+    if (entry.references === 0 && entry.src) revokeObjectUrl(entry.src);
   }
 
   async function resolveOriginalUrl(request: OriginalUrlRequest): Promise<string> {
@@ -257,12 +364,20 @@ export function createPrivateMediaRepository(options: RepositoryOptions = {}) {
       if (entry.src) revokeObjectUrl(entry.src);
     }
     for (const entry of originals.values()) entry.pendingController?.abort();
+    for (const entry of previews.values()) {
+      entry.invalidated = true;
+      entry.pendingController?.abort();
+      if (entry.src) revokeObjectUrl(entry.src);
+    }
     thumbnails.clear();
     originals.clear();
+    previews.clear();
   }
 
   return {
     acquireThumbnail,
+    acquirePreview,
+    invalidatePreview,
     resolveOriginalUrl,
     clear,
     getStats: () => ({ entries: thumbnails.size, bytes: totalThumbnailBytes() }),

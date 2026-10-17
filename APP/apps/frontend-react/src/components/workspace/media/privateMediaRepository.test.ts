@@ -14,6 +14,141 @@ describe('private media repository', () => {
     vi.restoreAllMocks();
   });
 
+  it('reuses a loaded private original after closing and reopening', async () => {
+    const fetcher = vi.fn(async () => thumbnailResponse('large-original'));
+    const revokeObjectUrl = vi.fn();
+    const repository = createPrivateMediaRepository({
+      fetcher,
+      createObjectUrl: () => 'blob:original',
+      revokeObjectUrl,
+    });
+    const request = {
+      viewerId: 'user-1',
+      accessToken: BROWSER_COOKIE_CREDENTIAL,
+      url: '/api/groups/g/files/f/content',
+    };
+    const first = await repository.acquirePreview(request);
+    first.release();
+    const second = await repository.acquirePreview(request);
+    expect(second.src).toBe(first.src);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(fetcher).toHaveBeenCalledWith(
+      request.url,
+      expect.objectContaining({ credentials: 'include' }),
+      120_000,
+    );
+    expect(revokeObjectUrl).not.toHaveBeenCalled();
+    second.release();
+    repository.clear();
+    expect(revokeObjectUrl).toHaveBeenCalledWith('blob:original');
+  });
+
+  it('separates original bytes by viewer and expires idle entries', async () => {
+    let clock = 0;
+    let sequence = 0;
+    const fetcher = vi.fn(async () => thumbnailResponse());
+    const repository = createPrivateMediaRepository({
+      fetcher,
+      now: () => clock,
+      createObjectUrl: () => `blob:original-${++sequence}`,
+      revokeObjectUrl: vi.fn(),
+    });
+    const request = {
+      viewerId: 'user-1',
+      accessToken: BROWSER_COOKIE_CREDENTIAL,
+      url: '/api/groups/g/files/f/content',
+    };
+    (await repository.acquirePreview(request)).release();
+    (await repository.acquirePreview({ ...request, viewerId: 'user-2' })).release();
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    clock = 11 * 60 * 1000;
+    (await repository.acquirePreview(request)).release();
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    repository.clear();
+  });
+
+  it('retries failed originals and releases oversized originals after close', async () => {
+    let attempt = 0;
+    const revokeObjectUrl = vi.fn();
+    const repository = createPrivateMediaRepository({
+      fetcher: vi.fn(async () =>
+        ++attempt === 1
+          ? new Response('', { status: 503 })
+          : thumbnailResponse('larger-than-budget'),
+      ),
+      createObjectUrl: () => 'blob:large',
+      revokeObjectUrl,
+      previewMaxBytes: 1,
+    });
+    const request = {
+      viewerId: 'user-1',
+      accessToken: 'token',
+      url: '/api/groups/g/files/f/content',
+    };
+    await expect(repository.acquirePreview(request)).rejects.toThrow('503');
+    const lease = await repository.acquirePreview(request);
+    expect(attempt).toBe(2);
+    expect(revokeObjectUrl).not.toHaveBeenCalled();
+    lease.release();
+    expect(revokeObjectUrl).toHaveBeenCalledWith('blob:large');
+  });
+
+  it('invalidates a cached original after decode failure', async () => {
+    let sequence = 0;
+    const revokeObjectUrl = vi.fn();
+    const repository = createPrivateMediaRepository({
+      fetcher: vi.fn(async () => thumbnailResponse()),
+      createObjectUrl: () => `blob:${++sequence}`,
+      revokeObjectUrl,
+    });
+    const request = {
+      viewerId: 'user-1',
+      accessToken: 'token',
+      url: '/api/groups/g/files/f/content',
+    };
+    const first = await repository.acquirePreview(request);
+    repository.invalidatePreview(request.viewerId, request.url);
+    first.release();
+    const second = await repository.acquirePreview(request);
+    expect(second.src).not.toBe(first.src);
+    expect(revokeObjectUrl).toHaveBeenCalledWith(first.src);
+    second.release();
+    repository.clear();
+  });
+
+  it('starts a fresh original request after the last pending consumer aborts', async () => {
+    let calls = 0;
+    const repository = createPrivateMediaRepository({
+      fetcher: vi.fn(async (_url, init) => {
+        calls += 1;
+        if (calls === 1) {
+          return new Promise<Response>((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () =>
+              reject(new DOMException('Aborted', 'AbortError')),
+            );
+          });
+        }
+        return thumbnailResponse();
+      }),
+      createObjectUrl: () => 'blob:second',
+      revokeObjectUrl: vi.fn(),
+    });
+    const controller = new AbortController();
+    const request = {
+      viewerId: 'user-1',
+      accessToken: 'token',
+      url: '/api/groups/g/files/f/content',
+    };
+    const first = repository.acquirePreview({ ...request, signal: controller.signal });
+    controller.abort();
+    await expect(first).rejects.toHaveProperty('name', 'AbortError');
+    const second = await repository.acquirePreview(request);
+    expect(second.src).toBe('blob:second');
+    expect(calls).toBe(2);
+    second.release();
+    repository.clear();
+  });
+
   it('deduplicates thumbnail downloads across component remounts', async () => {
     const fetcher = vi.fn(async () => thumbnailResponse());
     const createObjectUrl = vi.fn(() => 'blob:thumbnail-1');
@@ -119,12 +254,16 @@ describe('private media repository', () => {
     const payload = new Blob(['12345678'], { type: 'image/jpeg' });
     const revokeObjectUrl = vi.fn();
     const repository = createPrivateMediaRepository({
-      fetcher: vi.fn(async () => ({
-        ok: true,
-        status: 200,
-        blob: async () => payload,
-      }) as Response),
-      createObjectUrl: vi.fn()
+      fetcher: vi.fn(
+        async () =>
+          ({
+            ok: true,
+            status: 200,
+            blob: async () => payload,
+          }) as Response,
+      ),
+      createObjectUrl: vi
+        .fn()
         .mockReturnValueOnce('blob:thumbnail-1')
         .mockReturnValueOnce('blob:thumbnail-2'),
       revokeObjectUrl,
@@ -145,9 +284,14 @@ describe('private media repository', () => {
   });
 
   it('aborts a pending thumbnail download after its last consumer leaves', async () => {
-    const fetcher = vi.fn((_url: string, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
-      init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
-    }));
+    const fetcher = vi.fn(
+      (_url: string, init?: RequestInit) =>
+        new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () =>
+            reject(new DOMException('Aborted', 'AbortError')),
+          );
+        }),
+    );
     const repository = createPrivateMediaRepository({
       fetcher,
       createObjectUrl: vi.fn(),
@@ -169,10 +313,15 @@ describe('private media repository', () => {
 
   it('keeps a shared pending thumbnail download alive for remaining consumers', async () => {
     let resolveFetch: ((response: Response) => void) | undefined;
-    const fetcher = vi.fn((_url: string, init?: RequestInit) => new Promise<Response>((resolve, reject) => {
-      resolveFetch = resolve;
-      init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
-    }));
+    const fetcher = vi.fn(
+      (_url: string, init?: RequestInit) =>
+        new Promise<Response>((resolve, reject) => {
+          resolveFetch = resolve;
+          init?.signal?.addEventListener('abort', () =>
+            reject(new DOMException('Aborted', 'AbortError')),
+          );
+        }),
+    );
     const repository = createPrivateMediaRepository({
       fetcher,
       createObjectUrl: () => 'blob:shared-thumbnail',
@@ -250,21 +399,27 @@ describe('private media repository', () => {
     });
     const contentUrl = 'https://chat.example.test/api/groups/group-1/files/file-1/content';
 
-    await expect(repository.resolveOriginalUrl({
-      viewerId: 'user-1',
-      accessToken: BROWSER_COOKIE_CREDENTIAL,
-      contentUrl,
-    })).resolves.toBe(contentUrl);
+    await expect(
+      repository.resolveOriginalUrl({
+        viewerId: 'user-1',
+        accessToken: BROWSER_COOKIE_CREDENTIAL,
+        contentUrl,
+      }),
+    ).resolves.toBe(contentUrl);
 
     expect(fetcher).not.toHaveBeenCalled();
   });
 
   it('does not let a cleared request delete a newer cache entry with the same key', async () => {
     let rejectFirst: ((error: unknown) => void) | undefined;
-    const fetcher = vi.fn()
-      .mockImplementationOnce(() => new Promise<Response>((_resolve, reject) => {
-        rejectFirst = reject;
-      }))
+    const fetcher = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise<Response>((_resolve, reject) => {
+            rejectFirst = reject;
+          }),
+      )
       .mockResolvedValueOnce(thumbnailResponse('new-thumbnail'));
     const repository = createPrivateMediaRepository({
       fetcher,
@@ -291,13 +446,19 @@ describe('private media repository', () => {
 
   it('deduplicates original view-url requests until the expiry safety window', async () => {
     let now = Date.parse('2026-08-10T08:00:00.000Z');
-    const fetcher = vi.fn(async () => new Response(JSON.stringify({
-      url: 'https://media.example/original.jpg?signature=one',
-      expiresAt: '2026-08-10T09:00:00.000Z',
-    }), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    }));
+    const fetcher = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            url: 'https://media.example/original.jpg?signature=one',
+            expiresAt: '2026-08-10T09:00:00.000Z',
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+    );
     const repository = createPrivateMediaRepository({
       fetcher,
       createObjectUrl: vi.fn(),

@@ -332,6 +332,17 @@ test('shows replied image thumbnails and opens the original through the page ori
     page.getByRole('dialog', { name: 'reply-evidence.png' }).getByRole('img'),
   ).toBeVisible();
   expect(requestedPaths).toContain('/api/groups/group-1/files/file-image-origin-1/content');
+  const firstOpenContentRequests = requestedPaths.filter((path) =>
+    path.endsWith('/content'),
+  ).length;
+  await page.getByRole('button', { name: '关闭', exact: true }).click();
+  await page.getByRole('button', { name: '全屏查看 reply-evidence.png' }).click();
+  await expect(
+    page.getByRole('dialog', { name: 'reply-evidence.png' }).getByRole('img'),
+  ).toBeVisible();
+  expect(requestedPaths.filter((path) => path.endsWith('/content'))).toHaveLength(
+    firstOpenContentRequests,
+  );
 });
 
 test('reserves image attachment shell height from metadata before the image finishes loading', async ({

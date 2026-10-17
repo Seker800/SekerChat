@@ -26,6 +26,7 @@ import { AlbumVideoTile } from './AlbumVideoTile';
 interface DmAlbumPageProps {
   accessToken: string;
   canManage: boolean;
+  viewerId?: string;
 }
 
 const ALBUM_IMAGE_EXTENSION_PATTERN = /\.(?:jpe?g|png|webp|gif)$/i;
@@ -44,7 +45,7 @@ function isAlbumMediaFile(file: File): boolean {
   );
 }
 
-export function DmAlbumPage({ accessToken, canManage }: DmAlbumPageProps) {
+export function DmAlbumPage({ accessToken, canManage, viewerId }: DmAlbumPageProps) {
   const queryClient = useQueryClient();
   const pageRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -394,6 +395,8 @@ export function DmAlbumPage({ accessToken, canManage }: DmAlbumPageProps) {
                   imagePreview.setPreviewImage({
                     src: contentUrl,
                     alt: `相册图片 ${index + 1}`,
+                    accessToken,
+                    viewerId: viewerId ?? accessToken,
                   });
                 }}
                 style={{

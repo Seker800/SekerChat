@@ -16,6 +16,8 @@ const SCALE_STEP = 0.25;
 export interface PreviewImage {
   src: string;
   alt: string;
+  accessToken?: string;
+  viewerId?: string;
 }
 
 interface Dimensions {

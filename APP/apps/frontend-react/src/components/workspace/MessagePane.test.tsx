@@ -801,10 +801,8 @@ describe('MessagePane image preview', () => {
   });
 
   it('keeps original preview access when inline image loading fails', async () => {
-    // Thumbnail view-url fails, but preview click succeeds
-    fetchMock.mockResolvedValue(
-      mockJsonResponse({ url: 'https://media.example.test/bucket/evidence.png' }),
-    );
+    // The inline image can fail to decode while its original remains available to preview.
+    fetchMock.mockResolvedValue(mockBlobResponse());
     const failingMessage: MessageResponse = {
       ...imageMessage,
       attachment: {
@@ -831,9 +829,9 @@ describe('MessagePane image preview', () => {
     fireEvent.click(trigger);
 
     expect(await screen.findByRole('dialog', { name: 'evidence.png' })).toBeInTheDocument();
-    expect(screen.getByTestId('image-preview-image')).toHaveAttribute(
+    expect(await screen.findByTestId('image-preview-image')).toHaveAttribute(
       'src',
-      'https://media.example.test/bucket/evidence.png',
+      'blob:preview-image',
     );
   });
 
@@ -867,11 +865,7 @@ describe('MessagePane image preview', () => {
   });
 
   it('loads reply image thumbnails and previews through the browser API origin', async () => {
-    fetchMock
-      .mockResolvedValueOnce(mockBlobResponse())
-      .mockResolvedValueOnce(
-        mockJsonResponse({ url: 'https://media.example.test/bucket/reply-evidence.png' }),
-      );
+    fetchMock.mockResolvedValueOnce(mockBlobResponse()).mockResolvedValueOnce(mockBlobResponse());
 
     const replyImageMessage: MessageResponse = {
       ...replyMessage,
@@ -885,10 +879,8 @@ describe('MessagePane image preview', () => {
           fileId: 'reply-file-1',
           uploaderId: 'user-2',
           originalName: 'reply-evidence.png',
-          contentUrl:
-            'http://backend:3100/api/groups/group-1/files/reply-file-1/content',
-          thumbnailUrl:
-            'http://backend:3100/api/groups/group-1/files/reply-file-1/thumbnail',
+          contentUrl: 'http://backend:3100/api/groups/group-1/files/reply-file-1/content',
+          thumbnailUrl: 'http://backend:3100/api/groups/group-1/files/reply-file-1/thumbnail',
         },
       },
     };
@@ -915,7 +907,7 @@ describe('MessagePane image preview', () => {
     expect(await screen.findByRole('dialog', { name: 'reply-evidence.png' })).toBeInTheDocument();
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      `${window.location.origin}/api/groups/group-1/files/reply-file-1/view-url`,
+      `${window.location.origin}/api/groups/group-1/files/reply-file-1/content`,
       expect.anything(),
     );
   });

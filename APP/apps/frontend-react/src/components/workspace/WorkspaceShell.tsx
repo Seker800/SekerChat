@@ -446,7 +446,11 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
                 <div className={styles.headerStatus}>{model.header.userLabel}</div>
               </div>
             </header>
-            <DmAlbumPage accessToken={accessToken} canManage={canManageAlbum} />
+            <DmAlbumPage
+              accessToken={accessToken}
+              canManage={canManageAlbum}
+              viewerId={currentUser.id}
+            />
           </>
         ) : model.isDmSubscriptionPage ? (
           <>

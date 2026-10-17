@@ -6,7 +6,10 @@ import { clearPrivateMediaCache } from './media/privateMediaRepository';
 
 describe('ProtectedImageAttachment', () => {
   beforeEach(() => {
-    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => undefined)));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => new Promise<Response>(() => undefined)),
+    );
   });
 
   afterEach(() => {
@@ -63,17 +66,23 @@ describe('ProtectedImageAttachment', () => {
     });
   });
 
-  it('opens preview with the presigned view URL', async () => {
+  it('opens preview with the stable protected content URL', async () => {
     const onPreview = vi.fn();
-    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
-      if (url.includes('view-url')) {
-        return new Response(JSON.stringify({ url: 'https://media.example.test/bucket/original.jpg' }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-      return new Response('', { status: 404 });
-    }));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url.includes('view-url')) {
+          return new Response(
+            JSON.stringify({ url: 'https://media.example.test/bucket/original.jpg' }),
+            {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            },
+          );
+        }
+        return new Response('', { status: 404 });
+      }),
+    );
 
     render(
       <ProtectedImageAttachment
@@ -89,8 +98,10 @@ describe('ProtectedImageAttachment', () => {
 
     await waitFor(() => {
       expect(onPreview).toHaveBeenCalledWith({
-        src: 'https://media.example.test/bucket/original.jpg',
+        src: 'http://localhost:3000/api/groups/group-1/files/original/content',
         alt: 'evidence.png',
+        accessToken: 'token-1',
+        viewerId: 'token-1',
       });
     });
   });
@@ -124,10 +135,16 @@ describe('ProtectedImageAttachment', () => {
       onPreview: () => undefined,
     };
     const first = render(<ProtectedImageAttachment {...props} />);
-    expect(await screen.findByAltText('evidence.png')).toHaveAttribute('src', 'blob:stable-thumbnail');
+    expect(await screen.findByAltText('evidence.png')).toHaveAttribute(
+      'src',
+      'blob:stable-thumbnail',
+    );
     first.unmount();
     render(<ProtectedImageAttachment {...props} />);
-    expect(await screen.findByAltText('evidence.png')).toHaveAttribute('src', 'blob:stable-thumbnail');
+    expect(await screen.findByAltText('evidence.png')).toHaveAttribute(
+      'src',
+      'blob:stable-thumbnail',
+    );
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0]?.[0]).toBe(props.src);
