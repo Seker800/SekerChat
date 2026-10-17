@@ -3,6 +3,7 @@ using System.Text.Json;
 using Forms = System.Windows.Forms;
 
 var failures = new List<string>();
+var checkCount = 0;
 
 Check(
     MessagePolicy.IsImportant(
@@ -282,11 +283,12 @@ if (failures.Count > 0)
     return 1;
 }
 
-Console.WriteLine("PASS: 25 desktop-pet core checks");
+Console.WriteLine($"PASS: {checkCount} desktop-pet core checks");
 return 0;
 
 void Check(bool condition, string description)
 {
+    checkCount++;
     if (!condition)
     {
         failures.Add(description);
