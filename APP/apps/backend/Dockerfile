@@ -31,6 +31,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 RUN apt-get update -y \
+  && apt-get upgrade -y --no-install-recommends \
   && apt-get install -y --no-install-recommends ffmpeg libheif-examples openssl \
   && rm -rf /var/lib/apt/lists/*
 
