@@ -15,6 +15,7 @@ export class AuthUserService {
         displayName: true,
         role: true,
         isBot: true,
+        integrationKind: true,
         disabledAt: true,
         mustChangePassword: true,
         authVersion: true,
@@ -25,7 +26,7 @@ export class AuthUserService {
       throw new UnauthorizedException('User not found.');
     }
 
-    if (user.disabledAt) {
+    if (user.disabledAt || user.integrationKind) {
       throw new ForbiddenException('该账号已停用，请联系管理员');
     }
 

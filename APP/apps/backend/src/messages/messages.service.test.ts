@@ -8,6 +8,7 @@ import { MessageEventsService } from './message-events.service';
 import { MessageReadReceiptService } from './message-read-receipt.service';
 import { MessageSerializerService } from './message-serializer.service';
 import type { MessageReceiptMember } from './message-record.types';
+import { MessageDeliveryIntents } from './message-delivery-intents';
 import { MessagesService } from './messages.service';
 import { SystemMessageService } from './system-message.service';
 import { CreateMessageType } from './dto/create-message.dto';
@@ -67,6 +68,7 @@ function createService(deps: {
     serializerService,
     new BotAccessService(deps.prismaService as never),
     (deps.outboxWakeupService ?? { notify: () => undefined }) as never,
+    new MessageDeliveryIntents(),
   );
 }
 
@@ -101,13 +103,15 @@ test('createMessage commits its outbox event without waiting for realtime delive
     },
     $transaction: async <T>(input: unknown) => {
       if (typeof input === 'function') {
-        return (input as (transaction: {
-          message: { create: (payload: unknown) => Promise<T> };
-          fileObject: { update: (payload: unknown) => Promise<void> };
-          group: { update: (payload: unknown) => Promise<void> };
-          groupMember: { updateMany: (payload: unknown) => Promise<void> };
-          outboxEvent: { create: (payload: unknown) => Promise<void> };
-        }) => Promise<T>)({
+        return (
+          input as (transaction: {
+            message: { create: (payload: unknown) => Promise<T> };
+            fileObject: { update: (payload: unknown) => Promise<void> };
+            group: { update: (payload: unknown) => Promise<void> };
+            groupMember: { updateMany: (payload: unknown) => Promise<void> };
+            outboxEvent: { create: (payload: unknown) => Promise<void> };
+          }) => Promise<T>
+        )({
           message: {
             create: async () =>
               ({
@@ -135,7 +139,11 @@ test('createMessage commits its outbox event without waiting for realtime delive
           },
           group: { update: async () => undefined },
           groupMember: { updateMany: async () => undefined },
-          outboxEvent: { create: async (payload) => { outboxEvents.push(payload); } },
+          outboxEvent: {
+            create: async (payload) => {
+              outboxEvents.push(payload);
+            },
+          },
         });
       }
       return input;
@@ -166,7 +174,11 @@ test('createMessage commits its outbox event without waiting for realtime delive
     filesService,
     realtimeService,
     avatarsService,
-    outboxWakeupService: { notify: () => { wakeups += 1; } },
+    outboxWakeupService: {
+      notify: () => {
+        wakeups += 1;
+      },
+    },
   });
 
   const result = await service.createMessage('user-1', 'group-1', {
@@ -207,13 +219,15 @@ test('createMessage returns the serialized message for a second text input', asy
     },
     $transaction: async <T>(input: unknown) => {
       if (typeof input === 'function') {
-        return (input as (transaction: {
-          message: { create: (payload: unknown) => Promise<T> };
-          fileObject: { update: (payload: unknown) => Promise<void> };
-          group: { update: (payload: unknown) => Promise<void> };
-          groupMember: { updateMany: (payload: unknown) => Promise<void> };
-          outboxEvent: { create: (payload: unknown) => Promise<void> };
-        }) => Promise<T>)({
+        return (
+          input as (transaction: {
+            message: { create: (payload: unknown) => Promise<T> };
+            fileObject: { update: (payload: unknown) => Promise<void> };
+            group: { update: (payload: unknown) => Promise<void> };
+            groupMember: { updateMany: (payload: unknown) => Promise<void> };
+            outboxEvent: { create: (payload: unknown) => Promise<void> };
+          }) => Promise<T>
+        )({
           message: {
             create: async () =>
               ({
@@ -309,15 +323,17 @@ test('createMessage returns the existing message when clientMessageId wins a con
         id: 'group-1',
         archivedAt: null,
         isDM: false,
-        members: [{
-          userId: 'user-1',
-          user: {
-            email: 'user-1@example.com',
-            displayName: 'User 1',
-            role: 'MEMBER',
-            isBot: false,
+        members: [
+          {
+            userId: 'user-1',
+            user: {
+              email: 'user-1@example.com',
+              displayName: 'User 1',
+              role: 'MEMBER',
+              isBot: false,
+            },
           },
-        }],
+        ],
       }),
     },
     message: { findUnique: async () => existingMessage },
@@ -333,12 +349,15 @@ test('createMessage returns the existing message when clientMessageId wins a con
     prismaService as never,
     {} as never,
     {} as never,
-    { serializeUserMessage: async () => ({ id: existingMessage.id, type: 'text', replyTo: null }) } as never,
+    {
+      serializeUserMessage: async () => ({ id: existingMessage.id, type: 'text', replyTo: null }),
+    } as never,
     {} as never,
     {} as never,
     {} as never,
     { ensureTextMessageAccessAllowed: async () => undefined } as never,
     { notify: () => undefined } as never,
+    new MessageDeliveryIntents(),
   );
 
   const result = await service.createMessage('user-1', 'group-1', {
@@ -395,12 +414,18 @@ test('createMessage rejects dm bot messages when the sender is outside the allow
       ],
     },
     user: {
-      findUnique: async () => ({ botConfig: { allowedUserIds: ['user-2'] }, isBot: true, role: 'CLI_BOT' }),
+      findUnique: async () => ({
+        botConfig: { allowedUserIds: ['user-2'] },
+        isBot: true,
+        role: 'CLI_BOT',
+      }),
     },
-    $transaction: async <T>(callback: (transaction: {
-      message: { create: (input: unknown) => Promise<T> };
-      fileObject: { update: (input: unknown) => Promise<void> };
-    }) => Promise<T>) =>
+    $transaction: async <T>(
+      callback: (transaction: {
+        message: { create: (input: unknown) => Promise<T> };
+        fileObject: { update: (input: unknown) => Promise<void> };
+      }) => Promise<T>,
+    ) =>
       callback({
         message: {
           create: async () =>
@@ -496,7 +521,12 @@ test('listReminderEvents batch-fetches receipt members per unique group', async 
               revokedAt: null,
               editedAt: null,
               createdAt: new Date('2026-05-01T08:00:00.000Z'),
-              sender: { id: 'user-1', email: 'a@example.com', displayName: 'A', avatarStorageKey: null },
+              sender: {
+                id: 'user-1',
+                email: 'a@example.com',
+                displayName: 'A',
+                avatarStorageKey: null,
+              },
               attachmentFile: null,
               replyToMessage: null,
             },
@@ -513,7 +543,12 @@ test('listReminderEvents batch-fetches receipt members per unique group', async 
               revokedAt: null,
               editedAt: null,
               createdAt: new Date('2026-05-01T08:01:00.000Z'),
-              sender: { id: 'user-2', email: 'b@example.com', displayName: 'B', avatarStorageKey: null },
+              sender: {
+                id: 'user-2',
+                email: 'b@example.com',
+                displayName: 'B',
+                avatarStorageKey: null,
+              },
               attachmentFile: null,
               replyToMessage: null,
             },
@@ -530,7 +565,12 @@ test('listReminderEvents batch-fetches receipt members per unique group', async 
               revokedAt: null,
               editedAt: null,
               createdAt: new Date('2026-05-01T08:02:00.000Z'),
-              sender: { id: 'user-1', email: 'a@example.com', displayName: 'A', avatarStorageKey: null },
+              sender: {
+                id: 'user-1',
+                email: 'a@example.com',
+                displayName: 'A',
+                avatarStorageKey: null,
+              },
               attachmentFile: null,
               replyToMessage: null,
             },
@@ -603,6 +643,7 @@ test('listReminderEvents batch-fetches receipt members per unique group', async 
     serializerService,
     new BotAccessService(prismaService as any),
     { notify: () => undefined } as any,
+    new MessageDeliveryIntents(),
   );
 
   const result = await service.listReminderEvents('user-1', {});
@@ -666,6 +707,7 @@ test('serializeMessageForGroup uses pre-fetched receipt members when provided', 
     serializerService,
     {} as any,
     { notify: () => undefined } as any,
+    new MessageDeliveryIntents(),
   );
 
   const message = {
@@ -735,6 +777,7 @@ test('serializeMessageForGroup falls back to fetching receipt members when not p
     serializerService,
     {} as any,
     { notify: () => undefined } as any,
+    new MessageDeliveryIntents(),
   );
 
   const message = {

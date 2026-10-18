@@ -1,9 +1,12 @@
 import { Prisma } from '@prisma/client';
+import { fileObjectSelect } from '../files/file-record.types';
 
 export const messageSelect = {
   id: true,
   groupId: true,
   senderId: true,
+  externalAuthor: true,
+  externalAvatarFile: { select: fileObjectSelect },
   eventSequence: true,
   type: true,
   text: true,
@@ -51,6 +54,8 @@ export const messageSelect = {
   replyToMessage: {
     select: {
       id: true,
+      externalAuthor: true,
+      externalAvatarFile: { select: fileObjectSelect },
       senderId: true,
       type: true,
       text: true,
@@ -93,7 +98,15 @@ export const messageSelect = {
   },
 } satisfies Prisma.MessageSelect;
 
-export type SerializedMessage = Prisma.MessageGetPayload<{ select: typeof messageSelect }>;
+type MessageRecord = Prisma.MessageGetPayload<{ select: typeof messageSelect }>;
+type ExternalFields = 'externalAuthor' | 'externalAvatarFile';
+export type SerializedMessage = Omit<MessageRecord, ExternalFields | 'replyToMessage'> &
+  Partial<Pick<MessageRecord, ExternalFields>> & {
+    replyToMessage:
+      | (Omit<NonNullable<MessageRecord['replyToMessage']>, ExternalFields> &
+          Partial<Pick<NonNullable<MessageRecord['replyToMessage']>, ExternalFields>>)
+      | null;
+  };
 
 export type MessageReceiptMember = {
   userId: string;

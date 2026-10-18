@@ -11,34 +11,44 @@ const EXCLUDED_MENTION_HIGHLIGHT_ANCESTORS = new Set(['CODE', 'PRE']);
 export const markdown = new MarkdownIt({ linkify: true, breaks: true, html: false });
 markdown.disable(['html_block', 'html_inline']);
 
-const defaultLinkOpen = markdown.renderer.rules.link_open ?? function (tokens: any, idx: any, options: any, _env: any, self: any) {
-  return self.renderToken(tokens, idx, options);
-};
+const defaultLinkOpen =
+  markdown.renderer.rules.link_open ??
+  function (tokens: any, idx: any, options: any, _env: any, self: any) {
+    return self.renderToken(tokens, idx, options);
+  };
 
-markdown.renderer.rules.link_open = function (tokens: any, idx: any, options: any, env: any, self: any) {
+markdown.renderer.rules.link_open = function (
+  tokens: any,
+  idx: any,
+  options: any,
+  env: any,
+  self: any,
+) {
   const idxToken = tokens[idx];
   if (!idxToken) {
     return defaultLinkOpen(tokens, idx, options, env, self);
   }
 
   const existingRel = idxToken.attrGet('rel');
-  idxToken.attrSet('rel', existingRel ? `${existingRel} noreferrer noopener` : 'noreferrer noopener');
+  idxToken.attrSet(
+    'rel',
+    existingRel ? `${existingRel} noreferrer noopener` : 'noreferrer noopener',
+  );
   idxToken.attrSet('target', '_blank');
   return defaultLinkOpen(tokens, idx, options, env, self);
 };
 
 function normalizeMentionTargets(mentionTargets: string[]): Set<string> {
-  return new Set(
-    mentionTargets
-      .map((target) => target.trim().toLowerCase())
-      .filter(Boolean),
-  );
+  return new Set(mentionTargets.map((target) => target.trim().toLowerCase()).filter(Boolean));
 }
 
 function shouldSkipMentionHighlight(node: Node | null): boolean {
   let current = node?.parentNode;
   while (current) {
-    if (current instanceof HTMLElement && EXCLUDED_MENTION_HIGHLIGHT_ANCESTORS.has(current.tagName)) {
+    if (
+      current instanceof HTMLElement &&
+      EXCLUDED_MENTION_HIGHLIGHT_ANCESTORS.has(current.tagName)
+    ) {
       return true;
     }
     current = current.parentNode;
@@ -140,14 +150,28 @@ export function renderMessageHtml(
   return container.innerHTML;
 }
 
+export function renderExternalMessage(text: string | null): string {
+  return text ? `<p>${markdown.utils.escapeHtml(text).replace(/\n/g, '<br>')}</p>` : '';
+}
+
 export function senderLabel(item: MessageResponse): string {
   return userDisplayName(item.sender);
 }
 
-export function isCompactWithPrevious(previous: MessageResponse | undefined, current: MessageResponse): boolean {
+export function isCompactWithPrevious(
+  previous: MessageResponse | undefined,
+  current: MessageResponse,
+): boolean {
   if (!previous) return false;
   if (previous.type === 'system' || current.type === 'system') return false;
   if (previous.senderId !== current.senderId) return false;
+  if (previous.externalAuthorId !== current.externalAuthorId) return false;
+  if (
+    current.externalAuthorId &&
+    (previous.sender.displayName !== current.sender.displayName ||
+      previous.sender.avatarUrl !== current.sender.avatarUrl)
+  )
+    return false;
 
   const previousAt = new Date(previous.createdAt).getTime();
   const currentAt = new Date(current.createdAt).getTime();
@@ -162,16 +186,18 @@ export function isSameCalendarDay(
 ): boolean {
   if (!previous) return false;
 
-  return new Intl.DateTimeFormat(locale, {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(new Date(previous.createdAt)) ===
+  return (
     new Intl.DateTimeFormat(locale, {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
-    }).format(new Date(current.createdAt));
+    }).format(new Date(previous.createdAt)) ===
+    new Intl.DateTimeFormat(locale, {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date(current.createdAt))
+  );
 }
 
 export function formatDayDivider(value: string, locale = 'zh-CN'): string {
@@ -187,12 +213,17 @@ export function isAttachmentMessageWithoutAttachment(item: MessageResponse): boo
 }
 
 export function fallbackCopyText(text: string): boolean {
-  if (typeof document === 'undefined' || !document.body || typeof document.execCommand !== 'function') {
+  if (
+    typeof document === 'undefined' ||
+    !document.body ||
+    typeof document.execCommand !== 'function'
+  ) {
     return false;
   }
 
   const textarea = document.createElement('textarea');
-  const activeElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  const activeElement =
+    document.activeElement instanceof HTMLElement ? document.activeElement : null;
   const selection = document.getSelection();
   const originalRange = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
 

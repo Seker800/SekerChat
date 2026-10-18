@@ -61,6 +61,9 @@ export interface MessageAttachmentResponse extends FileObjectResponse {
 type ApiMessageResponse = components['schemas']['MessageResponseDto'];
 
 export interface MessageResponse extends Omit<ApiMessageResponse, 'eventSequence'> {
+  source?: string | null;
+  externalAuthorId?: string | null;
+  sourceOccurredAt?: string | null;
   /** Present for server-confirmed messages; absent only on optimistic or legacy cached messages. */
   eventSequence?: string;
   /** Only set for optimistic (not yet confirmed) messages. */

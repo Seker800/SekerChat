@@ -87,3 +87,46 @@ test('MessageApplicationService delivers persisted messages to realtime and bot 
   assert.deepEqual(calls, ['realtime:group-1:12', 'event:true']);
   assert.deepEqual(eventCalls, [{ actorUserId: 'user-1', messageText: 'hello bot' }]);
 });
+
+test('QQ source messages reach realtime without invoking any bot consumers', async () => {
+  let deliveries = 0;
+  let modelEvents = 0;
+  const service = new MessageApplicationService(
+    { listMessageReceiptMembers: async () => [] } as never,
+    { serializeMessage: async () => ({}) } as never,
+    {
+      publishCreated: async () => {
+        deliveries++;
+      },
+      publishUpdated: async () => {
+        deliveries++;
+      },
+    } as never,
+    {
+      publishUserMessageCreated: async () => {
+        modelEvents++;
+      },
+    } as never,
+  );
+  const message = {
+    ...createMessage(),
+    externalAuthor: {
+      id: 'qq-user',
+      platform: 'qq',
+      displayName: '群友',
+      occurredAt: new Date().toISOString(),
+    },
+  };
+  await service.deliverUserMessageCreated({
+    eventId: 'event',
+    group: { id: 'group-1' },
+    message,
+  } as never);
+  await service.deliverUserMessageCreated({
+    eventId: 'recall',
+    group: { id: 'group-1' },
+    message: { ...message, revokedAt: new Date() },
+  } as never);
+  assert.equal(deliveries, 2);
+  assert.equal(modelEvents, 0);
+});

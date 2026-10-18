@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
-import { getDefaultRolePermissions, hasSystemPermission, type RolePermissions } from '@sekerchat/shared';
+import {
+  getDefaultRolePermissions,
+  hasSystemPermission,
+  type RolePermissions,
+} from '@sekerchat/shared';
 import { fetchSystemConfig } from '../../lib/system-config-api';
 import { AccessControlSection } from './AccessControlSection';
 import { ArtifactsAdminSection } from './ArtifactsAdminSection';
@@ -12,6 +16,7 @@ import { QuietHoursSection } from './QuietHoursSection';
 import { UserManagementSection } from './UserManagementSection';
 import { WorkStatusSection } from './WorkStatusSection';
 import { AttendanceSection } from './AttendanceSection';
+import { QqBridgeSection } from '../extensions/qq-bridge/QqBridgeSection';
 import { BotSection } from './BotSection';
 import styles from './AdminPage.module.css';
 import { BROWSER_COOKIE_CREDENTIAL } from '../../lib/api-core';
@@ -22,6 +27,7 @@ type Tab =
   | 'message-storage'
   | 'access-control'
   | 'permissions'
+  | 'extensions'
   | 'bots'
   | 'users'
   | 'attendance'
@@ -42,7 +48,9 @@ type AdminNavGroup = {
 export function AdminPage() {
   const { currentUser } = useAuth();
   const accessToken = BROWSER_COOKIE_CREDENTIAL;
-  const [rolePermissions, setRolePermissions] = useState<RolePermissions>(getDefaultRolePermissions());
+  const [rolePermissions, setRolePermissions] = useState<RolePermissions>(
+    getDefaultRolePermissions(),
+  );
   const [configLoaded, setConfigLoaded] = useState(currentUser.role === 'SUPER_ADMIN');
   const [tab, setTab] = useState<Tab>('users');
 
@@ -70,13 +78,41 @@ export function AdminPage() {
     };
   }, [accessToken, currentUser.role]);
 
-  const canAccessAdmin = hasSystemPermission(rolePermissions, currentUser.role, 'access_admin_page');
-  const canManageSystemConfig = hasSystemPermission(rolePermissions, currentUser.role, 'manage_system_config');
-  const canViewUsers = hasSystemPermission(rolePermissions, currentUser.role, 'view_user_directory');
-  const canManageRoles = hasSystemPermission(rolePermissions, currentUser.role, 'manage_user_roles');
-  const canViewAttendance = hasSystemPermission(rolePermissions, currentUser.role, 'view_presence_logs');
-  const canViewArtifacts = hasSystemPermission(rolePermissions, currentUser.role, 'view_admin_artifacts');
-  const canDeleteArtifacts = hasSystemPermission(rolePermissions, currentUser.role, 'manage_artifacts');
+  const canAccessAdmin = hasSystemPermission(
+    rolePermissions,
+    currentUser.role,
+    'access_admin_page',
+  );
+  const canManageSystemConfig = hasSystemPermission(
+    rolePermissions,
+    currentUser.role,
+    'manage_system_config',
+  );
+  const canViewUsers = hasSystemPermission(
+    rolePermissions,
+    currentUser.role,
+    'view_user_directory',
+  );
+  const canManageRoles = hasSystemPermission(
+    rolePermissions,
+    currentUser.role,
+    'manage_user_roles',
+  );
+  const canViewAttendance = hasSystemPermission(
+    rolePermissions,
+    currentUser.role,
+    'view_presence_logs',
+  );
+  const canViewArtifacts = hasSystemPermission(
+    rolePermissions,
+    currentUser.role,
+    'view_admin_artifacts',
+  );
+  const canDeleteArtifacts = hasSystemPermission(
+    rolePermissions,
+    currentUser.role,
+    'manage_artifacts',
+  );
   const canManageBans = hasSystemPermission(rolePermissions, currentUser.role, 'manage_bans');
 
   const navGroups = useMemo<AdminNavGroup[]>(() => {
@@ -104,21 +140,18 @@ export function AdminPage() {
           { key: 'work-statuses', label: '工作状态', permission: canManageSystemConfig },
           { key: 'message-storage', label: '消息与附件', permission: canManageSystemConfig },
           { key: 'bots', label: 'Bot', permission: canManageSystemConfig },
+          { key: 'extensions', label: '扩展', permission: canManageSystemConfig },
         ],
       },
     ];
 
-    return groups.map((group) => ({
-      ...group,
-      items: group.items.filter((item) => item.permission),
-    })).filter((group) => group.items.length > 0);
-  }, [
-    canManageSystemConfig,
-    canViewUsers,
-    canViewAttendance,
-    canViewArtifacts,
-    canManageBans,
-  ]);
+    return groups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => item.permission),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [canManageSystemConfig, canViewUsers, canViewAttendance, canViewArtifacts, canManageBans]);
 
   const availableTabs = useMemo(
     () => navGroups.flatMap((group) => group.items.map(({ key, label }) => ({ key, label }))),
@@ -141,6 +174,8 @@ export function AdminPage() {
         return <UserManagementSection currentUser={currentUser} canManageRoles={canManageRoles} />;
       case 'artifacts':
         return <ArtifactsAdminSection canDeleteArtifacts={canDeleteArtifacts} />;
+      case 'extensions':
+        return <QqBridgeSection />;
       case 'bots':
         return <BotSection />;
       case 'bans':
@@ -170,7 +205,9 @@ export function AdminPage() {
     <div className={styles.adminPage}>
       <header className={styles.header}>
         <h2 className={styles.headerTitle}>管理</h2>
-        <Link to="/groups" className={styles.backLink}>返回频道</Link>
+        <Link to="/groups" className={styles.backLink}>
+          返回频道
+        </Link>
       </header>
       <div className={styles.adminBody}>
         <nav className={styles.sidebar} aria-label="管理导航">

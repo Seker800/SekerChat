@@ -1,3 +1,5 @@
+import { ExternalMessagesService } from './external-messages.service';
+import { MessageDeliveryIntents } from './message-delivery-intents';
 import { Module } from '@nestjs/common';
 import { AvatarsModule } from '../avatars/avatars.module';
 import { BotAccessService } from '../common/bot-access.service';
@@ -18,6 +20,8 @@ import { OutboxCoreModule } from '../outbox/outbox-core.module';
   imports: [PrismaModule, FilesModule, RealtimeModule, AvatarsModule, OutboxCoreModule],
   controllers: [MessagesController],
   providers: [
+    MessageDeliveryIntents,
+    ExternalMessagesService,
     MessagesService,
     MessageApplicationService,
     MessageEventsService,
@@ -32,6 +36,13 @@ import { OutboxCoreModule } from '../outbox/outbox-core.module';
         new SendMessageUseCase(messagesService.createMessage.bind(messagesService)),
     },
   ],
-  exports: [MessagesService, MessageApplicationService, SystemMessageService, MessageEventsService],
+  exports: [
+    MessageDeliveryIntents,
+    ExternalMessagesService,
+    MessagesService,
+    MessageApplicationService,
+    SystemMessageService,
+    MessageEventsService,
+  ],
 })
 export class MessagesModule {}

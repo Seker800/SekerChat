@@ -819,3 +819,11 @@
   font-size: 12px;
   font-style: italic;
 }
+
+.externalSource {
+  font-size: 11px;
+  color: var(--text-muted);
+  border: 1px solid var(--line-subtle);
+  border-radius: 4px;
+  padding: 0 5px;
+}

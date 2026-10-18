@@ -23,6 +23,7 @@ import {
   isAttachmentMessageWithoutAttachment,
   renderMessageHtml,
   senderLabel,
+  renderExternalMessage,
 } from './messagePaneUtils';
 import styles from './MessagePane.module.css';
 import type { PreviewImage } from '../media/image-preview/useImagePreviewState';
@@ -89,13 +90,14 @@ export function MessageItem({
   const isCurrentUserMessage = item.senderId === currentUserId;
   const isMentioningCurrentUser = item.mentionedUserIds.includes(currentUserId);
   const renderedText = useMemo(() => {
+    if (item.source) return renderExternalMessage(item.text);
     return renderMessageHtml(
       item.text,
       item.type === 'text',
       isMentioningCurrentUser,
       currentUserMentionTargets,
     );
-  }, [currentUserMentionTargets, isMentioningCurrentUser, item.text, item.type]);
+  }, [currentUserMentionTargets, isMentioningCurrentUser, item.text, item.type, item.source]);
 
   const attachmentContentUrl = useMemo(
     () => (item.attachment ? resolveApiResourceUrl(item.attachment.contentUrl) : ''),
@@ -224,6 +226,9 @@ export function MessageItem({
             {isCompact ? null : (
               <div className={styles.meta}>
                 <span className={styles.sender}>{senderLabel(item)}</span>
+                {item.source === 'qq' ? (
+                  <span className={styles.externalSource}>来自 QQ</span>
+                ) : null}
                 <span className={styles.time}>
                   {formatTimestamp(item.createdAt, language)}
                   {item.editedAt && !item.revokedAt ? (

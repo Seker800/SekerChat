@@ -3,6 +3,42 @@ import * as assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { SessionTokenService } from './session-token.service';
 
+test('integration identities never receive a browser/token session even when disabledAt is cleared', async () => {
+  const service = makeService({
+    signAccessToken: async () => {
+      throw new Error('must not sign');
+    },
+  });
+  await assert.rejects(
+    () =>
+      service.createSession({
+        id: 'integration',
+        integrationKind: 'qq-bridge',
+        disabledAt: null,
+      } as never),
+    /停用/,
+  );
+});
+
+test('refreshing an integration identity revokes its stored sessions without issuing tokens', async () => {
+  let revoked = false;
+  const service = makeService({
+    findRefreshToken: async () => ({
+      id: 'refresh',
+      user: { id: 'integration', integrationKind: 'qq-bridge', disabledAt: null, authVersion: 0 },
+    }),
+    revokeRefreshTokens: async () => {
+      revoked = true;
+      return { count: 1 };
+    },
+    signAccessToken: async () => {
+      throw new Error('must not sign');
+    },
+  });
+  await assert.rejects(() => service.refreshSession('test-refresh'), /停用/);
+  assert.equal(revoked, true);
+});
+
 function makeService(overrides?: {
   updateUser?: (args: any) => Promise<any>;
   createRefreshToken?: (args: any) => Promise<any>;
@@ -15,14 +51,16 @@ function makeService(overrides?: {
   return new SessionTokenService(
     {
       user: {
-        update: overrides?.updateUser ?? (async ({ where }: any) => ({
-          id: where.id,
-          email: 'user@example.com',
-          displayName: 'User',
-          role: 'MEMBER',
-          disabledAt: null,
-          dndUntil: null,
-        })),
+        update:
+          overrides?.updateUser ??
+          (async ({ where }: any) => ({
+            id: where.id,
+            email: 'user@example.com',
+            displayName: 'User',
+            role: 'MEMBER',
+            disabledAt: null,
+            dndUntil: null,
+          })),
       },
       refreshToken: {
         create: overrides?.createRefreshToken ?? (async () => undefined),
@@ -93,13 +131,16 @@ test('createSession keeps current notification switch on refresh rotation', asyn
     },
   });
 
-  await service.createSession({
-    id: 'user-1',
-    email: 'user@example.com',
-    displayName: 'User',
-    role: 'MEMBER',
-    disabledAt: null,
-  } as any, 'refresh-token-id');
+  await service.createSession(
+    {
+      id: 'user-1',
+      email: 'user@example.com',
+      displayName: 'User',
+      role: 'MEMBER',
+      disabledAt: null,
+    } as any,
+    'refresh-token-id',
+  );
 
   assert.equal(updates.length, 0);
 });
@@ -120,13 +161,17 @@ test('createSession keeps current notification switch after password change', as
     },
   });
 
-  await service.createSession({
-    id: 'user-1',
-    email: 'user@example.com',
-    displayName: 'User',
-    role: 'MEMBER',
-    disabledAt: null,
-  } as any, undefined, true);
+  await service.createSession(
+    {
+      id: 'user-1',
+      email: 'user@example.com',
+      displayName: 'User',
+      role: 'MEMBER',
+      disabledAt: null,
+    } as any,
+    undefined,
+    true,
+  );
 
   assert.equal(updates.length, 0);
 });
@@ -140,14 +185,18 @@ test('createSession signs the current authVersion into the access token', async 
     },
   });
 
-  await service.createSession({
-    id: 'user-1',
-    email: 'user@example.com',
-    displayName: 'User',
-    role: 'MEMBER',
-    disabledAt: null,
-    authVersion: 3,
-  } as any, undefined, true);
+  await service.createSession(
+    {
+      id: 'user-1',
+      email: 'user@example.com',
+      displayName: 'User',
+      role: 'MEMBER',
+      disabledAt: null,
+      authVersion: 3,
+    } as any,
+    undefined,
+    true,
+  );
 
   assert.equal(payloads.length, 1);
   assert.equal(payloads[0].authVersion, 3);
@@ -176,8 +225,7 @@ test('refreshSession rejects and revokes a refresh token from an older authVersi
 
   await assert.rejects(
     () => service.refreshSession('stale-refresh-token'),
-    (error: unknown) =>
-      error instanceof Error && error.message === '登录状态已失效，请重新登录。',
+    (error: unknown) => error instanceof Error && error.message === '登录状态已失效，请重新登录。',
   );
   assert.equal(revocations.length, 1);
   assert.deepEqual(revocations[0].where, { id: 'refresh-1', revokedAt: null });

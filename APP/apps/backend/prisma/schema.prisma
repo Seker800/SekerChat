@@ -109,6 +109,7 @@ model User {
   emailVerifiedAt            DateTime?
   role                       UserRole                    @default(MEMBER)
   isBot                      Boolean                     @default(false)
+  integrationKind            String?
   botConfig                  Json?
   dndUntil                   DateTime?
   createdAt                  DateTime                    @default(now())
@@ -279,26 +280,30 @@ model GroupMember {
 }
 
 model Message {
-  id               String      @id @default(uuid())
-  groupId          String
-  senderId         String
-  clientMessageId  String?
-  eventSequence    BigInt      @unique @default(autoincrement())
-  type             MessageType
-  text             String?
-  outboxEventId    String?     @unique
-  attachmentFileId String?
-  mentionedUserIds String[]    @default([])
-  replyToMessageId String?
-  revokedAt        DateTime?
-  editedAt         DateTime?
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
-  group            Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  sender           User        @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
-  attachmentFile   FileObject? @relation(fields: [attachmentFileId], references: [id], onDelete: Restrict)
-  replyToMessage   Message?    @relation("MessageReplies", fields: [replyToMessageId], references: [id], onDelete: SetNull)
-  replies          Message[]   @relation("MessageReplies")
+  id                   String      @id @default(uuid())
+  groupId              String
+  senderId             String
+  clientMessageId      String?
+  eventSequence        BigInt      @unique @default(autoincrement())
+  type                 MessageType
+  text                 String?
+  outboxEventId        String?     @unique
+  attachmentFileId     String?
+  mentionedUserIds     String[]    @default([])
+  replyToMessageId     String?
+  revokedAt            DateTime?
+  editedAt             DateTime?
+  createdAt            DateTime    @default(now())
+  updatedAt            DateTime    @updatedAt
+  externalAuthor       Json?
+  externalKey          String?     @unique
+  externalAvatarFileId String?
+  externalAvatarFile   FileObject? @relation("ExternalMessageAvatar", fields: [externalAvatarFileId], references: [id], onDelete: Restrict)
+  group                Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  sender               User        @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  attachmentFile       FileObject? @relation(fields: [attachmentFileId], references: [id], onDelete: Restrict)
+  replyToMessage       Message?    @relation("MessageReplies", fields: [replyToMessageId], references: [id], onDelete: SetNull)
+  replies              Message[]   @relation("MessageReplies")
 
   @@unique([senderId, clientMessageId])
   @@index([groupId, createdAt])
@@ -326,6 +331,70 @@ model BotReplyDelivery {
   @@unique([botUserId, sourceEventId])
   @@index([status, updatedAt])
   @@index([groupId, createdAt])
+}
+
+model QqBridgeConnector {
+  id         String            @id @default(uuid())
+  name       String
+  enabled    Boolean           @default(false)
+  tokenHash  String            @unique
+  revokedAt  DateTime?
+  lastSeenAt DateTime?
+  connected  Boolean           @default(false)
+  catalog    Json              @default("[]")
+  createdAt  DateTime          @default(now())
+  bindings   QqBridgeBinding[]
+}
+
+model QqBridgeBinding {
+  id            String             @id @default(uuid())
+  connectorId   String
+  groupId       String
+  accountId     String
+  qqGroupId     String
+  enabled       Boolean            @default(false)
+  bidirectional Boolean            @default(false)
+  revision      Int                @default(1)
+  enabledAt     DateTime?
+  archivedAt    DateTime?
+  createdAt     DateTime           @default(now())
+  connector     QqBridgeConnector  @relation(fields: [connectorId], references: [id], onDelete: Restrict)
+  sources       QqBridgeSource[]
+  deliveries    QqBridgeDelivery[]
+
+  @@index([accountId, qqGroupId])
+  @@index([groupId])
+}
+
+model QqBridgeSource {
+  id         String          @id @default(uuid())
+  bindingId  String
+  externalId String
+  messageIds String[]        @default([])
+  revokedAt  DateTime?
+  createdAt  DateTime        @default(now())
+  binding    QqBridgeBinding @relation(fields: [bindingId], references: [id], onDelete: Restrict)
+
+  @@unique([bindingId, externalId])
+}
+
+model QqBridgeDelivery {
+  id         String          @id @default(uuid())
+  bindingId  String
+  revision   Int
+  messageId  String
+  action     String          @default("send")
+  status     String          @default("pending")
+  leaseHash  String?
+  leaseUntil DateTime?
+  externalId String?
+  errorCode  String?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  binding    QqBridgeBinding @relation(fields: [bindingId], references: [id], onDelete: Restrict)
+
+  @@unique([bindingId, messageId, action])
+  @@index([bindingId, status, createdAt])
 }
 
 model OutboxEvent {
@@ -365,25 +434,26 @@ model OutboxDeadLetter {
 }
 
 model FileObject {
-  id                  String         @id @default(uuid())
-  storageKey          String         @unique
-  thumbnailStorageKey String?
-  thumbnailSize       Int?
-  imageWidth          Int?
-  imageHeight         Int?
-  originalName        String
-  mimeType            String
-  size                BigInt
-  uploaderId          String
-  groupId             String
-  attachedAt          DateTime?
-  createdAt           DateTime       @default(now())
-  updatedAt           DateTime       @updatedAt
-  uploader            User           @relation("FileUploader", fields: [uploaderId], references: [id], onDelete: Cascade)
-  group               Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  messages            Message[]
-  share               FileShare?
-  promotedArtifact    GroupArtifact? @relation("ArtifactSourceFile")
+  id                     String         @id @default(uuid())
+  storageKey             String         @unique
+  thumbnailStorageKey    String?
+  thumbnailSize          Int?
+  imageWidth             Int?
+  imageHeight            Int?
+  originalName           String
+  mimeType               String
+  size                   BigInt
+  uploaderId             String
+  groupId                String
+  attachedAt             DateTime?
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+  uploader               User           @relation("FileUploader", fields: [uploaderId], references: [id], onDelete: Cascade)
+  group                  Group          @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  messages               Message[]
+  externalAvatarMessages Message[]      @relation("ExternalMessageAvatar")
+  share                  FileShare?
+  promotedArtifact       GroupArtifact? @relation("ArtifactSourceFile")
 
   @@index([groupId, createdAt])
   @@index([uploaderId, createdAt])
@@ -762,7 +832,7 @@ model PresenceLog {
 }
 
 model PresenceDailySummary {
-  id                String   @id @default(uuid())
+  id                String    @id @default(uuid())
   userId            String
   workDate          String
   timezone          String
@@ -771,7 +841,7 @@ model PresenceDailySummary {
   onlineWorkMinutes Int
   endIsOnline       Boolean
   endIsDnd          Boolean
-  computedAt        DateTime @default(now())
+  computedAt        DateTime  @default(now())
 
   @@unique([userId, workDate])
   @@index([workDate])

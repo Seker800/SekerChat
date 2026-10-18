@@ -3808,6 +3808,511 @@
         ]
       }
     },
+    "/api/extensions/qq-bridge": {
+      "get": {
+        "operationId": "QqBridgeController_overview",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QqBridgeOverviewResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "extensions"
+        ]
+      }
+    },
+    "/api/extensions/qq-bridge/connectors": {
+      "post": {
+        "operationId": "QqBridgeController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateConnectorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QqBridgeCredentialResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "extensions"
+        ]
+      }
+    },
+    "/api/extensions/qq-bridge/connectors/{id}": {
+      "patch": {
+        "operationId": "QqBridgeController_toggle",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToggleConnectorDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QqBridgeActionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "extensions"
+        ]
+      }
+    },
+    "/api/extensions/qq-bridge/connectors/{id}/revoke": {
+      "post": {
+        "operationId": "QqBridgeController_revoke",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QqBridgeActionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "extensions"
+        ]
+      }
+    },
+    "/api/extensions/qq-bridge/bindings": {
+      "post": {
+        "operationId": "QqBridgeController_bind",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BindingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QqBridgeBindingResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "extensions"
+        ]
+      }
+    },
+    "/api/extensions/qq-bridge/bindings/{id}": {
+      "patch": {
+        "operationId": "QqBridgeController_toggleBinding",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ToggleBindingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QqBridgeBindingResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "extensions"
+        ]
+      }
+    },
+    "/api/extensions/qq-bridge/bindings/{id}/archive": {
+      "post": {
+        "operationId": "QqBridgeController_archiveBinding",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QqBridgeActionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "extensions"
+        ]
+      }
+    },
+    "/api/extensions/qq-bridge/deliveries/{id}/resolve": {
+      "post": {
+        "operationId": "QqBridgeController_resolve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveDeliveryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QqBridgeActionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "extensions"
+        ]
+      }
+    },
+    "/api/integrations/qq-bridge/manifest": {
+      "get": {
+        "operationId": "QqBridgeConnectorController_manifest",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "qq-connector"
+        ]
+      }
+    },
+    "/api/integrations/qq-bridge/heartbeat": {
+      "post": {
+        "operationId": "QqBridgeConnectorController_heartbeat",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeartbeatDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "qq-connector"
+        ]
+      }
+    },
+    "/api/integrations/qq-bridge/messages": {
+      "post": {
+        "operationId": "QqBridgeConnectorController_receive",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestQqMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "qq-connector"
+        ]
+      }
+    },
+    "/api/integrations/qq-bridge/recalls": {
+      "post": {
+        "operationId": "QqBridgeConnectorController_recall",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevokeQqMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "qq-connector"
+        ]
+      }
+    },
+    "/api/integrations/qq-bridge/media": {
+      "post": {
+        "operationId": "QqBridgeConnectorController_upload",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MediaUploadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "qq-connector"
+        ]
+      }
+    },
+    "/api/integrations/qq-bridge/deliveries/claim": {
+      "post": {
+        "operationId": "QqBridgeConnectorController_claim",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "qq-connector"
+        ]
+      }
+    },
+    "/api/integrations/qq-bridge/deliveries/{id}/start": {
+      "post": {
+        "operationId": "QqBridgeConnectorController_start",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeliveryLeaseDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "qq-connector"
+        ]
+      }
+    },
+    "/api/integrations/qq-bridge/deliveries/{id}/finish": {
+      "post": {
+        "operationId": "QqBridgeConnectorController_finish",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FinishDeliveryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "qq-connector"
+        ]
+      }
+    },
+    "/api/integrations/qq-bridge/deliveries/{id}/image": {
+      "get": {
+        "operationId": "QqBridgeConnectorController_image",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-delivery-lease",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "qq-connector"
+        ]
+      }
+    },
     "/api/admin/bots": {
       "get": {
         "operationId": "BotsController_listBots",
@@ -5180,8 +5685,8 @@
           "kind": {
             "type": "string",
             "enum": [
-              "image",
-              "file"
+              "file",
+              "image"
             ]
           }
         },
@@ -5467,8 +5972,8 @@
           "kind": {
             "type": "string",
             "enum": [
-              "image",
-              "file"
+              "file",
+              "image"
             ]
           },
           "thumbnailUrl": {
@@ -5507,8 +6012,8 @@
             "type": "string",
             "enum": [
               "text",
-              "image",
               "file",
+              "image",
               "system"
             ]
           },
@@ -5599,6 +6104,18 @@
       "MessageResponseDto": {
         "type": "object",
         "properties": {
+          "source": {
+            "type": "string",
+            "nullable": true
+          },
+          "externalAuthorId": {
+            "type": "string",
+            "nullable": true
+          },
+          "sourceOccurredAt": {
+            "type": "string",
+            "nullable": true
+          },
           "id": {
             "type": "string"
           },
@@ -5614,8 +6131,8 @@
           "type": {
             "enum": [
               "text",
-              "image",
               "file",
+              "image",
               "system"
             ],
             "type": "string"
@@ -7365,6 +7882,519 @@
         "type": "object",
         "properties": {}
       },
+      "QqBridgeInfoDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "version"
+        ]
+      },
+      "QqCatalogGroupDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^\\d{1,20}$"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 120
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ]
+      },
+      "QqBridgeConnectorResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "revokedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastSeenAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "connected": {
+            "type": "boolean"
+          },
+          "catalog": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QqCatalogGroupDto"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "enabled",
+          "revokedAt",
+          "lastSeenAt",
+          "connected",
+          "catalog"
+        ]
+      },
+      "QqBridgeBindingResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "connectorId": {
+            "type": "string"
+          },
+          "groupId": {
+            "type": "string"
+          },
+          "accountId": {
+            "type": "string"
+          },
+          "qqGroupId": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "bidirectional": {
+            "type": "boolean"
+          },
+          "revision": {
+            "type": "number"
+          },
+          "enabledAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "archivedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "connectorId",
+          "groupId",
+          "accountId",
+          "qqGroupId",
+          "enabled",
+          "bidirectional",
+          "revision",
+          "enabledAt",
+          "archivedAt",
+          "createdAt"
+        ]
+      },
+      "QqBridgeTaskResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "bindingId": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "errorCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "bindingId",
+          "action",
+          "status",
+          "errorCode",
+          "createdAt"
+        ]
+      },
+      "QqBridgeGroupOptionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "category"
+        ]
+      },
+      "QqBridgeOverviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "extension": {
+            "$ref": "#/components/schemas/QqBridgeInfoDto"
+          },
+          "connectors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QqBridgeConnectorResponseDto"
+            }
+          },
+          "bindings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QqBridgeBindingResponseDto"
+            }
+          },
+          "deliveries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QqBridgeTaskResponseDto"
+            }
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QqBridgeGroupOptionDto"
+            }
+          }
+        },
+        "required": [
+          "extension",
+          "connectors",
+          "bindings",
+          "deliveries",
+          "groups"
+        ]
+      },
+      "CreateConnectorDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "QqBridgeCredentialResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "token"
+        ]
+      },
+      "ToggleConnectorDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ]
+      },
+      "QqBridgeActionResponseDto": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ok"
+        ]
+      },
+      "BindingDto": {
+        "type": "object",
+        "properties": {
+          "connectorId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "groupId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "accountId": {
+            "type": "string",
+            "pattern": "^\\d{1,20}$"
+          },
+          "qqGroupId": {
+            "type": "string",
+            "pattern": "^\\d{1,20}$"
+          }
+        },
+        "required": [
+          "connectorId",
+          "groupId",
+          "accountId",
+          "qqGroupId"
+        ]
+      },
+      "ToggleBindingDto": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "bidirectional": {
+            "type": "boolean"
+          },
+          "backlog": {
+            "type": "string",
+            "enum": [
+              "keep-paused",
+              "resume",
+              "discard"
+            ]
+          }
+        },
+        "required": [
+          "enabled",
+          "bidirectional",
+          "backlog"
+        ]
+      },
+      "ResolveDeliveryDto": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "sent",
+              "cancelled"
+            ]
+          },
+          "messageId": {
+            "type": "string",
+            "maxLength": 80,
+            "pattern": "^[\\w:-]+$"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "HeartbeatDto": {
+        "type": "object",
+        "properties": {
+          "connected": {
+            "type": "boolean"
+          },
+          "groups": {
+            "maxItems": 2000,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QqCatalogGroupDto"
+            }
+          }
+        },
+        "required": [
+          "connected"
+        ]
+      },
+      "QqMessagePartDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "text",
+              "image"
+            ]
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 10000
+          },
+          "fileId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "IngestQqMessageDto": {
+        "type": "object",
+        "properties": {
+          "bindingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "number",
+            "minimum": 1,
+            "maximum": 2147483647
+          },
+          "messageId": {
+            "type": "string",
+            "maxLength": 80,
+            "pattern": "^[\\w:-]+$"
+          },
+          "senderId": {
+            "type": "string",
+            "pattern": "^\\d{1,20}$"
+          },
+          "displayName": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "occurredAt": {
+            "type": "string"
+          },
+          "avatarFileId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "replyToId": {
+            "type": "string",
+            "maxLength": 80,
+            "pattern": "^[\\w:-]+$"
+          },
+          "parts": {
+            "maxItems": 30,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QqMessagePartDto"
+            }
+          }
+        },
+        "required": [
+          "bindingId",
+          "revision",
+          "messageId",
+          "senderId",
+          "displayName",
+          "occurredAt",
+          "parts"
+        ]
+      },
+      "RevokeQqMessageDto": {
+        "type": "object",
+        "properties": {
+          "bindingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "number",
+            "minimum": 1
+          },
+          "messageId": {
+            "type": "string",
+            "maxLength": 80,
+            "pattern": "^[\\w:-]+$"
+          }
+        },
+        "required": [
+          "bindingId",
+          "revision",
+          "messageId"
+        ]
+      },
+      "MediaUploadDto": {
+        "type": "object",
+        "properties": {
+          "bindingId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "revision": {
+            "type": "number",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "bindingId",
+          "revision"
+        ]
+      },
+      "DeliveryLeaseDto": {
+        "type": "object",
+        "properties": {
+          "lease": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "lease"
+        ]
+      },
+      "FinishDeliveryDto": {
+        "type": "object",
+        "properties": {
+          "lease": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "sent",
+              "uncertain",
+              "failed"
+            ]
+          },
+          "messageId": {
+            "type": "string",
+            "maxLength": 80,
+            "pattern": "^[\\w:-]+$"
+          }
+        },
+        "required": [
+          "lease",
+          "status"
+        ]
+      },
       "CreateBotDto": {
         "type": "object",
         "properties": {
@@ -7442,8 +8472,8 @@
           "kindLabel": {
             "type": "string",
             "enum": [
-              "image",
-              "file"
+              "file",
+              "image"
             ]
           }
         },

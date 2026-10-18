@@ -73,7 +73,10 @@ export class RetentionService {
       LEFT JOIN "FileShare" fs ON fs."fileId" = f.id
       LEFT JOIN "Group" g ON g.id = f."groupId"
       WHERE m.id IS NULL
-        AND f."attachedAt" IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM "Message" avatar WHERE avatar."externalAvatarFileId" = f.id)
+        AND (f."attachedAt" IS NOT NULL OR (
+          f."storageKey" LIKE 'external-images/%' AND f."createdAt" < NOW() - INTERVAL '1 day'
+        ))
         AND NOT (
           fs.id IS NOT NULL
           AND fs."revokedAt" IS NULL
@@ -87,18 +90,30 @@ export class RetentionService {
     this.logger.log(`Found ${orphans.length} orphaned FileObjects to purge`);
 
     const results = await Promise.all(
-      orphans.map(async (file) => {
-        if (!file.storageKey) {
-          this.logger.warn(`Orphaned FileObject ${file.id} has empty storageKey, skipping`);
-          return { id: file.id, ok: false };
-        }
-        const deletedOriginal = await this.filesService.deleteS3Object(file.storageKey);
-        const deletedThumbnail = file.thumbnailStorageKey
-          ? await this.filesService.deleteS3Object(file.thumbnailStorageKey)
-          : true;
-        return { id: file.id, ok: deletedOriginal && deletedThumbnail };
-      }),
+      orphans
+        .filter((file) => !file.storageKey?.startsWith('external-images/'))
+        .map(async (file) => {
+          if (!file.storageKey) {
+            this.logger.warn(`Orphaned FileObject ${file.id} has empty storageKey, skipping`);
+            return { id: file.id, ok: false };
+          }
+          const deletedOriginal = await this.filesService.deleteS3Object(file.storageKey);
+          const deletedThumbnail = file.thumbnailStorageKey
+            ? await this.filesService.deleteS3Object(file.thumbnailStorageKey)
+            : true;
+          return { id: file.id, ok: deletedOriginal && deletedThumbnail };
+        }),
     );
+
+    // External uploads coordinate through row locks; limit cleanup to one transaction at a time.
+    for (const file of orphans.filter((candidate) =>
+      candidate.storageKey?.startsWith('external-images/'),
+    )) {
+      results.push({
+        id: file.id,
+        ok: await this.filesService.purgeUnreferencedExternalImage(file.id),
+      });
+    }
 
     const deletedFileIds = results.filter((r) => r.ok).map((r) => r.id);
 

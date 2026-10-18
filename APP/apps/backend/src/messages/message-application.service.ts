@@ -30,11 +30,21 @@ export class MessageApplicationService {
       input.message,
       receiptMembers,
     );
+    if (input.message.externalAuthor && input.message.revokedAt) {
+      await this.realtimePublisher.publishUpdated(
+        input.group.id,
+        input.message.id,
+        serializedMessage,
+      );
+      return;
+    }
     await this.realtimePublisher.publishCreated(
       input.group.id,
       input.message.eventSequence,
       serializedMessage,
     );
+
+    if (input.message.externalAuthor) return;
 
     await this.messageEventsService.publishUserMessageCreated({
       eventId: input.eventId,

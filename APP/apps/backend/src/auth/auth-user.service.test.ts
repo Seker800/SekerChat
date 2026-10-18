@@ -37,14 +37,31 @@ test('resolveValidatedUser rejects access tokens issued before a credential chan
   const service = makeService(1);
 
   await assert.rejects(
-    () => service.resolveValidatedUser({
-      sub: 'user-1',
-      email: 'user@example.com',
-      role: 'MEMBER',
-      authVersion: 0,
-    }),
+    () =>
+      service.resolveValidatedUser({
+        sub: 'user-1',
+        email: 'user@example.com',
+        role: 'MEMBER',
+        authVersion: 0,
+      }),
     (error: unknown) =>
-      error instanceof UnauthorizedException
-      && error.message === '登录状态已失效，请重新登录。',
+      error instanceof UnauthorizedException && error.message === '登录状态已失效，请重新登录。',
+  );
+});
+
+test('integration audit identities cannot use browser or realtime access tokens even if enabled accidentally', async () => {
+  const service = new AuthUserService({
+    user: {
+      findUnique: async () => ({ disabledAt: null, integrationKind: 'qq-bridge', authVersion: 0 }),
+    },
+  } as never);
+  await assert.rejects(
+    () =>
+      service.resolveValidatedUser({
+        sub: 'integration',
+        email: 'integration@invalid',
+        role: 'MEMBER',
+      }),
+    /停用/,
   );
 });

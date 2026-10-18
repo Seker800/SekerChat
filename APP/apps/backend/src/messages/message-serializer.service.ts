@@ -1,3 +1,4 @@
+import { readExternalAuthor } from './external-author';
 import { Injectable } from '@nestjs/common';
 import { AvatarsService } from '../avatars/avatars.service';
 import { FilesService } from '../files/files.service';
@@ -23,7 +24,12 @@ export class MessageSerializerService {
       this.serializeAttachment(message.replyToMessage?.attachmentFile ?? null),
     ]);
 
+    const author = readExternalAuthor(message.externalAuthor);
+    const replyAuthor = readExternalAuthor(message.replyToMessage?.externalAuthor);
     return {
+      source: author?.platform ?? null,
+      externalAuthorId: author?.id ?? null,
+      sourceOccurredAt: author?.occurredAt ?? null,
       id: message.id,
       eventSequence: message.eventSequence.toString(),
       groupId: message.groupId,
@@ -42,11 +48,13 @@ export class MessageSerializerService {
             sender: {
               id: message.replyToMessage.sender.id,
               email: message.replyToMessage.sender.email,
-              displayName: message.replyToMessage.sender.displayName,
-              avatarUrl: this.avatarsService.buildUserAvatarUrl(
-                message.replyToMessage.sender.id,
-                message.replyToMessage.sender.avatarStorageKey ?? null,
-              ),
+              displayName: replyAuthor?.displayName ?? message.replyToMessage.sender.displayName,
+              avatarUrl: message.replyToMessage.externalAvatarFile
+                ? this.filesService.createFileAccessUrl(message.replyToMessage.externalAvatarFile)
+                : this.avatarsService.buildUserAvatarUrl(
+                    message.replyToMessage.sender.id,
+                    message.replyToMessage.sender.avatarStorageKey ?? null,
+                  ),
             },
             attachment: replyToAttachment,
           }
@@ -59,11 +67,13 @@ export class MessageSerializerService {
       sender: {
         id: message.sender.id,
         email: message.sender.email,
-        displayName: message.sender.displayName,
-        avatarUrl: this.avatarsService.buildUserAvatarUrl(
-          message.sender.id,
-          message.sender.avatarStorageKey ?? null,
-        ),
+        displayName: author?.displayName ?? message.sender.displayName,
+        avatarUrl: message.externalAvatarFile
+          ? this.filesService.createFileAccessUrl(message.externalAvatarFile)
+          : this.avatarsService.buildUserAvatarUrl(
+              message.sender.id,
+              message.sender.avatarStorageKey ?? null,
+            ),
       },
     };
   }

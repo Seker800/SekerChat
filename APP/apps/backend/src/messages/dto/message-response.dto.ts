@@ -48,6 +48,9 @@ export class MessageReadReceiptResponseDto {
 }
 
 export class MessageResponseDto {
+  source?: string | null;
+  externalAuthorId?: string | null;
+  sourceOccurredAt?: string | null;
   id!: string;
   eventSequence!: string;
   groupId!: string;

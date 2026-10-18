@@ -20,6 +20,7 @@ import { MessageGroup } from './message-group.type';
 import { MessageReadReceiptService } from './message-read-receipt.service';
 import { MessageSerializerService } from './message-serializer.service';
 import { SystemMessageService } from './system-message.service';
+import { MessageDeliveryIntents } from './message-delivery-intents';
 import { OUTBOX_EVENT_TYPES } from '../outbox/outbox.types';
 import { OutboxWakeupService } from '../outbox/outbox-wakeup.service';
 import {
@@ -45,6 +46,7 @@ export class MessagesService {
     private readonly serializerService: MessageSerializerService,
     private readonly botAccessService: BotAccessService,
     private readonly outboxWakeupService: OutboxWakeupService,
+    private readonly deliveryIntents: MessageDeliveryIntents,
   ) {}
 
   private async ensureBotAccessAllowed(botUserId: string, actorUserId: string): Promise<void> {
@@ -173,6 +175,7 @@ export class MessagesService {
           },
         });
 
+        await this.deliveryIntents.enqueue(transaction, createdMessage, 'send');
         return createdMessage;
       });
     } catch (error) {
@@ -269,12 +272,17 @@ export class MessagesService {
       );
     }
 
-    const updated = await this.prismaService.message.update({
-      where: { id: messageId },
-      data: { text: trimmedText, editedAt: new Date() },
-      select: messageSelect,
-    });
+    const edit = async (tx: Prisma.TransactionClient) => {
+      const updated = await tx.message.update({
+        where: { id: messageId },
+        data: { text: trimmedText, editedAt: new Date() },
+        select: messageSelect,
+      });
 
+      await this.deliveryIntents.enqueue(tx, updated, 'edit');
+      return updated;
+    };
+    const updated = await this.prismaService.$transaction(edit);
     const serialized = await this.serializeMessageForGroup(updated);
     await this.realtimePublisher.publishUpdated(groupId, messageId, serialized);
 
@@ -309,12 +317,17 @@ export class MessagesService {
       throw new BadRequestException('Message is already revoked.');
     }
 
-    const revoked = await this.prismaService.message.update({
-      where: { id: messageId },
-      data: { revokedAt: new Date() },
-      select: messageSelect,
-    });
+    const revoke = async (tx: Prisma.TransactionClient) => {
+      const revoked = await tx.message.update({
+        where: { id: messageId },
+        data: { revokedAt: new Date() },
+        select: messageSelect,
+      });
 
+      await this.deliveryIntents.enqueue(tx, revoked, 'revoke');
+      return revoked;
+    };
+    const revoked = await this.prismaService.$transaction(revoke);
     const serialized = await this.serializeMessageForGroup(revoked);
     await this.realtimePublisher.publishUpdated(groupId, messageId, serialized);
 

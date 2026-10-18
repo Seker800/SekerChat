@@ -1,0 +1,71 @@
+.section {
+  display: grid;
+  gap: 14px;
+  max-width: 920px;
+  line-height: 1.6;
+}
+.section h2,
+.section h3,
+.section p {
+  margin: 0;
+}
+.section h3 {
+  margin-top: 14px;
+}
+.card,
+.form,
+.secret {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--line-subtle);
+  border-radius: 10px;
+  min-width: 0;
+}
+.form {
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+.form p {
+  grid-column: 1 / -1;
+}
+.section label {
+  display: grid;
+  gap: 6px;
+}
+.section input:not([type='checkbox']),
+.section select,
+.section textarea {
+  width: 100%;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--line-subtle);
+  border-radius: 6px;
+  color: inherit;
+  background: var(--bg-shell);
+  box-sizing: border-box;
+}
+.section button {
+  padding: 7px 12px;
+  cursor: pointer;
+  justify-self: start;
+}
+.section button:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.hint,
+.section small {
+  opacity: 0.75;
+}
+.section [role='alert'] {
+  color: #c33c35;
+}
+.secret textarea {
+  min-height: 70px;
+  overflow-wrap: anywhere;
+}

@@ -1,0 +1,118 @@
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Req,
+  Res,
+  StreamableFile,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+  Headers,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiTags } from '@nestjs/swagger';
+import { memoryStorage } from 'multer';
+import type { Response } from 'express';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
+import { QqBridgeIngestService } from './qq-bridge-ingest.service';
+import { QqBridgeDeliveryService } from './qq-bridge-delivery.service';
+import { BridgeRequest, QqBridgeGuard } from './qq-bridge.guard';
+import {
+  DeliveryLeaseDto,
+  FinishDeliveryDto,
+  HeartbeatDto,
+  IngestQqMessageDto,
+  MediaUploadDto,
+  RevokeQqMessageDto,
+} from './qq-bridge.dto';
+
+@ApiTags('qq-connector')
+@UseGuards(QqBridgeGuard)
+@Controller('integrations/qq-bridge')
+export class QqBridgeConnectorController {
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly ingest: QqBridgeIngestService,
+    private readonly deliveries: QqBridgeDeliveryService,
+  ) {}
+  @Get('manifest') async manifest(@Req() request: BridgeRequest) {
+    const connector = request.connector;
+    const bindings = connector.enabled
+      ? await this.prisma.qqBridgeBinding.findMany({
+          where: { connectorId: connector.id, enabled: true, archivedAt: null },
+        })
+      : [];
+    const uncertain = await this.prisma.qqBridgeDelivery.findMany({
+      where: { binding: { connectorId: connector.id }, status: { in: ['started', 'uncertain'] } },
+      select: { bindingId: true },
+    });
+    return {
+      enabled: connector.enabled,
+      bindings,
+      holdSelfMessages: [...new Set(uncertain.map((t) => t.bindingId))],
+    };
+  }
+  @Post('heartbeat') async heartbeat(@Req() request: BridgeRequest, @Body() dto: HeartbeatDto) {
+    await this.prisma.qqBridgeConnector.update({
+      where: { id: request.connector.id },
+      data: {
+        lastSeenAt: new Date(),
+        connected: dto.connected,
+        ...(dto.groups ? { catalog: dto.groups as unknown as Prisma.InputJsonValue } : {}),
+      },
+    });
+    return { ok: true };
+  }
+  @Post('messages') receive(@Req() request: BridgeRequest, @Body() dto: IngestQqMessageDto) {
+    return this.ingest.ingest(request.connector.id, dto);
+  }
+  @Post('recalls') recall(@Req() request: BridgeRequest, @Body() dto: RevokeQqMessageDto) {
+    return this.ingest.revoke(request.connector.id, dto);
+  }
+  @Post('media')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 10 * 1024 * 1024, files: 1, fields: 2 },
+    }),
+  )
+  upload(
+    @Req() request: BridgeRequest,
+    @Body() dto: MediaUploadDto,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    return this.ingest.upload(request.connector.id, dto, file?.buffer);
+  }
+  @Post('deliveries/claim') claim(@Req() request: BridgeRequest) {
+    return this.deliveries.claim(request.connector.id);
+  }
+  @Post('deliveries/:id/start') start(
+    @Req() request: BridgeRequest,
+    @Param('id') id: string,
+    @Body() dto: DeliveryLeaseDto,
+  ) {
+    return this.deliveries.start(request.connector.id, id, dto.lease);
+  }
+  @Post('deliveries/:id/finish') finish(
+    @Req() request: BridgeRequest,
+    @Param('id') id: string,
+    @Body() dto: FinishDeliveryDto,
+  ) {
+    return this.deliveries.finish(request.connector.id, id, dto);
+  }
+  @Get('deliveries/:id/image') async image(
+    @Req() request: BridgeRequest,
+    @Param('id') id: string,
+    @Headers('x-delivery-lease') lease: string,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const result = await this.deliveries.image(request.connector.id, id, lease ?? '');
+    response.setHeader('Content-Type', result.mimeType);
+    response.setHeader('Cache-Control', 'no-store');
+    return new StreamableFile(result.stream);
+  }
+}

@@ -30,7 +30,7 @@ export class SessionTokenService {
     previousRefreshTokenId?: string,
     preserveNotificationState = false,
   ): Promise<AuthSession> {
-    if (user.disabledAt) {
+    if (user.disabledAt || user.integrationKind) {
       throw new ForbiddenException('该账号已停用，请联系管理员');
     }
 
@@ -41,12 +41,13 @@ export class SessionTokenService {
       });
     }
 
-    const sessionUser = previousRefreshTokenId || preserveNotificationState
-      ? user
-      : await this.prismaService.user.update({
-          where: { id: user.id },
-          data: { dndUntil: NOTIFICATION_ENABLED_UNTIL },
-        });
+    const sessionUser =
+      previousRefreshTokenId || preserveNotificationState
+        ? user
+        : await this.prismaService.user.update({
+            where: { id: user.id },
+            data: { dndUntil: NOTIFICATION_ENABLED_UNTIL },
+          });
 
     const payload: JwtPayload = {
       sub: sessionUser.id,
@@ -65,9 +66,7 @@ export class SessionTokenService {
     const accessToken = await this.jwtService.signAsync(payload);
     const refreshToken = this.jwtService.sign(refreshTokenPayload, {
       secret: this.configService.getOrThrow<string>('JWT_REFRESH_SECRET'),
-      expiresIn: parseDurationToSeconds(
-        this.configService.getOrThrow<string>('JWT_REFRESH_TTL'),
-      ),
+      expiresIn: parseDurationToSeconds(this.configService.getOrThrow<string>('JWT_REFRESH_TTL')),
     });
 
     await this.prismaService.refreshToken.create({
@@ -127,7 +126,7 @@ export class SessionTokenService {
       throw new UnauthorizedException('登录状态已失效，请重新登录。');
     }
 
-    if (storedToken.user.disabledAt) {
+    if (storedToken.user.disabledAt || storedToken.user.integrationKind) {
       await this.prismaService.refreshToken.updateMany({
         where: {
           userId: storedToken.user.id,

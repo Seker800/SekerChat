@@ -1748,6 +1748,278 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/extensions/qq-bridge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["QqBridgeController_overview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/extensions/qq-bridge/connectors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["QqBridgeController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/extensions/qq-bridge/connectors/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["QqBridgeController_toggle"];
+        trace?: never;
+    };
+    "/api/extensions/qq-bridge/connectors/{id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["QqBridgeController_revoke"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/extensions/qq-bridge/bindings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["QqBridgeController_bind"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/extensions/qq-bridge/bindings/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["QqBridgeController_toggleBinding"];
+        trace?: never;
+    };
+    "/api/extensions/qq-bridge/bindings/{id}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["QqBridgeController_archiveBinding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/extensions/qq-bridge/deliveries/{id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["QqBridgeController_resolve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/integrations/qq-bridge/manifest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["QqBridgeConnectorController_manifest"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/integrations/qq-bridge/heartbeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["QqBridgeConnectorController_heartbeat"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/integrations/qq-bridge/messages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["QqBridgeConnectorController_receive"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/integrations/qq-bridge/recalls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["QqBridgeConnectorController_recall"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/integrations/qq-bridge/media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["QqBridgeConnectorController_upload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/integrations/qq-bridge/deliveries/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["QqBridgeConnectorController_claim"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/integrations/qq-bridge/deliveries/{id}/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["QqBridgeConnectorController_start"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/integrations/qq-bridge/deliveries/{id}/finish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["QqBridgeConnectorController_finish"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/integrations/qq-bridge/deliveries/{id}/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["QqBridgeConnectorController_image"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/bots": {
         parameters: {
             query?: never;
@@ -2404,7 +2676,7 @@ export interface components {
             thumbnailUrl: string | null;
             uploaderId: string;
             /** @enum {string} */
-            kind: "image" | "file";
+            kind: "file" | "image";
         };
         FileDownloadUrlResponseDto: {
             url: string;
@@ -2476,7 +2748,7 @@ export interface components {
             metadataUrl: string;
             uploaderId: string;
             /** @enum {string} */
-            kind: "image" | "file";
+            kind: "file" | "image";
             thumbnailUrl: string | null;
             isSharing?: boolean;
         };
@@ -2484,7 +2756,7 @@ export interface components {
             id: string;
             senderId: string;
             /** @enum {string} */
-            type: "text" | "image" | "file" | "system";
+            type: "text" | "file" | "image" | "system";
             textPreview: string | null;
             sender: components["schemas"]["MessageSenderResponseDto"];
             attachment: components["schemas"]["MessageAttachmentResponseDto"] | null;
@@ -2503,12 +2775,15 @@ export interface components {
             unreadBy: components["schemas"]["MessageReadReceiptMemberResponseDto"][];
         };
         MessageResponseDto: {
+            source?: string | null;
+            externalAuthorId?: string | null;
+            sourceOccurredAt?: string | null;
             id: string;
             eventSequence: string;
             groupId: string;
             senderId: string;
             /** @enum {string} */
-            type: "text" | "image" | "file" | "system";
+            type: "text" | "file" | "image" | "system";
             text: string | null;
             revokedAt: string | null;
             editedAt: string | null;
@@ -2939,6 +3214,133 @@ export interface components {
         SaveFileShareDto: Record<string, never>;
         RotateFileShareDto: Record<string, never>;
         UnlockFileShareDto: Record<string, never>;
+        QqBridgeInfoDto: {
+            id: string;
+            name: string;
+            version: number;
+        };
+        QqCatalogGroupDto: {
+            id: string;
+            name: string;
+        };
+        QqBridgeConnectorResponseDto: {
+            id: string;
+            name: string;
+            enabled: boolean;
+            revokedAt: string | null;
+            lastSeenAt: string | null;
+            connected: boolean;
+            catalog: components["schemas"]["QqCatalogGroupDto"][];
+        };
+        QqBridgeBindingResponseDto: {
+            id: string;
+            connectorId: string;
+            groupId: string;
+            accountId: string;
+            qqGroupId: string;
+            enabled: boolean;
+            bidirectional: boolean;
+            revision: number;
+            enabledAt: string | null;
+            archivedAt: string | null;
+            createdAt: string;
+        };
+        QqBridgeTaskResponseDto: {
+            id: string;
+            bindingId: string;
+            action: string;
+            status: string;
+            errorCode: string | null;
+            createdAt: string;
+        };
+        QqBridgeGroupOptionDto: {
+            id: string;
+            name: string;
+            category: string;
+        };
+        QqBridgeOverviewResponseDto: {
+            extension: components["schemas"]["QqBridgeInfoDto"];
+            connectors: components["schemas"]["QqBridgeConnectorResponseDto"][];
+            bindings: components["schemas"]["QqBridgeBindingResponseDto"][];
+            deliveries: components["schemas"]["QqBridgeTaskResponseDto"][];
+            groups: components["schemas"]["QqBridgeGroupOptionDto"][];
+        };
+        CreateConnectorDto: {
+            name: string;
+        };
+        QqBridgeCredentialResponseDto: {
+            id: string;
+            token: string;
+        };
+        ToggleConnectorDto: {
+            enabled: boolean;
+        };
+        QqBridgeActionResponseDto: {
+            ok: boolean;
+        };
+        BindingDto: {
+            /** Format: uuid */
+            connectorId: string;
+            /** Format: uuid */
+            groupId: string;
+            accountId: string;
+            qqGroupId: string;
+        };
+        ToggleBindingDto: {
+            enabled: boolean;
+            bidirectional: boolean;
+            /** @enum {string} */
+            backlog: "keep-paused" | "resume" | "discard";
+        };
+        ResolveDeliveryDto: {
+            /** @enum {string} */
+            status: "sent" | "cancelled";
+            messageId?: string;
+        };
+        HeartbeatDto: {
+            connected: boolean;
+            groups?: components["schemas"]["QqCatalogGroupDto"][];
+        };
+        QqMessagePartDto: {
+            /** @enum {string} */
+            type: "text" | "image";
+            text?: string;
+            /** Format: uuid */
+            fileId?: string;
+        };
+        IngestQqMessageDto: {
+            /** Format: uuid */
+            bindingId: string;
+            revision: number;
+            messageId: string;
+            senderId: string;
+            displayName: string;
+            occurredAt: string;
+            /** Format: uuid */
+            avatarFileId?: string;
+            replyToId?: string;
+            parts: components["schemas"]["QqMessagePartDto"][];
+        };
+        RevokeQqMessageDto: {
+            /** Format: uuid */
+            bindingId: string;
+            revision: number;
+            messageId: string;
+        };
+        MediaUploadDto: {
+            /** Format: uuid */
+            bindingId: string;
+            revision: number;
+        };
+        DeliveryLeaseDto: {
+            lease: string;
+        };
+        FinishDeliveryDto: {
+            lease: string;
+            /** @enum {string} */
+            status: "sent" | "uncertain" | "failed";
+            messageId?: string;
+        };
         CreateBotDto: {
             /** Format: email */
             email: string;
@@ -2963,7 +3365,7 @@ export interface components {
             thumbnailUrl: string | null;
             uploaderId: string;
             /** @enum {string} */
-            kindLabel: "image" | "file";
+            kindLabel: "file" | "image";
         };
         FinalizedChatAttachmentResponseDto: {
             /**
@@ -5900,6 +6302,379 @@ export interface operations {
             header?: never;
             path: {
                 shareId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    QqBridgeController_overview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QqBridgeOverviewResponseDto"];
+                };
+            };
+        };
+    };
+    QqBridgeController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateConnectorDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QqBridgeCredentialResponseDto"];
+                };
+            };
+        };
+    };
+    QqBridgeController_toggle: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ToggleConnectorDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QqBridgeActionResponseDto"];
+                };
+            };
+        };
+    };
+    QqBridgeController_revoke: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QqBridgeActionResponseDto"];
+                };
+            };
+        };
+    };
+    QqBridgeController_bind: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BindingDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QqBridgeBindingResponseDto"];
+                };
+            };
+        };
+    };
+    QqBridgeController_toggleBinding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ToggleBindingDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QqBridgeBindingResponseDto"];
+                };
+            };
+        };
+    };
+    QqBridgeController_archiveBinding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QqBridgeActionResponseDto"];
+                };
+            };
+        };
+    };
+    QqBridgeController_resolve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResolveDeliveryDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QqBridgeActionResponseDto"];
+                };
+            };
+        };
+    };
+    QqBridgeConnectorController_manifest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    QqBridgeConnectorController_heartbeat: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HeartbeatDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    QqBridgeConnectorController_receive: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IngestQqMessageDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    QqBridgeConnectorController_recall: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevokeQqMessageDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    QqBridgeConnectorController_upload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MediaUploadDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    QqBridgeConnectorController_claim: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    QqBridgeConnectorController_start: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeliveryLeaseDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": Record<string, never>;
+                };
+            };
+        };
+    };
+    QqBridgeConnectorController_finish: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FinishDeliveryDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    QqBridgeConnectorController_image: {
+        parameters: {
+            query?: never;
+            header: {
+                "x-delivery-lease": string;
+            };
+            path: {
+                id: string;
             };
             cookie?: never;
         };

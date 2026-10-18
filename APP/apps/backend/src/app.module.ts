@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { QqBridgeModule } from './extensions/qq-bridge/qq-bridge.module';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -54,6 +55,7 @@ import { AlbumModule } from './album/album.module';
     FileSharesModule,
     LoginRiskModule,
     MessagesModule,
+    QqBridgeModule,
     RetentionModule,
     BotsModule,
     UploadsModule,
