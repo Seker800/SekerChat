@@ -29,7 +29,9 @@ export function useNotification(
 
   const armCatchupCheck = () => {
     catchupArmedRef.current = true;
-    unreadSnapshotRef.current = new Map(groupsRef.current.map((group) => [group.id, group.unreadCount ?? 0]));
+    unreadSnapshotRef.current = new Map(
+      groupsRef.current.map((group) => [group.id, group.unreadCount ?? 0]),
+    );
     logSoundDebug('armed catch-up notification check', {
       groups: groupsRef.current.length,
       selectedGroupId: selectedGroupIdRef.current,
@@ -39,6 +41,10 @@ export function useNotification(
   const handlerRef = useRef((data: MessageCreatedEvent) => {
     const uid = userIdRef.current;
     const isMentioned = data.mentionedUserIds?.includes(uid);
+    if (groupsRef.current.find((group) => group.id === data.groupId)?.notificationsMuted) {
+      logSoundDebug('skip sound: conversation muted');
+      return;
+    }
 
     logSoundDebug('message.created received', {
       messageId: data.messageId,
@@ -78,6 +84,7 @@ export function useNotification(
     }
 
     const hasUnreadIncrease = groups.some((group) => {
+      if (group.notificationsMuted) return false;
       const previousUnread = unreadSnapshotRef.current.get(group.id) ?? 0;
       const nextUnread = group.unreadCount ?? 0;
       if (nextUnread <= previousUnread) {

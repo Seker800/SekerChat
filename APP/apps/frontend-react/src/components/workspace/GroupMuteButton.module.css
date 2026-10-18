@@ -1,0 +1,26 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 9px;
+  flex-shrink: 0;
+  border: 1px solid var(--line-subtle);
+  border-radius: 8px;
+  background: var(--bg-subtle);
+  color: var(--text-soft);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.button:hover {
+  background: var(--bg-hover);
+}
+.button[aria-pressed='true'] {
+  color: var(--text-muted);
+}
+.button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}

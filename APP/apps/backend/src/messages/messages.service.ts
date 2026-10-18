@@ -365,11 +365,30 @@ export class MessagesService {
         eventSequence: 'asc',
       },
       take: limit,
-      select: messageSelect,
+      select: {
+        ...messageSelect,
+        group: {
+          select: {
+            members: {
+              where: { userId },
+              select: { notificationsMuted: true, notificationsMutedThroughEventSequence: true },
+            },
+          },
+        },
+      },
     });
 
+    // Advance the cursor through muted messages too, so unmuting never replays consumed alerts.
+    const notifyMessages = messages.filter(
+      (message) =>
+        !message.group.members.some(
+          (member) =>
+            member.notificationsMuted ||
+            message.eventSequence <= member.notificationsMutedThroughEventSequence,
+        ),
+    );
     // Batch-fetch receipt members per unique group to avoid N+1 queries
-    const uniqueGroupIds = [...new Set(messages.map((m) => m.groupId))];
+    const uniqueGroupIds = [...new Set(notifyMessages.map((m) => m.groupId))];
     const receiptMembersByGroup = new Map<string, MessageReceiptMember[]>();
     await Promise.all(
       uniqueGroupIds.map(async (gid) => {
@@ -382,7 +401,7 @@ export class MessagesService {
 
     return {
       events: await Promise.all(
-        messages.map((message) =>
+        notifyMessages.map((message) =>
           this.serializeRealtimeMessageCreated(message, receiptMembersByGroup.get(message.groupId)),
         ),
       ),

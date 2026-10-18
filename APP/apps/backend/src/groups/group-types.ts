@@ -33,6 +33,7 @@ export const groupWithMembersSelect = {
     select: {
       role: true,
       joinedAt: true,
+      notificationsMuted: true,
       user: {
         select: {
           id: true,

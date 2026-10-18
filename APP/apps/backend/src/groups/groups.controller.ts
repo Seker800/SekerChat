@@ -19,6 +19,8 @@ import { CreateGroupDto } from './dto/create-group.dto';
 import { InviteGroupMemberDto } from './dto/invite-group-member.dto';
 import { UpdateGroupDto } from './dto/update-group.dto';
 import { UpdateGroupMemberRoleDto } from './dto/update-group-member-role.dto';
+import { UpdateGroupNotificationsDto } from './dto/update-group-notifications.dto';
+import { GroupNotificationsService } from './group-notifications.service';
 import { RenameCategoryDto } from './dto/rename-category.dto';
 import { AdminGroupDiscoveryScope, GroupsService } from './groups.service';
 import { ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
@@ -33,13 +35,27 @@ import {
   RenameCategoryResponseDto,
   ResetCategoryResponseDto,
   UserOptionResponseDto,
+  GroupNotificationPreferenceResponseDto,
 } from './dto/group-response.dto';
 
 @UseGuards(JwtAuthGuard)
 @ApiTags('groups')
 @Controller('groups')
 export class GroupsController {
-  constructor(private readonly groupsService: GroupsService) {}
+  constructor(
+    private readonly groupsService: GroupsService,
+    private readonly notifications: GroupNotificationsService,
+  ) {}
+
+  @Patch(':groupId/notifications')
+  @ApiOkResponse({ type: GroupNotificationPreferenceResponseDto })
+  updateNotifications(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('groupId') groupId: string,
+    @Body() dto: UpdateGroupNotificationsDto,
+  ) {
+    return this.notifications.update(user.sub, groupId, dto.notificationsMuted);
+  }
 
   @Post()
   @ApiCreatedResponse({ type: GroupResponseDto })

@@ -481,6 +481,8 @@ test('createMessage rejects dm bot messages when the sender is outside the allow
 
 test('listReminderEvents batch-fetches receipt members per unique group', async () => {
   const receiptCalls: string[] = [];
+  let notificationsMuted = false;
+  let notificationsMutedThroughEventSequence = 0n;
   const members1: MessageReceiptMember[] = [
     {
       userId: 'user-1',
@@ -511,6 +513,7 @@ test('listReminderEvents batch-fetches receipt members per unique group', async 
             {
               id: 'msg-1',
               groupId: 'group-1',
+              group: { members: [{ notificationsMuted, notificationsMutedThroughEventSequence }] },
               senderId: 'user-1',
               eventSequence: 1n,
               type: MessageType.TEXT,
@@ -533,6 +536,7 @@ test('listReminderEvents batch-fetches receipt members per unique group', async 
             {
               id: 'msg-2',
               groupId: 'group-2',
+              group: { members: [{ notificationsMuted, notificationsMutedThroughEventSequence }] },
               senderId: 'user-2',
               eventSequence: 2n,
               type: MessageType.TEXT,
@@ -555,6 +559,7 @@ test('listReminderEvents batch-fetches receipt members per unique group', async 
             {
               id: 'msg-3',
               groupId: 'group-1',
+              group: { members: [{ notificationsMuted, notificationsMutedThroughEventSequence }] },
               senderId: 'user-1',
               eventSequence: 3n,
               type: MessageType.TEXT,
@@ -652,6 +657,17 @@ test('listReminderEvents batch-fetches receipt members per unique group', async 
   assert.deepEqual(receiptCalls.sort(), ['group-1', 'group-2']);
   assert.equal(receiptCalls.length, 2);
   assert.equal(result.events.length, 3);
+  notificationsMuted = true;
+  receiptCalls.length = 0;
+  const muted = await service.listReminderEvents('user-1', {});
+  assert.deepEqual(muted.events, []);
+  assert.equal(muted.nextCursor, '3');
+  assert.deepEqual(receiptCalls, []);
+  notificationsMuted = false;
+  notificationsMutedThroughEventSequence = 3n;
+  const resumed = await service.listReminderEvents('user-1', {});
+  assert.deepEqual(resumed.events, []);
+  assert.equal(resumed.nextCursor, '3');
 });
 
 test('serializeMessageForGroup uses pre-fetched receipt members when provided', async () => {

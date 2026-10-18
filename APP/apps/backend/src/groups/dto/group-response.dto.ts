@@ -54,6 +54,7 @@ export class GroupResponseDto {
   createdById!: string;
   currentUserRole!: 'ADMIN' | 'MEMBER';
   unreadCount!: number;
+  notificationsMuted?: boolean;
   memberCount?: number;
   members!: GroupMemberResponseDto[];
 }
@@ -73,6 +74,11 @@ export class LeaveGroupResponseDto {
 
 export class MarkGroupReadResponseDto {
   success!: true;
+}
+
+export class GroupNotificationPreferenceResponseDto {
+  groupId!: string;
+  notificationsMuted!: boolean;
 }
 
 export class AdvanceReadCursorResponseDto {

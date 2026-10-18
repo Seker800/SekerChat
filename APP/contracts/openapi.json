@@ -2974,6 +2974,46 @@
         ]
       }
     },
+    "/api/groups/{groupId}/notifications": {
+      "patch": {
+        "operationId": "GroupsController_updateNotifications",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateGroupNotificationsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupNotificationPreferenceResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "groups"
+        ]
+      }
+    },
     "/api/groups": {
       "post": {
         "operationId": "GroupsController_createGroup",
@@ -7248,6 +7288,32 @@
           "newPassword"
         ]
       },
+      "UpdateGroupNotificationsDto": {
+        "type": "object",
+        "properties": {
+          "notificationsMuted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "notificationsMuted"
+        ]
+      },
+      "GroupNotificationPreferenceResponseDto": {
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "string"
+          },
+          "notificationsMuted": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "groupId",
+          "notificationsMuted"
+        ]
+      },
       "CreateGroupDto": {
         "type": "object",
         "properties": {
@@ -7490,6 +7556,9 @@
           },
           "unreadCount": {
             "type": "number"
+          },
+          "notificationsMuted": {
+            "type": "boolean"
           },
           "memberCount": {
             "type": "number"

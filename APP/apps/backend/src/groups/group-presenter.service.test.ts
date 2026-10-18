@@ -23,6 +23,7 @@ function makeBasicGroup(overrides: Partial<GroupWithMembers> = {}): GroupWithMem
       {
         role: 'ADMIN',
         joinedAt: new Date('2026-05-01T00:00:00.000Z'),
+        notificationsMuted: false,
         user: {
           id: 'user-1',
           email: 'alice@example.com',
@@ -34,6 +35,7 @@ function makeBasicGroup(overrides: Partial<GroupWithMembers> = {}): GroupWithMem
       {
         role: 'MEMBER',
         joinedAt: new Date('2026-05-10T00:00:00.000Z'),
+        notificationsMuted: false,
         user: {
           id: 'user-2',
           email: 'bob@example.com',
@@ -86,6 +88,17 @@ function makePresenter(
 
   return new GroupPresenter(prismaService as any, avatarsService as any, realtimeService as any);
 }
+
+test('serializeGroup returns only the current member notification preference and defaults to unmuted', async () => {
+  const group = makeBasicGroup();
+  group.members[0].notificationsMuted = true;
+  const presenter = makePresenter();
+  assert.equal((await presenter.serializeGroup(group, 'user-1')).notificationsMuted, true);
+  const bob = await presenter.serializeGroup(group, 'user-2');
+  assert.equal(bob.notificationsMuted, false);
+  assert.equal('notificationsMuted' in bob.members[0], false);
+  assert.equal((await presenter.serializeGroup(group, 'non-member')).notificationsMuted, false);
+});
 
 test('serializeGroup uses prefetch for category avatar instead of querying DB', async () => {
   let dbQueryCount = 0;
@@ -273,6 +286,7 @@ test('serializeGroup resolves DM partner name from members', async () => {
       {
         role: 'MEMBER',
         joinedAt: new Date('2026-05-01T00:00:00.000Z'),
+        notificationsMuted: false,
         user: {
           id: 'user-1',
           email: 'alice@example.com',
@@ -284,6 +298,7 @@ test('serializeGroup resolves DM partner name from members', async () => {
       {
         role: 'MEMBER',
         joinedAt: new Date('2026-05-01T00:00:00.000Z'),
+        notificationsMuted: false,
         user: {
           id: 'user-2',
           email: 'bob@example.com',
@@ -319,6 +334,7 @@ test('serializeGroup suppresses dnd badge for offline members', async () => {
         {
           role: 'ADMIN',
           joinedAt: new Date('2026-05-01T00:00:00.000Z'),
+          notificationsMuted: false,
           user: {
             id: 'user-1',
             email: 'alice@example.com',

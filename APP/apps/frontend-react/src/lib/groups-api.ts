@@ -9,6 +9,7 @@ export type GroupArtifactConfirmationSummaryResponse =
 export type UserOptionResponse = ApiSchemas['UserOptionResponseDto'];
 export type GroupMessagePreview = ApiSchemas['GroupMessagePreviewResponseDto'];
 export type GroupResponse = ApiSchemas['GroupResponseDto'];
+export type GroupNotificationPreference = ApiSchemas['GroupNotificationPreferenceResponseDto'];
 export type LeaveGroupResponse = ApiSchemas['LeaveGroupResponseDto'];
 export type ServerResponse = ApiSchemas['ServerResponseDto'];
 export type ArchiveServerResponse = ApiSchemas['ArchiveServerResponseDto'];
@@ -27,6 +28,22 @@ export async function listGroups(accessToken: string): Promise<GroupResponse[]> 
   });
 
   return parseResponse<GroupResponse[]>(response);
+}
+
+export async function updateGroupNotifications(
+  accessToken: string,
+  groupId: string,
+  notificationsMuted: boolean,
+): Promise<GroupNotificationPreference> {
+  const response = await fetchApi(
+    `${apiBaseUrl}/groups/${encodeURIComponent(groupId)}/notifications`,
+    {
+      method: 'PATCH',
+      headers: authHeaders(accessToken),
+      body: JSON.stringify({ notificationsMuted }),
+    },
+  );
+  return parseResponse<GroupNotificationPreference>(response);
 }
 
 export async function listInvitableUsers(

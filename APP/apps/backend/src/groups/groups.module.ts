@@ -13,6 +13,7 @@ import { GroupMembershipService } from './group-membership.service';
 import { GroupPresenter } from './group-presenter.service';
 import { GroupQueryService } from './group-query.service';
 import { ServersModule } from '../servers/servers.module';
+import { GroupNotificationsService } from './group-notifications.service';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { ServersModule } from '../servers/servers.module';
     GroupAdminDiscoveryService,
     GroupChannelService,
     GroupPresenter,
+    GroupNotificationsService,
   ],
   exports: [GroupsService, GroupCategoryService, GroupQueryService, GroupPresenter],
 })

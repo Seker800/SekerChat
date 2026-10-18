@@ -269,6 +269,8 @@ model GroupMember {
   role                  GroupMemberRole @default(MEMBER)
   joinedAt              DateTime        @default(now())
   lastReadEventSequence BigInt?
+  notificationsMuted    Boolean         @default(false)
+  notificationsMutedThroughEventSequence BigInt @default(0)
   groupId               String
   userId                String
   group                 Group           @relation(fields: [groupId], references: [id], onDelete: Cascade)

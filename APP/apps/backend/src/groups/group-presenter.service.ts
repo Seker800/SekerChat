@@ -117,6 +117,9 @@ export class GroupPresenter {
         ? this.avatarsService.buildServerAvatarUrl(group.server.id, categoryAvatarKey)
         : this.avatarsService.buildLegacyServerAvatarUrl(group.category, categoryAvatarKey),
       currentUserRole,
+      notificationsMuted:
+        group.members.find((member) => member.user.id === currentUserId)?.notificationsMuted ??
+        false,
       unreadCount: unreadCount ?? 0,
       members: group.members.map((member) => {
         const isOnline = onlineIds.has(member.user.id);

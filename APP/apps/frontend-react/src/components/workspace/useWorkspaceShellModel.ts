@@ -488,6 +488,7 @@ export function useWorkspaceShellModel({
     dmUnreadCount,
     servers,
     groups: channels,
+    notificationGroups: [...servers, ...workspaceQueries.dms],
     groupsQuery: channelsQuery,
     isLoading: serversQuery.isLoading || (mode === 'dm' && workspaceQueries.dmsQuery.isLoading),
     loadError,

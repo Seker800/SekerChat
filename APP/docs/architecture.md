@@ -67,6 +67,10 @@ Application release and database migration are separate operations. The target m
 
 ## Decision records
 
+### Personal group notifications
+
+Group mute is a core per-member preference, independent of external message sources. It suppresses alerts while preserving message delivery and unread state; reminder WS and pull paths share the persisted preference and resume cutoff. See [ADR 0007](./adr/0007-group-notification-preferences.md) and [local verification](./group-notifications.md).
+
 ### Optional QQ bridge extension
 
 QQ group synchronization is a built-in optional module. A separate connector subscribes directly to NapCat and calls scoped integration APIs; AstrBot is not its upstream. Core messages expose optional external-author snapshots without creating login accounts for QQ members. Outgoing delivery intent is recorded in the message transaction through a narrow registration port; provider calls happen only in the connector. Ambiguous provider results require reconciliation instead of automatic resend. The extension and all bindings start disabled. See [ADR 0006](./adr/0006-qq-bridge-extension.md) and [local verification](./qq-bridge.md). This implementation has not been released to production.

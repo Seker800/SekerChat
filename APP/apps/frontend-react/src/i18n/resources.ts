@@ -145,6 +145,15 @@ export const resources = {
         mismatch: '两次输入的新密码不一致。',
         failed: '修改密码失败。',
       },
+      groupNotifications: {
+        mute: '静音此群',
+        unmute: '取消此群静音',
+        soundOn: '静音',
+        muted: '已静音',
+        hint: '静音后不播放此群提醒，只影响你，消息和未读照常接收。',
+        mutedHint: '此群已静音，点击恢复提醒。只影响你。',
+        failed: '保存群通知设置失败。',
+      },
       messages: {
         noCopyableText: '这条消息没有可复制的文本。',
         copied: '消息内容已复制。',
@@ -292,7 +301,8 @@ export const resources = {
         activityDuration: '{{hours}}h {{minutes}}m',
         activityLoadFailed: 'Could not load your activity.',
         passwordMismatch: 'The new passwords do not match.',
-        passwordUnavailable: 'Password changes are unavailable for this session. Refresh and try again.',
+        passwordUnavailable:
+          'Password changes are unavailable for this session. Refresh and try again.',
         passwordChanged: 'Password changed. Other sessions have been signed out.',
         passwordChangeFailed: 'Could not change the password.',
         avatarUpdated: 'Avatar updated.',
@@ -354,7 +364,8 @@ export const resources = {
       requiredPassword: {
         eyebrow: 'Security check',
         title: 'Change your temporary password',
-        description: 'An administrator reset the password for {{email}}. Set a new password to continue using SekerChat.',
+        description:
+          'An administrator reset the password for {{email}}. Set a new password to continue using SekerChat.',
         current: 'Current temporary password',
         next: 'New password',
         confirm: 'Confirm new password',
@@ -363,6 +374,15 @@ export const resources = {
         submit: 'Change password and continue',
         mismatch: 'The new passwords do not match.',
         failed: 'Could not change the password.',
+      },
+      groupNotifications: {
+        mute: 'Mute this group',
+        unmute: 'Unmute this group',
+        soundOn: 'Mute',
+        muted: 'Muted',
+        hint: 'Mute alerts for you only. Messages and unread counts stay active.',
+        mutedHint: 'This group is muted. Click to restore alerts for you.',
+        failed: 'Could not save notification settings.',
       },
       messages: {
         noCopyableText: 'This message has no text to copy.',

@@ -9,6 +9,7 @@ import { resetOwnCheckInTodayForDev } from '../../lib/attendance-api';
 import { ServerRail } from './ServerRail';
 import { ChannelSidebar, type AttendanceReminderRequest } from './ChannelSidebar';
 import { MessagePane } from './MessagePane';
+import { GroupMuteButton } from './GroupMuteButton';
 import { canManageAttachmentShare } from './fileShareCapabilities';
 import { Composer } from './Composer';
 import { RightSidebar } from './RightSidebar';
@@ -108,7 +109,7 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
 
   const { isDnd, setDndOverride } = useWorkspaceRealtimeController({
     currentUser,
-    groups: model.groups,
+    groups: model.notificationGroups,
     selectedGroupId: model.selectedGroupId,
     refreshGroupList: model.refreshGroupList,
   });
@@ -497,6 +498,15 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
                 <div className={styles.channelMeta}>{model.header.channelMeta}</div>
               </div>
               <div className={styles.headerActions}>
+                {model.selectedGroup &&
+                !model.selectedGroup.isDM &&
+                model.selectedGroup.members.some((member) => member.userId === currentUser.id) ? (
+                  <GroupMuteButton
+                    key={model.selectedGroupId}
+                    group={model.selectedGroup}
+                    onError={model.showErrorNotice}
+                  />
+                ) : null}
                 {model.isSecondarySurfaceViewport ? (
                   <button
                     className={styles.headerToggle}

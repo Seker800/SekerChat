@@ -25,4 +25,17 @@ export class GroupAudienceResolver {
   invalidate(groupId: string): void {
     this.cache.delete(groupId);
   }
+
+  async resolveReminderAudience(groupId: string, eventSequence: bigint): Promise<Set<string>> {
+    // Notification preferences must be read fresh; membership cache TTL must not delay mute.
+    const members = await this.prismaService.groupMember.findMany({
+      where: {
+        groupId,
+        notificationsMuted: false,
+        notificationsMutedThroughEventSequence: { lt: eventSequence },
+      },
+      select: { userId: true },
+    });
+    return new Set(members.map((member) => member.userId));
+  }
 }

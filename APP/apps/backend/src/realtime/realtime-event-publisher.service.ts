@@ -22,8 +22,19 @@ export class RealtimeEventPublisher {
     for (const userId of options?.excludeUserIds ?? []) if (userId) audience.delete(userId);
 
     const serializedEvent = serializeRealtimeEvent(event);
+    const reminderAudience =
+      event.type === 'message.created.v1' &&
+      [...this.registry.clients.values()].some((context) => context.authKind === 'reminder')
+        ? await this.audienceResolver.resolveReminderAudience(groupId, BigInt(event.eventId))
+        : null;
     for (const userId of audience) {
       for (const socket of this.registry.socketsFor(userId)) {
+        if (
+          reminderAudience &&
+          this.registry.clients.get(socket)?.authKind === 'reminder' &&
+          !reminderAudience.has(userId)
+        )
+          continue;
         if (socket.readyState === WebSocket.OPEN) socket.send(serializedEvent);
       }
     }

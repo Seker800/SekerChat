@@ -1460,6 +1460,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/groups/{groupId}/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["GroupsController_updateNotifications"];
+        trace?: never;
+    };
     "/api/groups": {
         parameters: {
             query?: never;
@@ -3065,6 +3081,13 @@ export interface components {
         ResetUserPasswordDto: {
             newPassword: string;
         };
+        UpdateGroupNotificationsDto: {
+            notificationsMuted: boolean;
+        };
+        GroupNotificationPreferenceResponseDto: {
+            groupId: string;
+            notificationsMuted: boolean;
+        };
         CreateGroupDto: {
             name: string;
             category?: string;
@@ -3124,6 +3147,7 @@ export interface components {
             /** @enum {string} */
             currentUserRole: "MEMBER" | "ADMIN";
             unreadCount: number;
+            notificationsMuted?: boolean;
             memberCount?: number;
             members: components["schemas"]["GroupMemberResponseDto"][];
         };
@@ -5774,6 +5798,31 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    GroupsController_updateNotifications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                groupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateGroupNotificationsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GroupNotificationPreferenceResponseDto"];
+                };
             };
         };
     };
