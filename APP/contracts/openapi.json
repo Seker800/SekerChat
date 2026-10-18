@@ -4071,6 +4071,46 @@
         ]
       }
     },
+    "/api/extensions/qq-bridge/bindings/{id}/history": {
+      "post": {
+        "operationId": "QqBridgeController_importHistory",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IngestQqMessageDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QqBridgeActionResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "extensions"
+        ]
+      }
+    },
     "/api/integrations/qq-bridge/manifest": {
       "get": {
         "operationId": "QqBridgeConnectorController_manifest",
@@ -8221,24 +8261,6 @@
           "status"
         ]
       },
-      "HeartbeatDto": {
-        "type": "object",
-        "properties": {
-          "connected": {
-            "type": "boolean"
-          },
-          "groups": {
-            "maxItems": 2000,
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/QqCatalogGroupDto"
-            }
-          }
-        },
-        "required": [
-          "connected"
-        ]
-      },
       "QqMessagePartDto": {
         "type": "object",
         "properties": {
@@ -8315,6 +8337,24 @@
           "displayName",
           "occurredAt",
           "parts"
+        ]
+      },
+      "HeartbeatDto": {
+        "type": "object",
+        "properties": {
+          "connected": {
+            "type": "boolean"
+          },
+          "groups": {
+            "maxItems": 2000,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QqCatalogGroupDto"
+            }
+          }
+        },
+        "required": [
+          "connected"
         ]
       },
       "RevokeQqMessageDto": {

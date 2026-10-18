@@ -11,7 +11,9 @@ import {
   ResolveDeliveryDto,
   ToggleBindingDto,
   ToggleConnectorDto,
+  IngestQqMessageDto,
 } from './qq-bridge.dto';
+import { QqBridgeIngestService } from './qq-bridge-ingest.service';
 import {
   QqBridgeOverviewResponseDto,
   QqBridgeCredentialResponseDto,
@@ -26,6 +28,7 @@ export class QqBridgeController {
   constructor(
     private readonly access: QqBridgeAccessService,
     private readonly deliveries: QqBridgeDeliveryService,
+    private readonly ingest: QqBridgeIngestService,
   ) {}
   @Get()
   @ApiOkResponse({ type: QqBridgeOverviewResponseDto })
@@ -78,5 +81,16 @@ export class QqBridgeController {
     @Body() dto: ResolveDeliveryDto,
   ) {
     return this.deliveries.resolve(user, id, dto.status, dto.messageId);
+  }
+
+  @Post('bindings/:id/history')
+  @ApiCreatedResponse({ type: QqBridgeActionResponseDto })
+  async importHistory(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: IngestQqMessageDto,
+  ) {
+    await this.ingest.importHistory(user, id, dto);
+    return { ok: true };
   }
 }

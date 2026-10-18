@@ -158,6 +158,10 @@ export function senderLabel(item: MessageResponse): string {
   return userDisplayName(item.sender);
 }
 
+export function messageDisplayTime(item: MessageResponse): string {
+  return item.source === 'qq' && item.sourceOccurredAt ? item.sourceOccurredAt : item.createdAt;
+}
+
 export function isCompactWithPrevious(
   previous: MessageResponse | undefined,
   current: MessageResponse,
@@ -173,10 +177,10 @@ export function isCompactWithPrevious(
   )
     return false;
 
-  const previousAt = new Date(previous.createdAt).getTime();
-  const currentAt = new Date(current.createdAt).getTime();
+  const previousAt = new Date(messageDisplayTime(previous)).getTime();
+  const currentAt = new Date(messageDisplayTime(current)).getTime();
 
-  return currentAt - previousAt < COMPACT_MESSAGE_WINDOW_MS;
+  return currentAt >= previousAt && currentAt - previousAt < COMPACT_MESSAGE_WINDOW_MS;
 }
 
 export function isSameCalendarDay(
@@ -191,12 +195,12 @@ export function isSameCalendarDay(
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
-    }).format(new Date(previous.createdAt)) ===
+    }).format(new Date(messageDisplayTime(previous))) ===
     new Intl.DateTimeFormat(locale, {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
-    }).format(new Date(current.createdAt))
+    }).format(new Date(messageDisplayTime(current)))
   );
 }
 

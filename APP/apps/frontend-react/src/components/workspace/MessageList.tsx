@@ -3,7 +3,12 @@ import type { MessageResponse } from '../../lib/messages-files-api';
 import type { PendingUpload } from './useComposer';
 import { UploadProgressBar } from '../shared/UploadProgressBar';
 import { MessageItem } from './MessageItem';
-import { formatDayDivider, isCompactWithPrevious, isSameCalendarDay } from './messagePaneUtils';
+import {
+  formatDayDivider,
+  isCompactWithPrevious,
+  isSameCalendarDay,
+  messageDisplayTime,
+} from './messagePaneUtils';
 import styles from './MessagePane.module.css';
 import type { PreviewImage } from '../media/image-preview/useImagePreviewState';
 import type { MessageArtifactAction } from './messageArtifactAction';
@@ -166,7 +171,7 @@ export function MessageList({
           <Fragment key={item.clientKey ?? item.id}>
             {showDivider ? (
               <div className={styles.dayDivider}>
-                <span>{formatDayDivider(item.createdAt, language)}</span>
+                <span>{formatDayDivider(messageDisplayTime(item), language)}</span>
               </div>
             ) : null}
             <MessageItem

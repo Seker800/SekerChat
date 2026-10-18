@@ -1876,6 +1876,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/extensions/qq-bridge/bindings/{id}/history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["QqBridgeController_importHistory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/integrations/qq-bridge/manifest": {
         parameters: {
             query?: never;
@@ -3297,10 +3313,6 @@ export interface components {
             status: "sent" | "cancelled";
             messageId?: string;
         };
-        HeartbeatDto: {
-            connected: boolean;
-            groups?: components["schemas"]["QqCatalogGroupDto"][];
-        };
         QqMessagePartDto: {
             /** @enum {string} */
             type: "text" | "image";
@@ -3320,6 +3332,10 @@ export interface components {
             avatarFileId?: string;
             replyToId?: string;
             parts: components["schemas"]["QqMessagePartDto"][];
+        };
+        HeartbeatDto: {
+            connected: boolean;
+            groups?: components["schemas"]["QqCatalogGroupDto"][];
         };
         RevokeQqMessageDto: {
             /** Format: uuid */
@@ -6484,6 +6500,31 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ResolveDeliveryDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QqBridgeActionResponseDto"];
+                };
+            };
+        };
+    };
+    QqBridgeController_importHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IngestQqMessageDto"];
             };
         };
         responses: {

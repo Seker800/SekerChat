@@ -5,6 +5,7 @@ import { ExternalMessagesService } from '../../messages/external-messages.servic
 import { OutboxWakeupService } from '../../outbox/outbox-wakeup.service';
 import { QqBridgeAccessService } from './qq-bridge-access.service';
 import { IngestQqMessageDto, MediaUploadDto, RevokeQqMessageDto } from './qq-bridge.dto';
+import { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
 
 @Injectable()
 export class QqBridgeIngestService {
@@ -16,6 +17,20 @@ export class QqBridgeIngestService {
   ) {}
 
   async ingest(connectorId: string, dto: IngestQqMessageDto) {
+    return this.persist(connectorId, dto, false);
+  }
+
+  async importHistory(actor: AuthenticatedUser, bindingId: string, dto: IngestQqMessageDto) {
+    await this.access.assertAdmin(actor);
+    if (bindingId !== dto.bindingId) throw new BadRequestException('历史消息与目标绑定不一致。');
+    const binding = await this.prisma.qqBridgeBinding.findUniqueOrThrow({
+      where: { id: bindingId },
+    });
+    await this.access.assertGroupManager(actor, binding.groupId, true);
+    return this.persist(binding.connectorId, dto, true);
+  }
+
+  private async persist(connectorId: string, dto: IngestQqMessageDto, importHistory: boolean) {
     const result = await this.prisma.$transaction(
       async (tx) => {
         const binding = await this.access.activeBinding(
@@ -33,6 +48,7 @@ export class QqBridgeIngestService {
         });
         if (echo) return { ids: [echo.messageId], echo: true };
         if (
+          !importHistory &&
           binding.enabledAt &&
           new Date(dto.occurredAt).getTime() < binding.enabledAt.getTime() - 2000
         )

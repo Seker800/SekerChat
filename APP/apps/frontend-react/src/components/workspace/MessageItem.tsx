@@ -24,6 +24,7 @@ import {
   renderMessageHtml,
   senderLabel,
   renderExternalMessage,
+  messageDisplayTime,
 } from './messagePaneUtils';
 import styles from './MessagePane.module.css';
 import type { PreviewImage } from '../media/image-preview/useImagePreviewState';
@@ -230,7 +231,7 @@ export function MessageItem({
                   <span className={styles.externalSource}>来自 QQ</span>
                 ) : null}
                 <span className={styles.time}>
-                  {formatTimestamp(item.createdAt, language)}
+                  {formatTimestamp(messageDisplayTime(item), language)}
                   {item.editedAt && !item.revokedAt ? (
                     <span className={styles.editedMark}> {t('messages.edited')}</span>
                   ) : null}
