@@ -4,7 +4,12 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ExternalMessagesService } from '../../messages/external-messages.service';
 import { OutboxWakeupService } from '../../outbox/outbox-wakeup.service';
 import { QqBridgeAccessService } from './qq-bridge-access.service';
-import { IngestQqMessageDto, MediaUploadDto, RevokeQqMessageDto } from './qq-bridge.dto';
+import {
+  IngestQqMessageDto,
+  MediaUploadDto,
+  FileUploadDto,
+  RevokeQqMessageDto,
+} from './qq-bridge.dto';
 import { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
 
 @Injectable()
@@ -65,12 +70,18 @@ export class QqBridgeIngestService {
             id: { in: mediaIds },
             groupId: binding.groupId,
             uploaderId: actor.id,
-            mimeType: { startsWith: 'image/' },
           },
-          select: { id: true },
+          select: { id: true, mimeType: true },
         });
         if (new Set(mediaIds).size !== media.length)
-          throw new BadRequestException('图片不属于此绑定。');
+          throw new BadRequestException('附件不属于此绑定。');
+        const byId = new Map(media.map((file) => [file.id, file]));
+        const imageIds = [
+          dto.avatarFileId,
+          ...dto.parts.filter((part) => part.type === 'image').map((part) => part.fileId),
+        ].filter((id): id is string => !!id);
+        if (imageIds.some((id) => !byId.get(id)?.mimeType.startsWith('image/')))
+          throw new BadRequestException('头像和图片必须是有效图片。');
         const replySource = dto.replyToId
           ? await tx.qqBridgeSource.findUnique({
               where: { bindingId_externalId: { bindingId: binding.id, externalId: dto.replyToId } },
@@ -93,7 +104,8 @@ export class QqBridgeIngestService {
         for (const [index, part] of dto.parts.entries()) {
           if (part.type === 'text' && !part.text?.trim())
             throw new BadRequestException('文字内容不能为空。');
-          if (part.type === 'image' && !part.fileId) throw new BadRequestException('缺少图片。');
+          if ((part.type === 'image' || part.type === 'file') && !part.fileId)
+            throw new BadRequestException('缺少附件。');
           const message = await this.messages.create(tx, {
             groupId: binding.groupId,
             key: `${source.id}:${index}`,
@@ -108,7 +120,8 @@ export class QqBridgeIngestService {
               part.type === 'text'
                 ? `${index === 0 && dto.replyToId && !reply ? '〔引用的 QQ 消息未同步〕\n' : ''}${part.text}`
                 : undefined,
-            fileId: part.type === 'image' ? part.fileId : undefined,
+            fileId: part.type === 'image' || part.type === 'file' ? part.fileId : undefined,
+            attachmentType: part.type === 'file' ? 'file' : 'image',
             avatarFileId: dto.avatarFileId,
             replyToMessageId: index === 0 ? reply?.id : undefined,
           });
@@ -143,6 +156,17 @@ export class QqBridgeIngestService {
       this.access.activeBinding(tx, connectorId, dto.bindingId, dto.revision),
     );
     const file = await this.messages.stageImage(binding.groupId, buffer);
+    await this.prisma.$transaction((tx) =>
+      this.access.activeBinding(tx, connectorId, dto.bindingId, dto.revision),
+    );
+    return { fileId: file.id };
+  }
+  async uploadFile(connectorId: string, dto: FileUploadDto, buffer?: Buffer) {
+    if (!buffer) throw new BadRequestException('请选择文件。');
+    const binding = await this.prisma.$transaction((tx) =>
+      this.access.activeBinding(tx, connectorId, dto.bindingId, dto.revision),
+    );
+    const file = await this.messages.stageFile(binding.groupId, buffer, dto.originalName);
     await this.prisma.$transaction((tx) =>
       this.access.activeBinding(tx, connectorId, dto.bindingId, dto.revision),
     );

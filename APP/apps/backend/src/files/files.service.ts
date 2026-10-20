@@ -437,13 +437,13 @@ export class FilesService {
     return this.objectStorage.delete(storageKey);
   }
 
-  async purgeUnreferencedExternalImage(fileId: string): Promise<boolean> {
+  async purgeUnreferencedExternalFile(fileId: string): Promise<boolean> {
     return this.prismaService.$transaction(
       async (tx) => {
         // A retrying upload updates this same row before writing MinIO. Serialize cleanup against that reservation.
         await tx.$queryRaw`SELECT id FROM "FileObject" WHERE id = ${fileId} FOR UPDATE`;
         const file = await tx.fileObject.findUnique({ where: { id: fileId } });
-        if (!file || !file.storageKey.startsWith('external-images/')) return false;
+        if (!file || !/^external-(images|files)\//.test(file.storageKey)) return false;
         if (file.updatedAt.getTime() > Date.now() - 24 * 60 * 60 * 1000) return false;
         // Recheck references after acquiring the lock, using a fresh READ COMMITTED statement snapshot.
         if (

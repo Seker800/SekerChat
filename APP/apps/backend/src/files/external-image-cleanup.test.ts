@@ -3,7 +3,13 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { FilesService } from './files.service';
 
-function fixture({ references = 0, recent = false, share = false, storageFails = false } = {}) {
+function fixture({
+  references = 0,
+  recent = false,
+  share = false,
+  storageFails = false,
+  storageKey = 'external-images/group/hash',
+} = {}) {
   const calls: string[] = [];
   const tx = {
     $queryRaw: async () => {
@@ -13,7 +19,7 @@ function fixture({ references = 0, recent = false, share = false, storageFails =
     fileObject: {
       findUnique: async () => ({
         id: 'file',
-        storageKey: 'external-images/group/hash',
+        storageKey,
         thumbnailStorageKey: null,
         updatedAt: new Date(Date.now() - (recent ? 0 : 2 * 86400000)),
       }),
@@ -49,23 +55,32 @@ function fixture({ references = 0, recent = false, share = false, storageFails =
 
 test('external image cleanup locks then rechecks references before deleting either store', async () => {
   const { service, calls } = fixture();
-  assert.equal(await service.purgeUnreferencedExternalImage('file'), true);
+  assert.equal(await service.purgeUnreferencedExternalFile('file'), true);
   assert.deepEqual(calls, ['lock', 'recheck-references', 'delete-object', 'delete-row']);
 });
 test('a newly attached avatar or image is protected even if the initial orphan scan was stale', async () => {
   const { service, calls } = fixture({ references: 1 });
-  assert.equal(await service.purgeUnreferencedExternalImage('file'), false);
+  assert.equal(await service.purgeUnreferencedExternalFile('file'), false);
   assert(!calls.includes('delete-object'));
 });
 test('upload reservations and active shares keep external images out of cleanup', async () => {
   for (const options of [{ recent: true }, { share: true }]) {
     const { service, calls } = fixture(options);
-    assert.equal(await service.purgeUnreferencedExternalImage('file'), false);
+    assert.equal(await service.purgeUnreferencedExternalFile('file'), false);
     assert(!calls.includes('delete-object'));
   }
 });
 test('failed object deletion keeps the external image database reference for recovery', async () => {
   const { service, calls } = fixture({ storageFails: true });
-  assert.equal(await service.purgeUnreferencedExternalImage('file'), false);
+  assert.equal(await service.purgeUnreferencedExternalFile('file'), false);
   assert(!calls.includes('delete-row'));
+});
+
+test('external binary files use the same locked cleanup and preserve live references', async () => {
+  const expired = fixture({ storageKey: 'external-files/group/hash' });
+  assert.equal(await expired.service.purgeUnreferencedExternalFile('file'), true);
+  const attached = fixture({ storageKey: 'external-files/group/hash', references: 1 });
+  assert.equal(await attached.service.purgeUnreferencedExternalFile('file'), false);
+  const recent = fixture({ storageKey: 'external-files/group/hash', recent: true });
+  assert.equal(await recent.service.purgeUnreferencedExternalFile('file'), false);
 });

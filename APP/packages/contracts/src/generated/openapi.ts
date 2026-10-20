@@ -1988,6 +1988,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/integrations/qq-bridge/files": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["QqBridgeConnectorController_uploadFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/integrations/qq-bridge/deliveries/claim": {
         parameters: {
             query?: never;
@@ -3339,7 +3355,7 @@ export interface components {
         };
         QqMessagePartDto: {
             /** @enum {string} */
-            type: "text" | "image";
+            type: "text" | "image" | "file";
             text?: string;
             /** Format: uuid */
             fileId?: string;
@@ -6687,6 +6703,39 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    QqBridgeConnectorController_uploadFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** Format: uuid */
+                    bindingId: string;
+                    revision: number;
+                    originalName: string;
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** Format: uuid */
+                        fileId: string;
+                    };
+                };
             };
         };
     };

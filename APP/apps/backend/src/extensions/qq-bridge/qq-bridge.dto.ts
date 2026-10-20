@@ -48,7 +48,7 @@ export class HeartbeatDto {
   groups?: QqCatalogGroupDto[];
 }
 export class QqMessagePartDto {
-  @IsIn(['text', 'image']) type!: 'text' | 'image';
+  @IsIn(['text', 'image', 'file']) type!: 'text' | 'image' | 'file';
   @IsOptional() @IsString() @MaxLength(10000) text?: string;
   @IsOptional() @IsUUID() fileId?: string;
 }
@@ -75,6 +75,9 @@ export class RevokeQqMessageDto {
 export class MediaUploadDto {
   @IsUUID() bindingId!: string;
   @Type(() => Number) @IsInt() @Min(1) revision!: number;
+}
+export class FileUploadDto extends MediaUploadDto {
+  @IsString() @IsNotEmpty() @MaxLength(255) originalName!: string;
 }
 export class DeliveryLeaseDto {
   @IsString() @Matches(/^[a-f0-9]{64}$/) lease!: string;

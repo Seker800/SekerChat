@@ -4268,6 +4268,70 @@
         ]
       }
     },
+    "/api/integrations/qq-bridge/files": {
+      "post": {
+        "operationId": "QqBridgeConnectorController_uploadFile",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "bindingId",
+                  "revision",
+                  "originalName",
+                  "file"
+                ],
+                "properties": {
+                  "bindingId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "originalName": {
+                    "type": "string",
+                    "maxLength": 255
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "fileId"
+                  ],
+                  "properties": {
+                    "fileId": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "qq-connector"
+        ]
+      }
+    },
     "/api/integrations/qq-bridge/deliveries/claim": {
       "post": {
         "operationId": "QqBridgeConnectorController_claim",
@@ -8337,7 +8401,8 @@
             "type": "string",
             "enum": [
               "text",
-              "image"
+              "image",
+              "file"
             ]
           },
           "text": {

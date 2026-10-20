@@ -75,7 +75,7 @@ export class RetentionService {
       WHERE m.id IS NULL
         AND NOT EXISTS (SELECT 1 FROM "Message" avatar WHERE avatar."externalAvatarFileId" = f.id)
         AND (f."attachedAt" IS NOT NULL OR (
-          f."storageKey" LIKE 'external-images/%' AND f."createdAt" < NOW() - INTERVAL '1 day'
+          (f."storageKey" LIKE 'external-images/%' OR f."storageKey" LIKE 'external-files/%') AND f."createdAt" < NOW() - INTERVAL '1 day'
         ))
         AND NOT (
           fs.id IS NOT NULL
@@ -91,7 +91,7 @@ export class RetentionService {
 
     const results = await Promise.all(
       orphans
-        .filter((file) => !file.storageKey?.startsWith('external-images/'))
+        .filter((file) => !/^external-(images|files)\//.test(file.storageKey ?? ''))
         .map(async (file) => {
           if (!file.storageKey) {
             this.logger.warn(`Orphaned FileObject ${file.id} has empty storageKey, skipping`);
@@ -107,11 +107,11 @@ export class RetentionService {
 
     // External uploads coordinate through row locks; limit cleanup to one transaction at a time.
     for (const file of orphans.filter((candidate) =>
-      candidate.storageKey?.startsWith('external-images/'),
+      /^external-(images|files)\//.test(candidate.storageKey ?? ''),
     )) {
       results.push({
         id: file.id,
-        ok: await this.filesService.purgeUnreferencedExternalImage(file.id),
+        ok: await this.filesService.purgeUnreferencedExternalFile(file.id),
       });
     }
 
