@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { FileRetirementService } from './file-retirement.service';
 
-function fixture({ references = 0, shared = false, promoted = false } = {}) {
+function fixture({ references = 0, shared = false, promoted = false, missing = false, recent = false, external = false } = {}) {
   const calls: string[] = [];
   const tx = {
     $queryRaw: async () => { calls.push('lock'); return [{ id: 'file' }]; },
     fileObject: {
-      findUnique: async () => ({ id: 'file', storageKey: 'group/random-file', thumbnailStorageKey: 'thumb/random', attachedAt: new Date(), createdAt: new Date(), promotedArtifact: promoted ? { id: 'artifact' } : null }),
+      findUnique: async () => missing ? null : ({ id: 'file', storageKey: external ? 'external-images/group/hash' : 'group/random-file', thumbnailStorageKey: 'thumb/random', attachedAt: recent ? null : new Date(), createdAt: new Date(), promotedArtifact: promoted ? { id: 'artifact' } : null }),
       delete: async () => { calls.push('delete-row'); },
     },
     message: { count: async () => { calls.push('recheck'); return references; } },
@@ -24,7 +24,7 @@ test('retirement locks, rechecks and durably queues object deletion with the row
   assert.equal(await service.retire('file'), true);
   assert.deepEqual(calls, ['lock', 'recheck', 'enqueue', 'delete-row']);
 });
-for (const options of [{ references: 1 }, { shared: true }, { promoted: true }]) {
+for (const options of [{ references: 1 }, { shared: true }, { promoted: true }, { missing: true }, { recent: true }, { external: true }]) {
   test(`retirement protects live reference ${JSON.stringify(options)}`, async () => {
     const { service, calls } = fixture(options);
     assert.equal(await service.retire('file'), false);

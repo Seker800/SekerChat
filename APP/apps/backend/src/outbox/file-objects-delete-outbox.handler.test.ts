@@ -17,7 +17,7 @@ test('storage cleanup retries partial failures without losing the durable job', 
 });
 test('malformed jobs cannot delete reusable external objects', async () => {
   const handler = new FileObjectsDeleteOutboxHandler({ delete: async () => { throw new Error('must not run'); } } as never);
-  for (const payload of [null, {}, { storageKeys: [] }, { storageKeys: ['external-images/group/hash'] }]) {
+  for (const payload of [null, [], {}, { storageKeys: [42] }, { storageKeys: [''] }, { storageKeys: [] }, { storageKeys: ['external-images/group/hash'] }]) {
     await assert.rejects(() => handler.handle({ payload } as never), /Invalid/);
   }
 });

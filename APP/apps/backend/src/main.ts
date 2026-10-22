@@ -1,3 +1,4 @@
+import { createUploadBodyBudget } from './uploads/upload-body-budget';
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
@@ -24,6 +25,7 @@ async function bootstrap(): Promise<void> {
   }
   app.use(
     '/api/uploads/:sessionId/parts/:partNumber',
+    createUploadBodyBudget(),
     raw({ type: '*/*', limit: `${UPLOAD_PART_SIZE_BYTES + 1024}b` }),
   );
   app.enableCors({

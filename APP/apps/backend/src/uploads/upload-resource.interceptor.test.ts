@@ -21,3 +21,11 @@ test('finalization permits are bounded and released on unsubscribe', async () =>
   subscription.unsubscribe();
   assert.equal(await lastValueFrom(interceptor.intercept(context('completeUpload'), { handle: () => of('ok') })), 'ok');
 });
+
+test('upload admission accepts an empty budget and rejects excessive reserved bytes', async () => {
+  const accepted = new UploadResourceInterceptor({ uploadSession: { aggregate: async () => ({ _count: 0, _sum: { size: null } }) } } as never);
+  assert.equal(await lastValueFrom(accepted.intercept(context(), { handle: () => of('ok') })), 'ok');
+  const full = new UploadResourceInterceptor({ uploadSession: { aggregate: async () => ({ _count: 1, _sum: { size: 21n * 1024n ** 3n } }) } } as never);
+  await assert.rejects(() => lastValueFrom(full.intercept(context(), { handle: () => of('unexpected') })), /预留容量/);
+  assert.equal(await lastValueFrom(accepted.intercept(context('getUploadedParts'), { handle: () => of('read') })), 'read');
+});
