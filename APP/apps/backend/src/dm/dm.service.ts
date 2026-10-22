@@ -50,7 +50,7 @@ export class DmService {
     });
 
     if (existingByKey) {
-      return this.presenter.serializeGroup(existingByKey, userId);
+      return this.presenter.serializeGroup(await this.restoreParticipants(existingByKey, userId, targetUserId), userId);
     }
 
     // Fallback: historical DM may have dmKey = NULL (duplicate pairs from before
@@ -84,8 +84,7 @@ export class DmService {
         return existingByKey2;
       }
 
-      try {
-        return await tx.group.create({
+      return await tx.group.create({
           data: {
             name: 'dm',
             category: '私聊',
@@ -101,17 +100,13 @@ export class DmService {
           },
           select: groupWithMembersSelect,
         });
-      } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-          // Lost the race: another concurrent transaction created the DM first.
-          const winner = await tx.group.findUnique({
-            where: { dmKey },
-            select: groupWithMembersSelect,
-          });
-          if (winner) return winner;
-        }
-        throw error;
+    }).catch(async (error: unknown) => {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        // The failed PostgreSQL transaction has rolled back before reading the winner.
+        const winner = await this.prismaService.group.findUnique({ where: { dmKey }, select: groupWithMembersSelect });
+        if (winner) return winner;
       }
+      throw error;
     });
 
     this.logger.log(
@@ -123,7 +118,26 @@ export class DmService {
       }),
     );
 
-    return this.presenter.serializeGroup(group, userId);
+    return this.presenter.serializeGroup(await this.restoreParticipants(group, userId, targetUserId), userId);
+  }
+
+  private async restoreParticipants(
+    group: Prisma.GroupGetPayload<{ select: typeof groupWithMembersSelect }>,
+    userId: string,
+    targetUserId: string,
+  ) {
+    const missing = [userId, targetUserId].filter((id) => !group.members.some((member) => member.user.id === id));
+    if (!missing.length) return group;
+    return this.prismaService.$transaction(async (tx) => {
+      for (const id of missing) {
+        await tx.groupMember.upsert({
+          where: { groupId_userId: { groupId: group.id, userId: id } },
+          create: { groupId: group.id, userId: id, role: GroupMemberRole.MEMBER },
+          update: {},
+        });
+      }
+      return tx.group.findUniqueOrThrow({ where: { id: group.id }, select: groupWithMembersSelect });
+    });
   }
 
   async listDMs(userId: string) {

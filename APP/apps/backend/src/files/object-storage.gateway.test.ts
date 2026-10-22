@@ -72,3 +72,11 @@ test('gateway preserves non-retryable GetObject errors without another request',
   );
   assert.equal(attempts, 1);
 });
+
+for (const mimeType of ['image/svg+xml', 'text/html', 'application/javascript']) {
+  test(`presigned views force ${mimeType} to download`, async () => {
+    const gateway = createGateway(async () => ({}));
+    const url = new URL(await gateway.createViewUrl('untrusted', mimeType));
+    assert.equal(url.searchParams.get('response-content-disposition'), 'attachment');
+  });
+}

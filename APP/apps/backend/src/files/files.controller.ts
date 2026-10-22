@@ -1,3 +1,4 @@
+import { isPassiveImageMimeType } from './file-content-policy';
 import { Controller, Get, Headers, Param, Res, StreamableFile, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -145,11 +146,12 @@ export class FilesController {
 
     const { file, stream, contentLength, contentRange } = result;
 
+    response.setHeader('Content-Security-Policy', "sandbox; default-src 'none'");
     response.setHeader('Content-Type', file.mimeType);
     response.setHeader(
       'Content-Disposition',
       this.buildContentDisposition(
-        file.mimeType.startsWith('image/') ? 'inline' : 'attachment',
+        isPassiveImageMimeType(file.mimeType) ? 'inline' : 'attachment',
         file.originalName,
       ),
     );

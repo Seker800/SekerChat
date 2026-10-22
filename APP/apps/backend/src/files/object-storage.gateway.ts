@@ -1,3 +1,4 @@
+import { isPassiveImageMimeType } from './file-content-policy';
 import { Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
@@ -204,6 +205,7 @@ export class ObjectStorageGateway {
         Bucket: this.bucket,
         Key: storageKey,
         ResponseContentType: mimeType,
+        ResponseContentDisposition: isPassiveImageMimeType(mimeType) ? 'inline' : 'attachment',
         ResponseCacheControl: `private, max-age=${Math.min(FILE_VIEW_BROWSER_CACHE_SECONDS, Math.max(0, expiresInSeconds - 60))}`,
       }),
       { expiresIn: expiresInSeconds },

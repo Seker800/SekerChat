@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { GroupMemberRole } from '@prisma/client';
+import { GroupMemberRole, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroupRealtimePublisher } from '../realtime/group-realtime-publisher.service';
 import { SystemMessageService } from '../messages/system-message.service';
@@ -142,40 +142,20 @@ export class GroupMembershipService {
     getGroup: (userId: string, groupId: string) => Promise<unknown>,
   ) {
     await this.permissionService.assertPermission(actor.role, 'remove_members');
-    const membership = await this.getMembershipOrThrow(groupId, actor.sub);
-    await this.ensureGroupNotDM(groupId);
-
-    const targetMembership = await this.prismaService.groupMember.findUnique({
-      where: {
-        groupId_userId: {
-          groupId,
-          userId: targetUserId,
-        },
-      },
-    });
-
-    if (!targetMembership) {
-      throw new NotFoundException('Group member not found.');
-    }
-
     if (targetUserId === actor.sub) {
       throw new BadRequestException('Cannot remove yourself. Use leave group instead.');
     }
-
-    await this.prismaService.$transaction([
-      this.prismaService.groupMember.delete({
-        where: {
-          groupId_userId: {
-            groupId,
-            userId: targetUserId,
-          },
-        },
-      }),
-      this.prismaService.group.update({
-        where: { id: groupId },
-        data: { updatedAt: new Date() },
-      }),
-    ]);
+    await this.prismaService.$transaction(async (tx) => {
+      await this.lockNormalGroup(tx, groupId);
+      await this.requireMembership(tx, groupId, actor.sub);
+      const target = await this.requireMembership(tx, groupId, targetUserId);
+      if (target.role === GroupMemberRole.ADMIN) {
+        await this.permissionService.assertPermission(actor.role, 'manage_user_roles');
+        await this.assertAnotherAdmin(tx, groupId);
+      }
+      await tx.groupMember.delete({ where: { groupId_userId: { groupId, userId: targetUserId } } });
+      await tx.group.update({ where: { id: groupId }, data: { updatedAt: new Date() } });
+    });
     this.logger.log(
       'group_member_removed',
       JSON.stringify({
@@ -192,7 +172,7 @@ export class GroupMembershipService {
     const [actorName, targetName] = await resolveGroupUserNames(this.prismaService, [actor.sub, targetUserId]);
     void this.systemMessageService.createSystemMessage(groupId, actor.sub, `${actorName} 将 ${targetName} 移出了频道`);
 
-    return getGroup(membership.userId, groupId);
+    return getGroup(actor.sub, groupId);
   }
 
   async updateMemberRole(
@@ -203,50 +183,22 @@ export class GroupMembershipService {
     getGroup: (userId: string, groupId: string) => Promise<unknown>,
   ) {
     await this.permissionService.assertPermission(actor.role, 'manage_user_roles');
-    await this.getMembershipOrThrow(groupId, actor.sub);
-    await this.ensureGroupNotDM(groupId);
-
     if (targetUserId === actor.sub) {
       throw new BadRequestException('Use leave group instead of changing your own role here.');
     }
-
-    const targetMembership = await this.prismaService.groupMember.findUnique({
-      where: {
-        groupId_userId: {
-          groupId,
-          userId: targetUserId,
-        },
-      },
-      select: {
-        role: true,
-      },
+    const changed = await this.prismaService.$transaction(async (tx) => {
+      await this.lockNormalGroup(tx, groupId);
+      await this.requireMembership(tx, groupId, actor.sub);
+      const target = await this.requireMembership(tx, groupId, targetUserId);
+      if (target.role === nextRole) return false;
+      if (target.role === GroupMemberRole.ADMIN) await this.assertAnotherAdmin(tx, groupId);
+      await tx.groupMember.update({
+        where: { groupId_userId: { groupId, userId: targetUserId } }, data: { role: nextRole },
+      });
+      await tx.group.update({ where: { id: groupId }, data: { updatedAt: new Date() } });
+      return true;
     });
-
-    if (!targetMembership) {
-      throw new NotFoundException('Group member not found.');
-    }
-
-    if (targetMembership.role === nextRole) {
-      return getGroup(actor.sub, groupId);
-    }
-
-    await this.prismaService.$transaction([
-      this.prismaService.groupMember.update({
-        where: {
-          groupId_userId: {
-            groupId,
-            userId: targetUserId,
-          },
-        },
-        data: {
-          role: nextRole,
-        },
-      }),
-      this.prismaService.group.update({
-        where: { id: groupId },
-        data: { updatedAt: new Date() },
-      }),
-    ]);
+    if (!changed) return getGroup(actor.sub, groupId);
     this.logger.log(
       'group_member_role_updated',
       JSON.stringify({
@@ -266,11 +218,12 @@ export class GroupMembershipService {
   }
 
   async leaveGroup(userId: string, groupId: string) {
-    const membership = await this.getMembershipOrThrow(groupId, userId);
     const [leaverName] = await resolveGroupUserNames(this.prismaService, [userId]);
     let archivedAfterLeave = false;
 
     const txResult = await this.prismaService.$transaction(async (tx) => {
+      await this.lockNormalGroup(tx, groupId);
+      const membership = await this.requireMembership(tx, groupId, userId);
       let shouldArchive = false;
 
       if (membership.role === GroupMemberRole.ADMIN) {
@@ -390,4 +343,24 @@ export class GroupMembershipService {
       archivedAfterLeave,
     };
   }
+  private async lockNormalGroup(tx: Prisma.TransactionClient, groupId: string) {
+    const [group] = await tx.$queryRaw<Array<{ id: string; isDM: boolean }>>`
+      SELECT id, "isDM" FROM "Group" WHERE id = ${groupId} FOR UPDATE
+    `;
+    if (!group) throw new NotFoundException('Group not found.');
+    if (group.isDM) throw new BadRequestException('私聊不支持退出或修改成员。');
+  }
+
+  private async requireMembership(tx: Prisma.TransactionClient, groupId: string, userId: string) {
+    const member = await tx.groupMember.findUnique({ where: { groupId_userId: { groupId, userId } } });
+    if (!member) throw new ForbiddenException('Group access denied.');
+    return member;
+  }
+
+  private async assertAnotherAdmin(tx: Prisma.TransactionClient, groupId: string) {
+    if (await tx.groupMember.count({ where: { groupId, role: GroupMemberRole.ADMIN } }) <= 1) {
+      throw new BadRequestException('不能移除或降级最后一位管理员。');
+    }
+  }
+
 }

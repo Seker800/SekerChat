@@ -287,11 +287,15 @@ export class OidcAuthService {
       return this.prismaService.user.update({
         where: { id: existingByOidc.id },
         data: {
-          email: input.email,
+          email: input.emailVerified ? input.email : existingByOidc.email,
           displayName: input.displayName,
           emailVerifiedAt: input.emailVerified ? new Date() : existingByOidc.emailVerifiedAt,
         },
       });
+    }
+
+    if (!input.emailVerified) {
+      throw new ForbiddenException('OIDC 邮箱未验证，无法创建或自动绑定本地账号。');
     }
 
     const existingByEmail = await this.prismaService.user.findUnique({

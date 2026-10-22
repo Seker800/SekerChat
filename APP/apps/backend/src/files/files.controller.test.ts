@@ -125,3 +125,17 @@ test('getFileViewUrl exposes the presigned URL expiry', async () => {
     expiresAt,
   });
 });
+
+for (const mimeType of ['image/svg+xml', 'image/unknown', 'text/html']) {
+  test(`untrusted ${mimeType} content is downloaded in a sandbox`, async () => {
+    const { Readable } = await import('node:stream');
+    const controller = new FilesController({ getFileStream: async () => ({
+      file: { mimeType, originalName: 'untrusted', size: 1n },
+      stream: Readable.from(['x']), contentLength: 1,
+    }) } as never);
+    const { response, headers } = createResponseDouble();
+    await controller.getFileContent({ sub: 'user' } as never, 'group', 'file', undefined, response as never);
+    assert.match(headers.get('Content-Disposition')!, /^attachment;/);
+    assert.equal(headers.get('Content-Security-Policy'), "sandbox; default-src 'none'");
+  });
+}
