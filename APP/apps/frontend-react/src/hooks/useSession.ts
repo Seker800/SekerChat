@@ -24,10 +24,11 @@ const oidcErrorMessages: Record<string, string> = {
 
 function isExpectedMissingSessionError(error: unknown): boolean {
   return error instanceof Error
-    && (error.message.includes('登录状态已失效') || error.message.includes('Missing refresh token'));
+    && (('status' in error && error.status === 401) || error.message === 'Unauthorized' || error.message.includes('登录状态已失效') || error.message.includes('Missing refresh token'));
 }
 
 export function useSession() {
+  const [bootstrapAttempt, setBootstrapAttempt] = useState(0);
   const [session, setSession] = useState<SessionResponse | null>(null);
   const [currentUser, setCurrentUser] = useState<CurrentUserResponse | null>(null);
   const [bootstrapState, setBootstrapState] = useState<'idle' | 'loading' | 'failed'>('loading');
@@ -135,7 +136,7 @@ export function useSession() {
       active = false;
       registerAuthSessionController(null);
     };
-  }, []);
+  }, [bootstrapAttempt]);
 
   return useMemo(
     () => ({
@@ -143,6 +144,7 @@ export function useSession() {
       currentUser,
       bootstrapState,
       bootstrapError,
+      retryBootstrap: () => setBootstrapAttempt((attempt) => attempt + 1),
       isAuthenticated: Boolean(session && currentUser),
       passwordError,
       isPasswordSubmitting,

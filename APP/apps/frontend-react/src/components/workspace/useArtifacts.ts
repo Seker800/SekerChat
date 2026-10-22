@@ -1,3 +1,4 @@
+import { useUploadSignal } from '../../hooks/useUploadSignal';
 import { useMemo, useState } from 'react';
 import {
   addFileToGroupArtifacts,
@@ -42,6 +43,7 @@ export function useArtifacts({
   refetchArtifacts,
   refetchGroup,
 }: UseArtifactsOptions) {
+  const getUploadSignal = useUploadSignal(selectedGroupId);
   const [isUploadingArtifact, setIsUploadingArtifact] = useState(false);
   const [isConfirmingArtifactState, setIsConfirmingArtifactState] = useState(false);
   const [pendingDeleteArtifactId, setPendingDeleteArtifactId] = useState('');
@@ -146,7 +148,9 @@ export function useArtifacts({
     setOptimisticUploads((current) => [...optimisticBatch, ...current]);
     try {
       const failedNames: string[] = [];
+      const signal = getUploadSignal();
       for (const file of files) {
+        if (signal.aborted) break;
         try {
           await uploadFileViaMultipart(
             accessToken,
@@ -154,6 +158,7 @@ export function useArtifacts({
             selectedGroupId,
             file,
             () => undefined,
+            signal,
           );
         } catch {
           failedNames.push(file.name);

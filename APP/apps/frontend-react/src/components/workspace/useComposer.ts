@@ -40,6 +40,7 @@ export interface PendingUpload {
   progress: UploadProgress;
   status: PendingStatus;
   error?: string;
+  uploadedFile?: { id: string; kindLabel: string };
 }
 
 function getReplyTarget(messages: MessageResponse[], replyToMessageId: string): MessageResponse | null {
@@ -76,6 +77,16 @@ export function useComposer({
   const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
   const [pendingUploadsByGroupId, setPendingUploadsByGroupId] = useState<Record<string, PendingUpload[]>>({});
   const { composerSeedText, replyToMessageId, setComposerSeedText, setReplyToMessageId } = useWorkspaceStore();
+  const mounted = useRef(true);
+  const activeUploads = useRef(new Map<string, AbortController>());
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+    mounted.current = false;
+    for (const controller of activeUploads.current.values()) controller.abort();
+    activeUploads.current.clear();
+    };
+  }, []);
   const pendingUploads = selectedGroupId ? (pendingUploadsByGroupId[selectedGroupId] ?? []) : [];
   const chatAttachmentMaxBytes = chatAttachmentMbToBytes(chatAttachmentMaxMB ?? DEFAULT_CHAT_ATTACHMENT_MAX_MB);
 
@@ -290,6 +301,35 @@ export function useComposer({
       .catch(() => undefined);
   }, [draft, selectedGroupId, messages, currentUser, queryClient, sendMessageMutation, setComposerSeedText, setReplyToMessageId]);
 
+  const runUploadEntry = useCallback(async (targetGroupId: string, entry: PendingUpload) => {
+    if (!mounted.current || !entry.file || activeUploads.current.has(entry.localId)) return;
+    const controller = new AbortController();
+    activeUploads.current.set(entry.localId, controller);
+    const update = (patch: Partial<PendingUpload>) => updatePendingUploadsForGroup(targetGroupId,
+      (current) => current.map((item) => item.localId === entry.localId ? { ...item, ...patch } : item));
+    try {
+      let uploaded = entry.uploadedFile;
+      if (!uploaded) {
+        const result = await uploadFileViaMultipart(accessToken, 'CHAT_ATTACHMENT', targetGroupId, entry.file,
+          (progress) => update({ progress }), controller.signal);
+        if (result.finalized.kind !== 'CHAT_ATTACHMENT') throw new Error('上传结果类型不正确。');
+        uploaded = result.finalized.file;
+        update({ uploadedFile: uploaded });
+      }
+      controller.signal.throwIfAborted();
+      update({ status: 'creating-message' });
+      await createMessage(accessToken, targetGroupId, {
+        type: uploaded.kindLabel === 'image' ? 'image' : 'file', clientMessageId: entry.localId,
+        attachment: { fileId: uploaded.id }, replyToMessageId: entry.replyToMessageId || undefined,
+      });
+      updatePendingUploadsForGroup(targetGroupId, (current) => current.filter((item) => item.localId !== entry.localId));
+    } catch (error) {
+      update({ status: 'error', error: controller.signal.aborted ? '已取消' : error instanceof Error ? error.message : '上传失败' });
+    } finally {
+      activeUploads.current.delete(entry.localId);
+    }
+  }, [accessToken, updatePendingUploadsForGroup]);
+
   const uploadFiles = useCallback(
     async (files: File[]) => {
       if (!selectedGroupId || !files.length) return;
@@ -307,60 +347,19 @@ export function useComposer({
 
       updatePendingUploadsForGroup(targetGroupId, (prev) => [...prev, ...entries]);
 
-      const uploadEntry = async (entry: PendingUpload, file: File) => {
-        const update = (patch: Partial<PendingUpload>) => {
-          updatePendingUploadsForGroup(targetGroupId, (prev) =>
-            prev.map((p) => (p.localId === entry.localId ? { ...p, ...patch } : p)),
-          );
-        };
-
-        try {
-          const uploadResult = await uploadFileViaMultipart(
-            accessToken,
-            'CHAT_ATTACHMENT',
-            targetGroupId,
-            file,
-            (prog) => update({ progress: prog }),
-          );
-          if (uploadResult.finalized.kind !== 'CHAT_ATTACHMENT') {
-            throw new Error('上传结果类型不正确。');
-          }
-          const uploaded = uploadResult.finalized.file;
-
-          update({ status: 'creating-message' });
-
-          await createMessage(accessToken, targetGroupId, {
-            type: uploaded.kindLabel === 'image' ? 'image' : 'file',
-            clientMessageId: entry.localId,
-            attachment: { fileId: uploaded.id },
-            replyToMessageId: entry.replyToMessageId || undefined,
-          });
-
-          updatePendingUploadsForGroup(targetGroupId, (prev) => prev.filter((p) => p.localId !== entry.localId));
-        } catch (err) {
-          update({
-            status: 'error',
-            error: err instanceof DOMException && err.name === 'AbortError'
-              ? '已取消'
-              : err instanceof Error
-                ? err.message
-                : '上传失败',
-          });
-        }
-      };
-
       for (let i = 0; i < entries.length; i += 3) {
-        const batch = entries.slice(i, i + 3).map((entry, j) => uploadEntry(entry, files[i + j]));
+        const batch = entries.slice(i, i + 3).map((entry) => runUploadEntry(targetGroupId, entry));
         await Promise.all(batch);
       }
 
       setReplyToMessageId('');
       refetchMessages();
     },
-    [accessToken, refetchMessages, replyToMessageId, selectedGroupId, setReplyToMessageId, updatePendingUploadsForGroup],
+    [refetchMessages, replyToMessageId, runUploadEntry, selectedGroupId, setReplyToMessageId, updatePendingUploadsForGroup],
   );
 
   const clearPendingError = useCallback((localId: string) => {
+    activeUploads.current.get(localId)?.abort();
     updatePendingUploadsForGroup(selectedGroupId, (prev) => prev.filter((p) => p.localId !== localId));
     // Also remove failed optimistic text messages from cache.
     queryClient.setQueryData<{ groupId: string; items: MessageResponse[] }>(
@@ -405,67 +404,11 @@ export function useComposer({
 
   const retryPendingUpload = useCallback((localId: string) => {
     const entry = pendingUploads.find((item) => item.localId === localId);
-    if (!entry?.file || !selectedGroupId) {
-      return;
-    }
-
-    updatePendingUploadsForGroup(selectedGroupId, (prev) =>
-      prev.map((item) =>
-        item.localId === localId
-          ? {
-              ...item,
-              error: undefined,
-              status: 'uploading',
-              progress: { loaded: 0, total: entry.file!.size, percent: 0, speedBytesPerSec: 0 },
-            }
-          : item,
-      ),
-    );
-
-    const update = (patch: Partial<PendingUpload>) => {
-      updatePendingUploadsForGroup(selectedGroupId, (prev) =>
-        prev.map((item) => (item.localId === localId ? { ...item, ...patch } : item)),
-      );
-    };
-
-    void (async () => {
-      try {
-        const uploadResult = await uploadFileViaMultipart(
-          accessToken,
-          'CHAT_ATTACHMENT',
-          selectedGroupId,
-          entry.file!,
-          (progress) => update({ progress }),
-        );
-        if (uploadResult.finalized.kind !== 'CHAT_ATTACHMENT') {
-          throw new Error('上传结果类型不正确。');
-        }
-        const uploaded = uploadResult.finalized.file;
-
-        update({ status: 'creating-message' });
-
-        await createMessage(accessToken, selectedGroupId, {
-          type: uploaded.kindLabel === 'image' ? 'image' : 'file',
-          clientMessageId: entry.localId,
-          attachment: { fileId: uploaded.id },
-          replyToMessageId: entry.replyToMessageId || undefined,
-        });
-
-        updatePendingUploadsForGroup(selectedGroupId, (prev) => prev.filter((item) => item.localId !== localId));
-      } catch (err) {
-        update({
-          status: 'error',
-          error: err instanceof DOMException && err.name === 'AbortError'
-            ? '已取消'
-            : err instanceof Error
-              ? err.message
-              : '上传失败',
-        });
-      } finally {
-        refetchMessages();
-      }
-    })();
-  }, [accessToken, pendingUploads, refetchMessages, selectedGroupId, updatePendingUploadsForGroup]);
+    if (!entry?.file || !selectedGroupId || activeUploads.current.has(localId)) return;
+    updatePendingUploadsForGroup(selectedGroupId, (current) => current.map((item) => item.localId === localId
+      ? { ...item, error: undefined, status: entry.uploadedFile ? 'creating-message' : 'uploading' } : item));
+    void runUploadEntry(selectedGroupId, entry).finally(refetchMessages);
+  }, [pendingUploads, refetchMessages, runUploadEntry, selectedGroupId, updatePendingUploadsForGroup]);
 
   return {
     composer: {

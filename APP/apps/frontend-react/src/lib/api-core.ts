@@ -52,50 +52,65 @@ export async function fetchApi(
   internalOptions?: FetchApiInternalOptions,
 ): Promise<Response> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
   const externalSignal = init?.signal;
+  const timer = setTimeout(() => controller.abort(new DOMException('请求超时，请重试。', 'TimeoutError')), timeoutMs);
+  const onExternalAbort = () => controller.abort(externalSignal?.reason);
+  const cleanup = () => {
+    clearTimeout(timer);
+    externalSignal?.removeEventListener('abort', onExternalAbort);
+  };
+  if (externalSignal?.aborted) onExternalAbort();
+  else externalSignal?.addEventListener('abort', onExternalAbort, { once: true });
 
-  function onExternalAbort() {
-    controller.abort();
-  }
-
-  if (externalSignal) {
-    if (externalSignal.aborted) {
-      controller.abort();
-      clearTimeout(timer);
-    } else {
-      externalSignal.addEventListener('abort', onExternalAbort, { once: true });
-    }
-  }
-
+  let bodyOwnsCleanup = false;
   try {
+    controller.signal.throwIfAborted();
     const transport = internalOptions?.transport ?? fetch;
     const response = await transport(url, { credentials: 'include', ...init, signal: controller.signal });
-
-    if (
-      response.status === 401
-      && !internalOptions?.authRetryAttempted
-      && !internalOptions?.disableAuthRetry
-      && !isAuthRefreshRequest(url)
-    ) {
+    controller.signal.throwIfAborted();
+    if (response.status === 401 && !internalOptions?.authRetryAttempted &&
+      !internalOptions?.disableAuthRetry && !isAuthRefreshRequest(url)) {
       const refreshed = await refreshBrowserSession();
+      controller.signal.throwIfAborted();
       if (refreshed) {
-        return fetchApi(
-          url,
-          init,
-          timeoutMs,
-          { ...internalOptions, authRetryAttempted: true },
-        );
+        await response.body?.cancel();
+        cleanup();
+        return fetchApi(url, init, timeoutMs, { ...internalOptions, authRetryAttempted: true });
       }
     }
-
-    return response;
+    if (!response.body) return response;
+    const reader = response.body.getReader();
+    let onAbort: () => void;
+    const finish = () => {
+      cleanup();
+      controller.signal.removeEventListener('abort', onAbort);
+    };
+    const body = new ReadableStream<Uint8Array>({
+      start(output) {
+        onAbort = () => {
+          output.error(controller.signal.reason);
+          void reader.cancel(controller.signal.reason).catch(() => undefined);
+          finish();
+        };
+        controller.signal.addEventListener('abort', onAbort, { once: true });
+        if (controller.signal.aborted) onAbort();
+      },
+      async pull(output) {
+        try {
+          const result = await reader.read();
+          if (result.done) { finish(); output.close(); }
+          else output.enqueue(result.value);
+        } catch (error) { finish(); output.error(error); }
+      },
+      async cancel(reason) { finish(); await reader.cancel(reason); },
+    });
+    bodyOwnsCleanup = true;
+    return new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers });
+  } catch (error) {
+    if (controller.signal.aborted) throw controller.signal.reason;
+    throw error;
   } finally {
-    clearTimeout(timer);
-    if (externalSignal && !externalSignal.aborted) {
-      externalSignal.removeEventListener('abort', onExternalAbort);
-    }
+    if (!bodyOwnsCleanup) cleanup();
   }
 }
 
@@ -142,22 +157,15 @@ export async function parseResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const errorPayload = payload as { message?: unknown; code?: unknown; requestId?: unknown };
     const message = errorPayload.message;
-    if (Array.isArray(message) && message.length > 0) {
-      throw new Error(message.join('; '));
-    }
-    if (typeof message === 'string' && message.trim()) {
-      throw new Error(message.trim());
-    }
-    if (response.status === 401) {
-      throw new Error('登录状态已失效，请重新登录。');
-    }
     const code = typeof errorPayload.code === 'string' && errorPayload.code.trim()
-      ? errorPayload.code.trim()
-      : `HTTP_${response.status}`;
+      ? errorPayload.code.trim() : `HTTP_${response.status}`;
     const requestId = typeof errorPayload.requestId === 'string' && errorPayload.requestId.trim()
-      ? errorPayload.requestId.trim()
-      : response.headers.get('x-request-id')?.trim();
-    throw new Error(requestId ? `${code} · requestId: ${requestId}` : `Request failed (${response.status}) · ${code}`);
+      ? errorPayload.requestId.trim() : response.headers.get('x-request-id')?.trim();
+    const publicMessage = Array.isArray(message) && message.length ? message.join('; ')
+      : typeof message === 'string' && message.trim() ? message.trim()
+      : response.status === 401 ? '登录状态已失效，请重新登录。'
+      : requestId ? `${code} · requestId: ${requestId}` : `Request failed (${response.status}) · ${code}`;
+    throw Object.assign(new Error(publicMessage), { status: response.status, code, requestId });
   }
 
   return payload as T;

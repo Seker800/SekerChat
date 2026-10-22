@@ -1,3 +1,4 @@
+import { RetryNotice } from './shared/RetryNotice';
 import { FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLanguage } from '../i18n/LanguageProvider';
@@ -5,6 +6,8 @@ import styles from './AuthGate.module.css';
 
 interface AuthGateProps {
   passwordError: string;
+  bootstrapError?: string;
+  onRetryBootstrap?: () => void;
   isPasswordSubmitting: boolean;
   onPasswordLogin: (email: string, password: string) => Promise<void>;
   onPasswordRegister: (email: string, password: string, displayName?: string) => Promise<void>;
@@ -81,6 +84,9 @@ export function AuthGate(props: AuthGateProps) {
         aria-labelledby="login-title"
       >
         <h1 id="login-title">{tab === 'login' ? t('auth.loginTitle') : t('auth.registerTitle')}</h1>
+        {props.bootstrapError ? <div className={styles.recoveryNotice}>
+          <RetryNotice message={props.bootstrapError} retryLabel={t('auth.retrySession')} onRetry={props.onRetryBootstrap} />
+        </div> : null}
         <form onSubmit={handleSubmit} className={styles.form}>
           <label>
             <span>{t('auth.email')}</span>

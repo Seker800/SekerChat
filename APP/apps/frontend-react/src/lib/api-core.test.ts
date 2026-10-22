@@ -252,3 +252,32 @@ describe('downloadFile', () => {
     expect(clickSpy).not.toHaveBeenCalled();
   });
 });
+
+
+describe('fetchApi response-body lifetime', () => {
+  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+  it('times out a body that stalls after its response headers', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(new ReadableStream({ start() {} })));
+    const response = await fetchApi('/body', undefined, 25);
+    const read = expect(response.text()).rejects.toMatchObject({ name: 'TimeoutError' });
+    await vi.advanceTimersByTimeAsync(25);
+    await read;
+  });
+  it('keeps external cancellation connected until the body finishes', async () => {
+    const cancel = vi.fn();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(new ReadableStream({ start() {}, cancel })));
+    const controller = new AbortController();
+    const response = await fetchApi('/body', { signal: controller.signal });
+    const read = expect(response.text()).rejects.toMatchObject({ name: 'AbortError' });
+    controller.abort();
+    await read;
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+  it('cleans timers after the complete body is consumed', async () => {
+    vi.useFakeTimers();
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('done'));
+    expect(await (await fetchApi('/body')).text()).toBe('done');
+    expect(vi.getTimerCount()).toBe(0);
+  });
+});

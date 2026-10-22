@@ -26,6 +26,29 @@ describe('uploadFileViaMultipart', () => {
     vi.clearAllMocks();
   });
 
+  it('recovers a completed session after its response was lost without uploading again', async () => {
+    const file = new File(['data'], 'done.txt', { lastModified: 1 });
+    const key = 'sekerchat:upload:CHAT_ATTACHMENT:group:done.txt:4:1';
+    localStorage.setItem(key, JSON.stringify({ id: 'completed', expiresAt: Date.now() + 100000 }));
+    getUploadedPartsMock.mockRejectedValueOnce(Object.assign(new Error('completed'), { status: 400, code: 'UPLOAD_SESSION_COMPLETED' }));
+    completeUploadMock.mockResolvedValueOnce({ kind: 'CHAT_ATTACHMENT', file: { id: 'original' } });
+    const result = await uploadFileViaMultipart('token', 'CHAT_ATTACHMENT', 'group', file, () => {});
+    expect(result.finalized).toMatchObject({ file: { id: 'original' } });
+    expect(initiateUploadMock).not.toHaveBeenCalled();
+    expect(uploadPartMock).not.toHaveBeenCalled();
+    expect(localStorage.getItem(key)).toBeNull();
+  });
+
+  it('preserves a resumable session on server failures instead of starting a new upload', async () => {
+    const file = new File(['data'], 'resume.txt', { lastModified: 1 });
+    const key = 'sekerchat:upload:CHAT_ATTACHMENT:group:resume.txt:4:1';
+    localStorage.setItem(key, JSON.stringify({ id: 'existing', expiresAt: Date.now() + 100000 }));
+    getUploadedPartsMock.mockRejectedValueOnce(Object.assign(new Error('service unavailable'), { status: 503 }));
+    await expect(uploadFileViaMultipart('token', 'CHAT_ATTACHMENT', 'group', file, () => {})).rejects.toThrow('service unavailable');
+    expect(initiateUploadMock).not.toHaveBeenCalled();
+    expect(localStorage.getItem(key)).toContain('existing');
+  });
+
   it('uploads file parts through the app API and completes the upload session', async () => {
     initiateUploadMock.mockResolvedValue({
       id: 'upload-1',
@@ -65,7 +88,7 @@ describe('uploadFileViaMultipart', () => {
       fileName: 'demo.bin',
       mimeType: 'application/octet-stream',
       size: 9,
-    });
+    }, undefined);
     expect(uploadPartMock).toHaveBeenCalledTimes(2);
     expect(uploadPartMock).toHaveBeenCalledWith(
       'token',
@@ -86,7 +109,7 @@ describe('uploadFileViaMultipart', () => {
     expect(completeUploadMock).toHaveBeenCalledWith('token', 'upload-1', [
       { partNumber: 1, etag: 'etag-part-1' },
       { partNumber: 2, etag: 'etag-part-2' },
-    ]);
+    ], expect.any(AbortSignal));
     expect(progressEvents.at(-1)).toEqual({ loaded: 9, total: 9, percent: 100 });
     expect(result.finalized).toEqual({ kind: 'CHAT_ATTACHMENT', file: { id: 'file-1' } });
   });
@@ -124,7 +147,7 @@ describe('uploadFileViaMultipart', () => {
       mimeType: 'image/png',
       size: 5,
       subscriptionUsage: 'INLINE_IMAGE',
-    });
+    }, undefined);
     expect(
       localStorage.getItem(
         'sekerchat:upload:SUBSCRIPTION_ATTACHMENT:INLINE_IMAGE:post-1:article.png:5:1700000000000',
@@ -304,7 +327,7 @@ describe('uploadFileViaMultipart', () => {
     expect(completeUploadMock).toHaveBeenCalledWith('token', 'upload-resume-1', [
       { partNumber: 1, etag: 'etag-part-1' },
       { partNumber: 2, etag: 'etag-part-2' },
-    ]);
+    ], expect.any(AbortSignal));
 
     expect(result.finalized).toEqual({ kind: 'CHAT_ATTACHMENT', file: { id: 'file-resumed' } });
 
@@ -320,7 +343,7 @@ describe('uploadFileViaMultipart', () => {
       'upload-gone',
     );
 
-    getUploadedPartsMock.mockRejectedValue(new Error('Upload session not found'));
+    getUploadedPartsMock.mockRejectedValue(Object.assign(new Error('Upload session not found'), { status: 404 }));
 
     initiateUploadMock.mockResolvedValue({
       id: 'upload-fresh',

@@ -20,6 +20,8 @@ function AuthenticatedRoute() {
   if (!auth.isAuthenticated || !auth.session || !auth.currentUser) {
     return (
       <AuthGate
+        bootstrapError={auth.bootstrapState === 'failed' ? auth.bootstrapError : undefined}
+        onRetryBootstrap={auth.retryBootstrap}
         passwordError={auth.passwordError}
         isPasswordSubmitting={auth.isPasswordSubmitting}
         onPasswordLogin={(email, password) => auth.beginPasswordLogin(email, password)}

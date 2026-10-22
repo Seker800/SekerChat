@@ -171,6 +171,7 @@ export async function uploadFileViaMultipart(
   signal?: AbortSignal,
   options?: MultipartUploadOptions,
 ): Promise<MultipartUploadResult> {
+  signal?.throwIfAborted();
   // ── resolve session (resume or new) ──
   let sessionId = '';
   let partSizeBytes = DEFAULT_PART_SIZE_BYTES;
@@ -191,13 +192,21 @@ export async function uploadFileViaMultipart(
 
   if (persistedId) {
     try {
-      const result = await getUploadedParts(accessToken, persistedId);
+      const result = await getUploadedParts(accessToken, persistedId, signal);
       sessionId = result.uploadSessionId;
       partSizeBytes = result.partSizeBytes || DEFAULT_PART_SIZE_BYTES;
       baseCompletedParts = result.parts.map((p) => ({ partNumber: p.partNumber, etag: p.etag }));
       resumed = true;
-    } catch {
-      // Session expired / aborted — clean up and start fresh
+    } catch (error) {
+      signal?.throwIfAborted();
+      const failure = error as { status?: number; code?: string };
+      if (failure.code === 'UPLOAD_SESSION_COMPLETED') {
+        const finalized = await completeUpload(accessToken, persistedId, [], signal);
+        removePersistedSession(persistenceKind, targetId, file.name, file.size, file.lastModified);
+        return { finalized };
+      }
+      if (failure.status !== 404 && failure.status !== 410 && failure.code !== 'UPLOAD_SESSION_ENDED') throw error;
+      await abortUpload(accessToken, persistedId).catch(() => undefined);
       removePersistedSession(persistenceKind, targetId, file.name, file.size, file.lastModified);
     }
   }
@@ -216,7 +225,7 @@ export async function uploadFileViaMultipart(
       ...(kind === 'SUBSCRIPTION_ATTACHMENT' && options?.subscriptionUsage
         ? { subscriptionUsage: options.subscriptionUsage }
         : {}),
-    });
+    }, signal);
     sessionId = session.id;
     partSizeBytes = session.partSizeBytes || DEFAULT_PART_SIZE_BYTES;
     const createdAt = Date.parse(session.createdAt);
@@ -227,6 +236,11 @@ export async function uploadFileViaMultipart(
     prunePersistedSessions(buildSessionKey(persistenceKind, targetId, file.name, file.size, file.lastModified));
   }
 
+  if (signal?.aborted) {
+    await abortUpload(accessToken, sessionId).catch(() => undefined);
+    removePersistedSession(persistenceKind, targetId, file.name, file.size, file.lastModified);
+    signal.throwIfAborted();
+  }
   // ── chunk file and filter out completed parts ──
   const chunks = createChunks(file, partSizeBytes);
   const completedSet = new Set(baseCompletedParts.map((p) => p.partNumber));
@@ -314,7 +328,7 @@ export async function uploadFileViaMultipart(
     stage = 'finalizing';
     speedBytesPerSec = 0;
     updateProgress();
-    const finalized = await completeUpload(accessToken, sessionId, completedParts);
+    const finalized = await completeUpload(accessToken, sessionId, completedParts, runController.signal);
     removePersistedSession(persistenceKind, targetId, file.name, file.size, file.lastModified);
     return { finalized };
   } catch (error) {

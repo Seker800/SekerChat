@@ -28,8 +28,9 @@ export interface SubscriptionPostInput {
 
 export async function listSubscriptionPosts(
   accessToken: string,
-): Promise<{ items: SubscriptionPostSummary[]; pendingConfirmationCount: number }> {
-  const response = await fetchApi(`${apiBaseUrl}/subscriptions`, {
+  cursor?: string,
+): Promise<{ items: SubscriptionPostSummary[]; pendingConfirmationCount: number; nextCursor?: string | null }> {
+  const response = await fetchApi(`${apiBaseUrl}/subscriptions${cursor ? `?cursor=${encodeURIComponent(cursor)}` : ''}`, {
     headers: bearerHeader(accessToken),
   });
   return parseResponse(response);
@@ -47,8 +48,9 @@ export async function getSubscriptionPost(
 
 export async function listManageableSubscriptionPosts(
   accessToken: string,
-): Promise<{ items: SubscriptionPost[] }> {
-  const response = await fetchApi(`${apiBaseUrl}/subscriptions?manage=true`, {
+  cursor?: string,
+): Promise<{ items: SubscriptionPost[]; nextCursor?: string | null }> {
+  const response = await fetchApi(`${apiBaseUrl}/subscriptions?manage=true${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`, {
     headers: bearerHeader(accessToken),
   });
   return parseResponse(response);

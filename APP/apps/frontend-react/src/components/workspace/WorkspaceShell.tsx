@@ -541,6 +541,7 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
                 model.messagesQuery.isLoading ||
                 (model.messagesQuery.isFetching && model.messages.length === 0)
               }
+              onRetryLoad={() => void model.messagesQuery.refetch()}
               messageLoadError={
                 model.messagesQuery.error instanceof Error
                   ? `消息加载失败：${model.messagesQuery.error.message}`

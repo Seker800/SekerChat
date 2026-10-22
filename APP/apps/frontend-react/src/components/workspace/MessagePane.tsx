@@ -27,6 +27,7 @@ interface MessagePaneProps {
   onLoadOlderMessages?: () => void;
   hasMoreOlderMessages?: boolean;
   isLoadingOlderMessages?: boolean;
+  onRetryLoad?: () => void;
   onReply: (messageId: string) => void;
   onUnsupportedAction?: (message: string) => void;
   onCopyMessage?: (message: string) => void;
@@ -52,6 +53,7 @@ export function MessagePane({
   onLoadOlderMessages,
   hasMoreOlderMessages,
   isLoadingOlderMessages,
+  onRetryLoad,
   onReply,
   onUnsupportedAction,
   onCopyMessage,
@@ -301,6 +303,7 @@ export function MessagePane({
           hasMoreOlderMessages={hasMoreOlderMessages}
           isLoadingMessages={isLoadingMessages}
           loadError={messageLoadError}
+          onRetryLoad={onRetryLoad}
           isLoadingOlderMessages={isLoadingOlderMessages}
           messages={messages}
           pendingUploads={pendingUploads}

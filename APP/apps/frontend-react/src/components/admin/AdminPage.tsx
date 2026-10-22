@@ -1,3 +1,4 @@
+import { RetryNotice } from '../shared/RetryNotice';
 import { useEffect, useMemo, useState } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../../auth/AuthContext';
@@ -48,6 +49,8 @@ type AdminNavGroup = {
 export function AdminPage() {
   const { currentUser } = useAuth();
   const accessToken = BROWSER_COOKIE_CREDENTIAL;
+  const [permissionError, setPermissionError] = useState('');
+  const [permissionAttempt, setPermissionAttempt] = useState(0);
   const [rolePermissions, setRolePermissions] = useState<RolePermissions>(
     getDefaultRolePermissions(),
   );
@@ -61,22 +64,23 @@ export function AdminPage() {
     }
 
     let cancelled = false;
+    setPermissionError('');
+    setConfigLoaded(false);
     fetchSystemConfig(accessToken)
       .then((cfg) => {
         if (cancelled) return;
         setRolePermissions(cfg.rolePermissions ?? getDefaultRolePermissions());
         setConfigLoaded(true);
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (cancelled) return;
-        setRolePermissions(getDefaultRolePermissions());
-        setConfigLoaded(true);
+        setPermissionError(error instanceof Error ? error.message : '管理权限加载失败');
       });
 
     return () => {
       cancelled = true;
     };
-  }, [accessToken, currentUser.role]);
+  }, [accessToken, currentUser.role, permissionAttempt]);
 
   const canAccessAdmin = hasSystemPermission(
     rolePermissions,
@@ -192,6 +196,10 @@ export function AdminPage() {
       setTab(availableTabs[0]?.key ?? 'quiet-hours');
     }
   }, [availableTabs, tab]);
+
+  if (permissionError) return <main className={styles.adminPage}>
+    <RetryNotice message={`管理权限加载失败：${permissionError}`} retryLabel="重试" onRetry={() => setPermissionAttempt((attempt) => attempt + 1)} />
+  </main>;
 
   if (!configLoaded) {
     return <main>正在加载管理权限...</main>;

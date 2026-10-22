@@ -151,6 +151,27 @@ describe('private media repository', () => {
     repository.clear();
   });
 
+  it('does not reuse an aborted thumbnail request during an immediate remount', async () => {
+    let calls = 0;
+    const repository = createPrivateMediaRepository({
+      fetcher: async (_url, init) => {
+        if (++calls === 1) return new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+        });
+        return thumbnailResponse();
+      }, createObjectUrl: () => 'blob:fresh', revokeObjectUrl: vi.fn(),
+    });
+    const request = { viewerId: 'user', accessToken: 'token', url: '/api/groups/g/files/f/thumbnail' };
+    const controller = new AbortController();
+    const first = expect(repository.acquireThumbnail({ ...request, signal: controller.signal })).rejects.toHaveProperty('name', 'AbortError');
+    controller.abort();
+    const second = repository.acquireThumbnail(request);
+    await first;
+    expect((await second).src).toBe('blob:fresh');
+    expect(calls).toBe(2);
+    repository.clear();
+  });
+
   it('deduplicates thumbnail downloads across component remounts', async () => {
     const fetcher = vi.fn(async () => thumbnailResponse());
     const createObjectUrl = vi.fn(() => 'blob:thumbnail-1');

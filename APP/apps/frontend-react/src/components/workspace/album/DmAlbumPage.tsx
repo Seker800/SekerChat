@@ -1,3 +1,4 @@
+import { useUploadSignal } from '../../../hooks/useUploadSignal';
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ALBUM_VIDEO_MAX_MB } from '@sekerchat/shared';
@@ -58,6 +59,7 @@ export function DmAlbumPage({ accessToken, canManage, viewerId }: DmAlbumPagePro
   const [viewportHeight, setViewportHeight] = useState(0);
   const [scrollTop, setScrollTop] = useState(0);
   const [isDragActive, setIsDragActive] = useState(false);
+  const getUploadSignal = useUploadSignal();
   const [uploadStatus, setUploadStatus] = useState<string | null>(null);
   const [isManaging, setIsManaging] = useState(false);
   const [selectedPhotoIds, setSelectedPhotoIds] = useState<Set<string>>(() => new Set());
@@ -230,13 +232,15 @@ export function DmAlbumPage({ accessToken, canManage, viewerId }: DmAlbumPagePro
     try {
       let duplicateCount = 0;
       const failedFiles: Array<{ name: string; message: string }> = [];
+      const signal = getUploadSignal();
       for (const [index, file] of mediaFiles.entries()) {
+        if (signal.aborted) break;
         try {
           const photo = await uploadAlbumPhoto(accessToken, file, (progress) => {
             setUploadStatus(
               `正在上传 ${index + 1}/${mediaFiles.length} · ${Math.round(progress.percent)}%`,
             );
-          });
+          }, signal);
           if (photo.duplicate) duplicateCount += 1;
         } catch (error) {
           failedFiles.push({

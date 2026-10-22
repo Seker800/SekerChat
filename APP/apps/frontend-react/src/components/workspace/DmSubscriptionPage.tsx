@@ -1,6 +1,7 @@
+import { useUploadSignal } from '../../hooks/useUploadSignal';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { IconPaperclip, IconPinFilled } from '@tabler/icons-react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, useInfiniteQuery, type InfiniteData } from '@tanstack/react-query';
 import { downloadFile } from '../../lib/api-core';
 import { uploadFileViaMultipart } from '../../lib/multipart-upload';
 import {
@@ -122,6 +123,7 @@ export function DmSubscriptionPage({
   const queryClient = useQueryClient();
   const progressDialogRef = useRef<HTMLElement>(null);
   const progressTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const getUploadSignal = useUploadSignal();
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<EditorState | null>(null);
   const draftControllerRef = useRef<SubscriptionDraftController | null>(null);
@@ -134,9 +136,11 @@ export function DmSubscriptionPage({
   const [showManage, setShowManage] = useState(false);
   const [isDownloadAttachmentDragActive, setIsDownloadAttachmentDragActive] = useState(false);
 
-  const postsQuery = useQuery({
+  const postsQuery = useInfiniteQuery({
     queryKey: ['subscriptions'],
-    queryFn: () => listSubscriptionPosts(accessToken),
+    queryFn: ({ pageParam }) => listSubscriptionPosts(accessToken, pageParam),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
     staleTime: 15_000,
   });
   const detailQuery = useQuery({
@@ -145,9 +149,11 @@ export function DmSubscriptionPage({
     enabled: Boolean(selectedPostId),
     staleTime: 5_000,
   });
-  const manageQuery = useQuery({
+  const manageQuery = useInfiniteQuery({
     queryKey: ['subscriptions', 'manage'],
-    queryFn: () => listManageableSubscriptionPosts(accessToken),
+    queryFn: ({ pageParam }) => listManageableSubscriptionPosts(accessToken, pageParam),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (page) => page.nextCursor ?? undefined,
     enabled: canManage && showManage,
     staleTime: 5_000,
   });
@@ -171,7 +177,7 @@ export function DmSubscriptionPage({
   };
 
   const orderedPosts = useMemo(() => {
-    const posts = [...(postsQuery.data?.items ?? [])];
+    const posts = [...(postsQuery.data?.pages.flatMap((page) => page.items) ?? [])];
     return posts.sort((left, right) => {
       const confirmationOrder =
         Number(left.isConfirmed || !left.isRecipient) -
@@ -183,9 +189,9 @@ export function DmSubscriptionPage({
       const rightTime = new Date(right.publishedAt ?? right.updatedAt).getTime();
       return rightTime - leftTime;
     });
-  }, [postsQuery.data?.items]);
+  }, [postsQuery.data?.pages]);
 
-  const manageItems = manageQuery.data?.items ?? [];
+  const manageItems = manageQuery.data?.pages.flatMap((page) => page.items) ?? [];
   const selectedPost = detailQuery.data ?? null;
   const attachmentMaxBytes = attachmentMaxMB * 1024 * 1024;
   editorRef.current = editor;
@@ -202,26 +208,11 @@ export function DmSubscriptionPage({
             }
           : current,
       );
-      queryClient.setQueryData<{
-        items: SubscriptionPostSummary[];
-        pendingConfirmationCount: number;
-      }>(['subscriptions'], (current) =>
-        current
-          ? {
-              ...current,
-              pendingConfirmationCount: result.pendingConfirmationCount,
-              items: current.items.map((item) =>
-                item.id === postId
-                  ? {
-                      ...item,
-                      isConfirmed: true,
-                      confirmedAt: result.confirmedAt,
-                    }
-                  : item,
-              ),
-            }
-          : current,
-      );
+      queryClient.setQueryData<InfiniteData<Awaited<ReturnType<typeof listSubscriptionPosts>>>>(['subscriptions'], (current) =>
+        current ? { ...current, pages: current.pages.map((page) => ({ ...page,
+          pendingConfirmationCount: result.pendingConfirmationCount,
+          items: page.items.map((item) => item.id === postId ? { ...item, isConfirmed: true, confirmedAt: result.confirmedAt } : item),
+        })) } : current);
       queryClient.setQueryData(['subscription-summary'], {
         pendingConfirmationCount: result.pendingConfirmationCount,
       });
@@ -385,7 +376,7 @@ export function DmSubscriptionPage({
             : latest,
         );
       },
-      undefined,
+      getUploadSignal(),
       { subscriptionUsage: usage },
     );
     if (result.finalized.kind !== 'SUBSCRIPTION_ATTACHMENT') {
@@ -969,6 +960,8 @@ export function DmSubscriptionPage({
           ) : null}
         </div>
       )}
+      {showManage ? manageQuery.hasNextPage ? <button type="button" disabled={manageQuery.isFetchingNextPage} onClick={() => void manageQuery.fetchNextPage()}>加载更多管理文章</button> : null
+        : postsQuery.hasNextPage ? <button type="button" disabled={postsQuery.isFetchingNextPage} onClick={() => void postsQuery.fetchNextPage()}>加载更多文章</button> : null}
       {editor ? renderEditor() : null}
       {progressPostId ? (
         <div className={styles.dialogBackdrop} role="presentation">

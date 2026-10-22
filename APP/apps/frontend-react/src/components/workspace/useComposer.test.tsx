@@ -55,6 +55,20 @@ describe('useComposer pending uploads', () => {
     vi.clearAllMocks();
   });
 
+  it('retries message creation using the completed file without uploading again', async () => {
+    uploadFileViaMultipartMock.mockResolvedValue({ finalized: { kind: 'CHAT_ATTACHMENT', file: { id: 'completed-file', kindLabel: 'file' } } });
+    createMessageMock.mockRejectedValueOnce(new Error('response lost')).mockResolvedValueOnce({ id: 'message' });
+    const { result } = renderHook(() => useComposer({ accessToken: 'token', selectedGroupId: 'group-1', messages: [], channelName: 'General',
+      currentUser: { id: 'user', email: 'user@example.com', displayName: 'User', avatarUrl: null }, onError: vi.fn(), refetchMessages: vi.fn() }), { wrapper: createWrapper() });
+    await act(async () => { result.current.composer.onPickAttachments([new File(['data'], 'file.txt')]); });
+    await waitFor(() => expect(result.current.pendingUploads[0]?.status).toBe('error'));
+    const id = result.current.pendingUploads[0]!.localId;
+    await act(async () => result.current.retryPendingUpload(id));
+    await waitFor(() => expect(createMessageMock).toHaveBeenCalledTimes(2));
+    expect(uploadFileViaMultipartMock).toHaveBeenCalledTimes(1);
+    expect(createMessageMock.mock.calls[1]?.[2]).toMatchObject({ clientMessageId: id, attachment: { fileId: 'completed-file' } });
+  });
+
   it('keeps upload failures scoped to the originating group', async () => {
     uploadFileViaMultipartMock.mockRejectedValue(new Error('Upload failed: 413'));
 
@@ -179,6 +193,7 @@ describe('useComposer pending uploads', () => {
       'group-1',
       uploadedFile,
       expect.any(Function),
+      expect.any(AbortSignal),
     );
 
     await waitFor(() => {
@@ -329,6 +344,7 @@ describe('useComposer pending uploads', () => {
         'group-1',
         file,
         expect.any(Function),
+        expect.any(AbortSignal),
       );
     });
     expect(onError).not.toHaveBeenCalled();

@@ -167,6 +167,11 @@ export function createPrivateMediaRepository(options: RepositoryOptions = {}) {
     if (request.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
     const key = mediaKey(request.viewerId, 'thumbnail', request.url);
     let entry = thumbnails.get(key);
+    if (entry?.pendingController?.signal.aborted) {
+      thumbnails.delete(key);
+      entry = undefined;
+    }
+
 
     if (!entry) {
       entry = {

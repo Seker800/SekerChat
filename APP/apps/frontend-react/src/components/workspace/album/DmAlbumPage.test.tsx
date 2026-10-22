@@ -162,7 +162,7 @@ describe('DmAlbumPage', () => {
     expect(screen.getByText('拖拽图片或 MP4 视频到这里上传')).toBeInTheDocument();
     fireEvent.drop(managerDropZone, { dataTransfer });
     await waitFor(() =>
-      expect(uploadAlbumPhoto).toHaveBeenCalledWith('token', imageFile, expect.any(Function)),
+      expect(uploadAlbumPhoto).toHaveBeenCalledWith('token', imageFile, expect.any(Function), expect.any(AbortSignal)),
     );
   });
 
@@ -175,7 +175,7 @@ describe('DmAlbumPage', () => {
     fireEvent.drop(screen.getByTestId('album-drop-zone'), { dataTransfer });
 
     await waitFor(() =>
-      expect(uploadAlbumPhoto).toHaveBeenCalledWith('token', imageFile, expect.any(Function)),
+      expect(uploadAlbumPhoto).toHaveBeenCalledWith('token', imageFile, expect.any(Function), expect.any(AbortSignal)),
     );
   });
 
@@ -207,7 +207,7 @@ describe('DmAlbumPage', () => {
 
     fireEvent.drop(screen.getByTestId('album-drop-zone'), { dataTransfer });
     await waitFor(() =>
-      expect(uploadAlbumPhoto).toHaveBeenCalledWith('token', videoFile, expect.any(Function)),
+      expect(uploadAlbumPhoto).toHaveBeenCalledWith('token', videoFile, expect.any(Function), expect.any(AbortSignal)),
     );
 
     expect(video.muted).toBe(true);

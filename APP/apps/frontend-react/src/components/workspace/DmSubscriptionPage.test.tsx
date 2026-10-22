@@ -157,6 +157,16 @@ describe('DmSubscriptionPage', () => {
     });
   });
 
+  it('loads articles beyond the first page without losing earlier cards', async () => {
+    listSubscriptionPosts.mockResolvedValueOnce({ items: [summary], nextCursor: 'post-1', pendingConfirmationCount: 1 })
+      .mockResolvedValueOnce({ items: [{ ...summary, id: 'post-101', title: '历史文章' }], nextCursor: null, pendingConfirmationCount: 1 });
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: '加载更多文章' }));
+    expect(await screen.findByTestId('subscription-card-post-101')).toHaveTextContent('历史文章');
+    expect(screen.getByTestId('subscription-card-post-1')).toBeInTheDocument();
+    expect(listSubscriptionPosts).toHaveBeenLastCalledWith('token', 'post-1');
+  });
+
   it('shows a compact preview and loads the full markdown body only after opening details', async () => {
     renderPage();
 
@@ -426,7 +436,7 @@ describe('DmSubscriptionPage', () => {
         'draft-new',
         expect.any(File),
         expect.any(Function),
-        undefined,
+        expect.any(AbortSignal),
         { subscriptionUsage: 'INLINE_IMAGE' },
       ),
     );

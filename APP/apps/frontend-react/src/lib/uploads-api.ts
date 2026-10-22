@@ -36,11 +36,13 @@ export type FinalizedUploadResponse =
 export async function initiateUpload(
   accessToken: string,
   input: InitiateUploadInput,
+  signal?: AbortSignal,
 ): Promise<UploadSessionResponse> {
   const response = await fetchApi(`${apiBaseUrl}/uploads/initiate`, {
     method: 'POST',
     headers: authHeaders(accessToken),
     body: JSON.stringify(input),
+    signal,
   });
 
   return parseResponse<UploadSessionResponse>(response);
@@ -49,6 +51,7 @@ export async function initiateUpload(
 export async function getUploadedParts(
   accessToken: string,
   uploadSessionId: string,
+  signal?: AbortSignal,
 ): Promise<{
   uploadSessionId: string;
   partSizeBytes: number;
@@ -57,6 +60,7 @@ export async function getUploadedParts(
   const response = await fetchApi(`${apiBaseUrl}/uploads/${uploadSessionId}/parts`, {
     method: 'GET',
     headers: bearerHeader(accessToken),
+    signal,
   });
 
   return parseResponse(response);
@@ -97,6 +101,7 @@ export async function completeUpload(
   accessToken: string,
   uploadSessionId: string,
   parts: CompleteUploadPartInput[],
+  signal?: AbortSignal,
 ): Promise<FinalizedUploadResponse> {
   try {
     const response = await fetchApi(
@@ -105,12 +110,13 @@ export async function completeUpload(
         method: 'POST',
         headers: authHeaders(accessToken),
         body: JSON.stringify({ parts }),
+        signal,
       },
       120_000,
     );
     return await parseResponse<FinalizedUploadResponse>(response);
   } catch (error) {
-    if ((error instanceof Error || error instanceof DOMException) && error.name === 'AbortError') {
+    if ((error instanceof Error || error instanceof DOMException) && error.name === 'TimeoutError') {
       throw new Error('完成上传超时，请稍后重试。');
     }
     throw error;

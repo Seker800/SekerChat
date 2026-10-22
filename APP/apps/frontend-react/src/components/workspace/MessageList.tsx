@@ -1,3 +1,4 @@
+import { RetryNotice } from '../shared/RetryNotice';
 import { Fragment, type RefCallback } from 'react';
 import type { MessageResponse } from '../../lib/messages-files-api';
 import type { PendingUpload } from './useComposer';
@@ -27,6 +28,7 @@ interface MessageListProps {
   isLoadingMessages?: boolean;
   loadError?: string | null;
   isLoadingOlderMessages?: boolean;
+  onRetryLoad?: () => void;
   messages: MessageResponse[];
   pendingUploads?: PendingUpload[];
   registerMessageRef: (messageId: string) => RefCallback<HTMLElement>;
@@ -129,6 +131,7 @@ export function MessageList({
   isLoadingMessages,
   loadError,
   isLoadingOlderMessages,
+  onRetryLoad,
   messages,
   pendingUploads,
   registerMessageRef,
@@ -158,7 +161,7 @@ export function MessageList({
         </div>
       ) : null}
       {isLoadingMessages ? <LoadingMessageSkeletons /> : null}
-      {!isLoadingMessages && loadError ? <div className={styles.empty}>{loadError}</div> : null}
+      {!isLoadingMessages && loadError ? <div className={styles.empty}><RetryNotice message={loadError} retryLabel="重试加载消息" onRetry={onRetryLoad} /></div> : null}
       {!isLoadingMessages && !loadError && !messages.length ? (
         <div className={styles.empty}>{t('messages.empty')}</div>
       ) : null}
@@ -223,6 +226,11 @@ export function MessageList({
                     progress={pendingUpload.progress}
                     creatingMessage={pendingUpload.status === 'creating-message'}
                   />
+                  {pendingUpload.status === 'uploading' ? (
+                    <button type="button" className={styles.pendingDismiss} onClick={() => onClearPendingError?.(pendingUpload.localId)}>
+                      取消上传
+                    </button>
+                  ) : null}
                   {pendingUpload.status === 'error' ? (
                     <div className={styles.pendingActions}>
                       <button

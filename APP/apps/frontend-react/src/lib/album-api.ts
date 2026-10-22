@@ -56,6 +56,7 @@ export async function uploadAlbumPhoto(
   accessToken: string,
   file: File,
   onProgress: (value: MultipartUploadProgress) => void,
+  signal?: AbortSignal,
 ) {
   const result = await uploadFileViaMultipart(
     accessToken,
@@ -63,6 +64,7 @@ export async function uploadAlbumPhoto(
     'global-album',
     file,
     onProgress,
+    signal,
   );
   if (result.finalized.kind !== 'ALBUM_PHOTO') throw new Error('相册上传结果无效');
   return result.finalized.photo;

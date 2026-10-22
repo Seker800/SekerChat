@@ -490,7 +490,7 @@ export function useWorkspaceShellModel({
     groups: channels,
     notificationGroups: [...servers, ...workspaceQueries.dms],
     groupsQuery: channelsQuery,
-    isLoading: serversQuery.isLoading || (mode === 'dm' && workspaceQueries.dmsQuery.isLoading),
+    isLoading: workspaceBootstrapQuery.isPending || serversQuery.isLoading || (mode === 'dm' && workspaceQueries.dmsQuery.isLoading),
     loadError,
     retryLoadError: () => {
       if (loadError?.source === 'servers') {
@@ -501,7 +501,7 @@ export function useWorkspaceShellModel({
         void dmsQuery.refetch();
       }
     },
-    isServerGroupsLoading: serversQuery.isLoading,
+    isServerGroupsLoading: workspaceBootstrapQuery.isPending || serversQuery.isPending,
     refreshGroupList: () => {
       void channelsQuery.refetch();
     },

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -75,6 +75,14 @@ describe('App auth boundary', () => {
         name: 'Group 1',
       },
     ]);
+  });
+
+  it('shows session restoration failures and lets the user retry', async () => {
+    authApiMocks.getCurrentUser.mockRejectedValueOnce(new Error('网络暂时不可用'));
+    renderApp('/groups');
+    expect(await screen.findByRole('alert')).toHaveTextContent('网络暂时不可用');
+    fireEvent.click(screen.getByRole('button', { name: '重试恢复登录' }));
+    await screen.findByTestId('workspace-shell');
   });
 
   it('does not pass raw access tokens through route component props', async () => {

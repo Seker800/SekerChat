@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -31,6 +31,15 @@ describe('AuthGate', () => {
     window.localStorage.clear();
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh-CN');
     vi.clearAllMocks();
+  });
+
+  it('keeps restoration errors and retry inside the login card', async () => {
+    const onRetryBootstrap = vi.fn();
+    renderAuthGate('/', { bootstrapError: '登录服务暂时不可用', onRetryBootstrap });
+    const card = within(screen.getByTestId('auth-gate-panel'));
+    expect(card.getByRole('alert')).toHaveTextContent('登录服务暂时不可用');
+    await userEvent.click(card.getByRole('button', { name: '重试恢复登录' }));
+    expect(onRetryBootstrap).toHaveBeenCalledOnce();
   });
 
   it('submits the email and password through the login action', async () => {

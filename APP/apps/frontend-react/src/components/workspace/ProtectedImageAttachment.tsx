@@ -166,7 +166,7 @@ export function ProtectedImageAttachment({
     }
 
     const controller = new AbortController();
-    if (scheduleMediaLoad && !shellElement) return undefined;
+    if (!shellElement) return undefined;
     const cancelScheduled = scheduleMediaLoad
       ? scheduleMediaLoad({ id: loadId, element: shellElement!, run: load })
       : (() => {

@@ -1,0 +1,37 @@
+.notice {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgb(237 119 124 / 28%);
+  border-radius: 8px;
+  background: rgb(237 119 124 / 6%);
+  color: #edafb2;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.notice p {
+  margin: 0;
+}
+
+.notice button {
+  min-height: 32px;
+  padding: 5px 12px;
+  border: 1px solid #484f68;
+  border-radius: 5px;
+  background: #2c3145;
+  color: #e4e7ff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.notice button:hover {
+  background: #383f59;
+}
+
+.notice button:focus-visible {
+  outline: 2px solid #9ca4ea;
+  outline-offset: 2px;
+}
