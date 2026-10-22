@@ -4,7 +4,7 @@
   "maxTotalJavaScriptBytes": 1572864,
   "maxTotalCssBytes": 262144,
   "deferredJavaScriptAssets": {
-    "SubscriptionArticleEditor-": 307200
+    "SubscriptionArticleEditor-": 786432
   },
   "forbiddenEditorCssPatterns": [
     "milkdown-ai-",

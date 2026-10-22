@@ -59,12 +59,8 @@ pkill -f "nest start"; pkill -f "apps/backend/dist"
 
 遵循根 `AGENTS.md` 的自动提交策略：完成一个内聚里程碑后直接创建本地提交。commit message 统一遵循 `docs/Commit规范.md`，使用中文类型前缀，不添加工具或身份前缀。
 
-## 定期 Push
+## Push 与生产部署
 
-每完成 2-3 个本地提交，或每 1-2 小时的实际工作时间，执行一次 `git push`。
-
-Push 前：
-- 确认当前分支不是 `main`/`master`（如在敏感分支上则跳过并说明）
-- 确认最近的提交都通过了 type-check / lint
-
-Push 后简要说明推送了哪些提交。
+默认只创建本地提交，绝不自动 push。只有用户在当前任务中明确要求 push 时才推送。
+生产部署另需用户针对当前任务的明确授权；本地开发、验证或提交通过不构成部署授权。
+完整规则遵循根 `AGENTS.md`。

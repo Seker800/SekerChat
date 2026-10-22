@@ -1,3 +1,4 @@
+import { moduleBoundaryRules } from './module-boundary-rules.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { findModuleBoundaryViolations } from './module-boundaries.mjs';
@@ -9,15 +10,7 @@ const graph = await buildTypeScriptImportGraph(appRoot, [
   path.join(appRoot, 'packages'),
 ]);
 
-const rules = [
-  {
-    name: '共享包不能依赖具体应用实现',
-    from: /^packages\//,
-    disallow: /^apps\//,
-  },
-];
-
-const violations = findModuleBoundaryViolations(graph, rules);
+const violations = findModuleBoundaryViolations(graph, moduleBoundaryRules);
 console.log(`Module boundary violations: ${violations.length}`);
 for (const violation of violations) {
   console.log(`- [${violation.rule}] ${violation.importer} -> ${violation.dependency}`);

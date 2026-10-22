@@ -1,3 +1,4 @@
+import { moduleBoundaryRules } from './module-boundary-rules.mjs';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -53,4 +54,18 @@ test('generic upload contracts remain domain-neutral', () => {
   );
 
   assert.doesNotMatch(source, /eagle/i);
+});
+
+test('business services cannot depend on full realtime or HTTP adapters', () => {
+  const graph = new Map([['apps/backend/src/groups/group-query.service.ts', new Set([
+    'apps/backend/src/realtime/realtime.service.ts', 'apps/backend/src/files/files.controller.ts',
+  ])]]);
+  assert.equal(findModuleBoundaryViolations(graph, moduleBoundaryRules).length, 2);
+});
+test('module wiring and narrow realtime adapter implementations remain allowed', () => {
+  const graph = new Map([
+    ['apps/backend/src/groups/groups.module.ts', new Set(['apps/backend/src/groups/groups.controller.ts'])],
+    ['apps/backend/src/subscriptions/subscription-realtime-publisher.service.ts', new Set(['apps/backend/src/realtime/realtime.service.ts'])],
+  ]);
+  assert.deepEqual(findModuleBoundaryViolations(graph, moduleBoundaryRules), []);
 });

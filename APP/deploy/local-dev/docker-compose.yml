@@ -1,5 +1,12 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
+    logging: *default-logging
     image: postgres:16-alpine
     container_name: sekerchat-dev-postgres
     environment:
@@ -10,7 +17,7 @@ services:
     volumes:
       - ./runtime/postgres:/var/lib/postgresql/data
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}"]
       interval: 10s
@@ -20,6 +27,7 @@ services:
     restart: unless-stopped
 
   minio:
+    logging: *default-logging
     image: minio/minio
     container_name: sekerchat-dev-minio
     command: server /data --console-address ":9001"
@@ -31,8 +39,8 @@ services:
     volumes:
       - ./runtime/minio:/data
     ports:
-      - "${MINIO_API_PORT:-9000}:9000"
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+      - "127.0.0.1:${MINIO_API_PORT:-9000}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_PORT:-9001}:9001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 10s
@@ -42,6 +50,7 @@ services:
     restart: unless-stopped
 
   minio-init:
+    logging: *default-logging
     image: minio/mc
     container_name: sekerchat-dev-minio-init
     depends_on:

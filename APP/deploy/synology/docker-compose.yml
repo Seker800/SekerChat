@@ -1,5 +1,12 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   frontend:
+    logging: *default-logging
     image: sekerchat-frontend:${APP_IMAGE_TAG}
     container_name: sekerchat-frontend
     depends_on:
@@ -22,6 +29,7 @@ services:
     restart: unless-stopped
 
   backend:
+    logging: *default-logging
     image: sekerchat-backend:${APP_IMAGE_TAG}
     container_name: sekerchat-backend
     networks:
@@ -49,6 +57,7 @@ services:
     restart: unless-stopped
 
   migrate:
+    logging: *default-logging
     image: sekerchat-backend:${APP_IMAGE_TAG}
     profiles: [migration]
     networks: [app]

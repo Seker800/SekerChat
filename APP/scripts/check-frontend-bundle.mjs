@@ -1,3 +1,4 @@
+import { partitionJavaScriptAssets } from './frontend-bundle-graph.mjs';
 import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,13 +20,16 @@ const javascript = assets.filter(({ name }) => name.endsWith('.js'));
 const css = assets.filter(({ name }) => name.endsWith('.css'));
 const total = (items) => items.reduce((sum, item) => sum + item.bytes, 0);
 const deferredBudgets = Object.entries(budget.deferredJavaScriptAssets ?? {});
-const deferredJavaScript = javascript.filter(({ name }) =>
-  deferredBudgets.some(([prefix]) => name.startsWith(prefix)),
-);
+const manifest = JSON.parse(await readFile(path.join(assetsRoot, '../.vite/manifest.json'), 'utf8'));
+const partition = partitionJavaScriptAssets(manifest, deferredBudgets.map(([prefix]) => prefix));
+const deferredJavaScript = javascript.filter(({ name }) => !partition.core.has(name));
 const editorCss = css.filter(({ name }) => name.startsWith('SubscriptionArticleEditor-'));
-const coreJavaScript = javascript.filter(
-  ({ name }) => !deferredBudgets.some(([prefix]) => name.startsWith(prefix)),
-);
+const coreJavaScript = javascript.filter(({ name }) => partition.core.has(name));
+for (const asset of javascript) {
+  if (!partition.core.has(asset.name) && ![...partition.deferred.values()].some((files) => files.has(asset.name))) {
+    throw new Error(`JavaScript asset is missing from the build manifest: ${asset.name}`);
+  }
+}
 const largestJavaScript = coreJavaScript.reduce(
   (largest, item) => (item.bytes > largest.bytes ? item : largest),
   { name: 'none', bytes: 0 },
@@ -49,14 +53,10 @@ if (largestJavaScript.bytes > budget.maxSingleJavaScriptBytes) {
 if (report.totalJavaScriptBytes > budget.maxTotalJavaScriptBytes) {
   violations.push(`total JavaScript is ${report.totalJavaScriptBytes} bytes`);
 }
-for (const asset of deferredJavaScript) {
-  const match = deferredBudgets.find(([prefix]) => asset.name.startsWith(prefix));
-  const maxBytes = match?.[1];
-  if (typeof maxBytes === 'number' && asset.bytes > maxBytes) {
-    violations.push(
-      `deferred JavaScript asset ${asset.name} is ${asset.bytes} bytes (budget ${maxBytes})`,
-    );
-  }
+for (const [prefix, maxBytes] of deferredBudgets) {
+  const files = partition.deferred.get(prefix);
+  const bytes = total(javascript.filter(({ name }) => files.has(name)));
+  if (bytes > maxBytes) violations.push(`deferred JavaScript group ${prefix} is ${bytes} bytes (budget ${maxBytes})`);
 }
 for (const asset of editorCss) {
   const content = await readFile(path.join(assetsRoot, asset.name), 'utf8');

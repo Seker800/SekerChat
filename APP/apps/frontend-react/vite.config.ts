@@ -20,6 +20,7 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [react()],
     build: {
+      manifest: true,
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),

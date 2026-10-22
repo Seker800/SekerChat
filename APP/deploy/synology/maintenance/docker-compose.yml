@@ -1,6 +1,13 @@
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   postgres:
-    image: postgres:16-alpine
+    logging: *default-logging
+    image: ${POSTGRES_IMAGE:?Set POSTGRES_IMAGE to the deployed image with a sha256 digest}
     container_name: sekerchat-postgres
     env_file: [../.env]
     volumes:
@@ -14,13 +21,14 @@ services:
     restart: unless-stopped
 
   minio:
-    image: minio/minio
+    logging: *default-logging
+    image: ${MINIO_IMAGE:?Set MINIO_IMAGE to the deployed image with a sha256 digest}
     container_name: sekerchat-minio
     command: server /data --console-address ":9001"
     env_file: [../.env]
     volumes:
       - ../../runtime/minio:/data
-    ports: ["9000:9000", "9001:9001"]
+    ports: ["9000:9000", "127.0.0.1:9001:9001"]
     networks: [data]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]

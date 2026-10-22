@@ -175,3 +175,29 @@ ssh nas "cd /volume1/docker/sekerchat && sudo APP_ROLLBACK_TAG=v0.6.9 bash ./rol
 不能由应用回滚脚本自动触发。
 
 生产数据如需用于测试，只允许“生产导出 → 拷贝到本机 → 本机恢复/脱敏”的单向路径。
+
+
+## 审查整改的本地准备（2026-10-22）
+
+本轮只在本机修改和验证，没有更新 NAS 配置、创建生产计划任务、上传镜像或执行发布。
+
+### 数据镜像与日志
+
+三份 Compose 为所有服务显式设置 `json-file` 的 `10m × 3` 轮转。本机数据服务只绑定回环地址；生产 MinIO API 端口保持既有访问拓扑，控制台绑定回环地址。
+
+maintenance Compose 不再提供浮动数据镜像默认值。未来人工维护前，先从**当时运行的数据镜像**取得 RepoDigest，将 `POSTGRES_IMAGE` 和 `MINIO_IMAGE` 加入生产 `.env`；模板见 `maintenance/data-images.env.example`。不要借此升级版本或直接重建数据容器。执行任何数据面操作前先运行 `maintenance/verify-data-images.sh`；它只读取这两个配置字段，不执行 `.env` 内容。Compose 使用父目录配置时必须显式传 `--env-file`。普通 app-only release 不读取这两个变量，也不触碰数据容器。
+
+### 对象备份与恢复验收
+
+`backup-objects.sh` 提供独立对象备份入口，依赖已安装的 `mc` 和 Python 3；凭据由维护者预先配置的 mc alias 管理，脚本不读取或打印凭据。
+
+必填环境变量：
+
+- `SEKERCHAT_OBJECT_BACKUP_SOURCE`：预先配置的 `alias/bucket`。
+- `SEKERCHAT_OBJECT_BACKUP_DIR`：独立磁盘、远端挂载或灾备目录的绝对路径，不能指向活动 MinIO 数据目录。
+
+脚本先记录对象清单，再复制对象、检查大小并生成 SHA-256 清单，校验通过后才原子发布带 `COMPLETE` 的目录。失败只留下 `.partial`，不得用它恢复；不自动删除旧备份。复验命令为 `python3 verify-object-backup.py verify <备份目录>`。
+
+该备份不是 PostgreSQL 与 MinIO 的跨系统原子快照。第一次生产启用和恢复演练需要在维护窗口暂停写入、保留清理任务停止状态，生成数据库备份与对象备份，再恢复到隔离环境，核对消息附件、相册、产出和订阅文件均可读取。只有完成配对恢复演练后才能认定灾备闭环成立。后续由 NAS 计划任务定期执行数据库和对象备份，并对失败告警；本次未创建生产计划任务。
+
+本机已验证成功备份、复制失败不发布和备份损坏检出；NAS 上的实际调度、独立存储和恢复演练仍需在明确授权的生产维护任务中执行。

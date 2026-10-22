@@ -59,6 +59,17 @@ for (const path of [
   assert.ok(statSync(resolve(root, path)).mode & 0o111, `${path} must be executable.`);
 }
 
+for (const source of [appCompose, maintenanceCompose, read('deploy/local-dev/docker-compose.yml')]) {
+  assert.match(source, /max-size: "10m"/);
+  assert.match(source, /max-file: "3"/);
+  const serviceCount = composeServices(source).length;
+  assert.equal((source.match(/logging: \*default-logging/g) ?? []).length, serviceCount, 'Every service needs bounded logging.');
+}
+assert.match(maintenanceCompose, /image: \$\{POSTGRES_IMAGE:\?/);
+assert.match(maintenanceCompose, /image: \$\{MINIO_IMAGE:\?/);
+assert.match(maintenanceCompose, /127\.0\.0\.1:9001:9001/);
+assert.match(read('deploy/local-dev/docker-compose.yml'), /127\.0\.0\.1:\$\{POSTGRES_PORT/);
+
 const releaseVersion = JSON.parse(read('package.json')).version;
 for (const path of [
   'apps/backend/package.json',

@@ -29,6 +29,7 @@ export default [
       '**/android/app/build/**',
       '**/.vite/**',
       '**/.tmp/**',
+      '**/.local/**',
       '**/notes/**',
       '**/*.d.ts',
     ],
