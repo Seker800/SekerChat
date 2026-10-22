@@ -4,67 +4,14 @@ import { test } from 'node:test';
 import { MessageType } from '@prisma/client';
 import { RetentionService } from './retention.service';
 
-test('purgeOrphanedFiles only removes db records after backing objects are deleted', async () => {
-  const deletedKeys = new Set<string>();
-  const deletedFileIds: string[] = [];
-
-  const prismaService = {
-    $queryRaw: async () => [
-      {
-        id: 'file-1',
-        storageKey: 'group-1/file-1.png',
-        thumbnailStorageKey: 'group-1/thumb/file-1.png.jpg',
-      },
-      {
-        id: 'file-2',
-        storageKey: 'group-1/file-2.png',
-        thumbnailStorageKey: null,
-      },
-    ],
-    fileObject: {
-      deleteMany: async ({ where }: { where: { id: { in: string[] } } }) => {
-        deletedFileIds.push(...where.id.in);
-        return { count: where.id.in.length };
-      },
-    },
-    message: {
-      deleteMany: async () => ({ count: 0 }),
-      findMany: async () => [],
-      updateMany: async () => ({ count: 0 }),
-    },
-  };
-
-  const filesService = {
-    deleteS3Object: async (storageKey: string) => {
-      deletedKeys.add(storageKey);
-      return storageKey !== 'group-1/file-2.png';
-    },
-  };
-
-  const retentionConfigService = {
-    getPolicy: async () => ({
-      textRetentionDays: '0',
-      imageRetentionDays: '0',
-      imageRetentionSizeGB: '0',
-      fileRetentionDays: '0',
-      fileRetentionSizeGB: '0',
-    }),
-  };
-
-  const service = new RetentionService(
-    prismaService as never,
-    retentionConfigService as never,
-    filesService as never,
-  );
-
+test('orphan scan delegates final reference checks and durable retirement for each candidate', async () => {
+  const retired: string[] = [];
+  const service = new RetentionService({
+    $queryRaw: async () => [{ id: 'file-1', storageKey: 'random' }, { id: 'file-2', storageKey: 'random2' }],
+  } as never, { getPolicy: async () => ({ textRetentionDays: 0, imageRetentionDays: 0, fileRetentionDays: 0, imageRetentionSizeGB: 0, fileRetentionSizeGB: 0 }) } as never,
+  { retire: async (id: string) => { retired.push(id); return true; } } as never);
   await service.enforceRetention();
-
-  assert.deepEqual([...deletedKeys].sort(), [
-    'group-1/file-1.png',
-    'group-1/file-2.png',
-    'group-1/thumb/file-1.png.jpg',
-  ]);
-  assert.deepEqual(deletedFileIds, ['file-1']);
+  assert.deepEqual(retired, ['file-1', 'file-2']);
 });
 
 test('purgeOrphanedFiles ignores uploads that were never attached to a message', async () => {

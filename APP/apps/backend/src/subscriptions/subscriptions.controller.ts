@@ -67,8 +67,8 @@ export class SubscriptionsController {
   })
   list(@CurrentUser() user: AuthenticatedUser, @Query() query: ListSubscriptionPostsQueryDto) {
     return query.manage === 'true'
-      ? this.subscriptionsService.listManageable(user, query.status)
-      : this.subscriptionsService.listPublished(user);
+      ? this.subscriptionsService.listManageable(user, query.status, query.cursor)
+      : this.subscriptionsService.listPublished(user, query.cursor);
   }
 
   @Get('summary')

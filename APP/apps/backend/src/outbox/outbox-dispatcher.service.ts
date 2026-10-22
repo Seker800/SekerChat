@@ -1,3 +1,4 @@
+import { FileObjectsDeleteOutboxHandler } from './file-objects-delete-outbox.handler';
 import { Injectable } from '@nestjs/common';
 import type { OutboxEvent } from '@prisma/client';
 import { ArtifactUploadedOutboxHandler } from './artifact-uploaded-outbox.handler';
@@ -14,9 +15,11 @@ export class OutboxDispatcherService {
     private readonly userMessageCreatedHandler: UserMessageCreatedOutboxHandler,
     private readonly serverLifecycleHandler: ServerLifecycleOutboxHandler,
     private readonly subscriptionChangedHandler: SubscriptionChangedOutboxHandler,
+    private readonly fileObjectsDeleteHandler: FileObjectsDeleteOutboxHandler,
   ) {}
 
   dispatch(event: OutboxEvent): Promise<void> {
+    if (event.eventType === this.fileObjectsDeleteHandler.eventType) return this.fileObjectsDeleteHandler.handle(event);
     if (event.eventType === this.artifactUploadedHandler.eventType) {
       return this.artifactUploadedHandler.handle(event);
     }

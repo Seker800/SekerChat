@@ -1,3 +1,4 @@
+import { FileRetirementService } from './file-retirement.service';
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
 import { SystemConfigModule } from '../system-config/system-config.module';
@@ -18,6 +19,7 @@ import { MediaVideoService } from './media-video.service';
     FileUrlService,
     ImageMetadataService,
     FilesService,
+    FileRetirementService,
     MediaVideoService,
   ],
   exports: [
@@ -26,6 +28,7 @@ import { MediaVideoService } from './media-video.service';
     FileUrlService,
     ImageMetadataService,
     FilesService,
+    FileRetirementService,
     MediaVideoService,
   ],
 })

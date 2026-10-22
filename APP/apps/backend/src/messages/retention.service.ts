@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { MessageType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { FilesService } from '../files/files.service';
+import { FileRetirementService } from '../files/file-retirement.service';
 import { RetentionConfigService } from '../system-config/retention-config.service';
 
 type FileKind = 'image' | 'file';
@@ -14,7 +14,7 @@ export class RetentionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly retentionConfigService: RetentionConfigService,
-    private readonly filesService: FilesService,
+    private readonly fileRetirement: FileRetirementService,
   ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_3AM, {
@@ -74,9 +74,7 @@ export class RetentionService {
       LEFT JOIN "Group" g ON g.id = f."groupId"
       WHERE m.id IS NULL
         AND NOT EXISTS (SELECT 1 FROM "Message" avatar WHERE avatar."externalAvatarFileId" = f.id)
-        AND (f."attachedAt" IS NOT NULL OR (
-          (f."storageKey" LIKE 'external-images/%' OR f."storageKey" LIKE 'external-files/%') AND f."createdAt" < NOW() - INTERVAL '1 day'
-        ))
+        AND (f."attachedAt" IS NOT NULL OR f."createdAt" < NOW() - INTERVAL '1 day')
         AND NOT (
           fs.id IS NOT NULL
           AND fs."revokedAt" IS NULL
@@ -89,55 +87,16 @@ export class RetentionService {
 
     this.logger.log(`Found ${orphans.length} orphaned FileObjects to purge`);
 
-    const results = await Promise.all(
-      orphans
-        .filter((file) => !/^external-(images|files)\//.test(file.storageKey ?? ''))
-        .map(async (file) => {
-          if (!file.storageKey) {
-            this.logger.warn(`Orphaned FileObject ${file.id} has empty storageKey, skipping`);
-            return { id: file.id, ok: false };
-          }
-          const deletedOriginal = await this.filesService.deleteS3Object(file.storageKey);
-          const deletedThumbnail = file.thumbnailStorageKey
-            ? await this.filesService.deleteS3Object(file.thumbnailStorageKey)
-            : true;
-          return { id: file.id, ok: deletedOriginal && deletedThumbnail };
-        }),
-    );
-
-    // External uploads coordinate through row locks; limit cleanup to one transaction at a time.
-    for (const file of orphans.filter((candidate) =>
-      /^external-(images|files)\//.test(candidate.storageKey ?? ''),
-    )) {
-      results.push({
-        id: file.id,
-        ok: await this.filesService.purgeUnreferencedExternalFile(file.id),
-      });
+    let retired = 0;
+    for (const file of orphans) {
+      try {
+        const external = /^external-(images|files)\//.test(file.storageKey ?? '');
+        if (await (external ? this.fileRetirement.retireExternal(file.id) : this.fileRetirement.retire(file.id))) retired++;
+      } catch (error) {
+        this.logger.warn('file_retirement_failed', JSON.stringify({ fileId: file.id, error: error instanceof Error ? error.message : 'Unknown' }));
+      }
     }
-
-    const deletedFileIds = results.filter((r) => r.ok).map((r) => r.id);
-
-    if (deletedFileIds.length === 0) {
-      this.logger.warn(
-        'No orphaned file records were removed because backing objects could not be deleted',
-      );
-      return;
-    }
-
-    try {
-      await this.retryDbDelete(deletedFileIds);
-    } catch (error) {
-      this.logger.error(
-        `CRITICAL: DB deleteMany failed after S3 objects were already deleted. Orphaned FileObject IDs still in DB: ${deletedFileIds.join(', ')}`,
-        error instanceof Error ? error.stack : error,
-      );
-      return;
-    }
-
-    const skippedCount = orphans.length - deletedFileIds.length;
-    this.logger.log(
-      `Purged ${deletedFileIds.length} orphaned FileObjects with S3 cleanup${skippedCount > 0 ? `, skipped ${skippedCount}` : ''}`,
-    );
+    this.logger.log(`Retired ${retired} unreferenced file records; object deletion is retryable.`);
   }
 
   private async enforceTextRetention(days: number) {
@@ -280,22 +239,4 @@ export class RetentionService {
     });
   }
 
-  private async retryDbDelete(fileIds: string[], maxRetries = 3): Promise<void> {
-    let lastError: unknown;
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        await this.prisma.fileObject.deleteMany({
-          where: { id: { in: fileIds } },
-        });
-        return;
-      } catch (error) {
-        lastError = error;
-        if (attempt < maxRetries - 1) {
-          // Exponential backoff: 1s, 2s, 4s
-          await new Promise((resolve) => setTimeout(resolve, 1000 * Math.pow(2, attempt)));
-        }
-      }
-    }
-    throw lastError;
-  }
 }

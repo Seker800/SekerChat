@@ -1,3 +1,5 @@
+import { UploadResourceInterceptor } from './upload-resource.interceptor';
+import { Throttle } from '@nestjs/throttler';
 import {
   Body,
   Controller,
@@ -10,6 +12,7 @@ import {
   RawBodyRequest,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import type { Request } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -38,6 +41,7 @@ import {
 } from './dto/upload-response.dto';
 
 @UseGuards(JwtAuthGuard)
+@UseInterceptors(UploadResourceInterceptor)
 @ApiTags('uploads')
 @ApiExtraModels(
   FinalizedChatAttachmentResponseDto,
@@ -49,6 +53,7 @@ import {
 export class UploadsController {
   constructor(private readonly uploadsService: UploadsService) {}
 
+  @Throttle({ default: { ttl: 60_000, limit: 30 } })
   @Post('initiate')
   @ApiCreatedResponse({ type: UploadSessionResponseDto })
   initiateUpload(@CurrentUser() user: AuthenticatedUser, @Body() dto: InitiateUploadDto) {
@@ -75,6 +80,7 @@ export class UploadsController {
     return this.uploadsService.uploadPart(user.sub, sessionId, partNumber, body);
   }
 
+  @Throttle({ default: { ttl: 60_000, limit: 60 } })
   @Post(':sessionId/complete')
   @ApiCreatedResponse({
     schema: {

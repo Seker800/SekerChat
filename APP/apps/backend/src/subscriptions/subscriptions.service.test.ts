@@ -454,3 +454,35 @@ test('legacy markUnread removes only the legacy read row and leaves confirmation
 
   assert.deepEqual(readDeletions, [{ postId: 'post-1', userId: 'reader-1' }]);
 });
+
+test('publish reads the draft only after acquiring the same row lock as withdrawal', async () => {
+  let locked = false;
+  let writes = 0;
+  const tx = {
+    $queryRaw: async () => { locked = true; return [{ id: 'post' }]; },
+    subscriptionPost: {
+      findUnique: async () => ({ id: 'post', title: 'Title', attachments: [], status: locked ? 'PUBLISHED' : 'DRAFT' }),
+      update: async () => { writes++; return {}; },
+    },
+    user: { findMany: async () => [] },
+    subscriptionAuditLog: { create: async () => ({}) },
+  };
+  const service = new SubscriptionsService({ $transaction: async (fn: (tx: unknown) => unknown) => fn(tx) } as never,
+    { hasPermission: async () => true, assertPermission: async () => {} } as never, { enqueue: async () => ({}) } as never,
+    {} as never);
+  await assert.rejects(() => service.publish(manager as never, 'post'), BadRequestException);
+  assert.equal(writes, 0);
+});
+
+test('subscription lists expose the next page instead of silently truncating at 100', async () => {
+  const rows = Array.from({ length: 101 }, (_, index) => ({ id: `post-${index}`, title: 'Title', body: '', tags: [], status: 'PUBLISHED', author: { id: 'author' }, recipients: [], attachments: [], createdAt: new Date(), updatedAt: new Date() }));
+  const queries: unknown[] = [];
+  const prisma = { subscriptionPost: { findMany: async (query: unknown) => { queries.push(query); return rows; } },
+    subscriptionPostRecipient: { count: async () => 0, groupBy: async () => [] } };
+  const service = new SubscriptionsService(prisma as never, { hasPermission: async () => false } as never, {} as never, {} as never);
+  const first = await service.listPublished({ sub: 'reader', role: 'MEMBER' } as never);
+  assert.equal(first.items.length, 100);
+  assert.equal(first.nextCursor, 'post-99');
+  await service.listPublished({ sub: 'reader', role: 'MEMBER' } as never, 'post-99');
+  assert.deepEqual((queries[1] as { cursor: unknown }).cursor, { id: 'post-99' });
+});

@@ -79,7 +79,7 @@ export class SubscriptionsService {
     };
   }
 
-  async listPublished(actor: AuthenticatedUser) {
+  async listPublished(actor: AuthenticatedUser, cursor?: string) {
     const canViewProgress = await this.canManage(actor);
     const posts = await this.prisma.subscriptionPost.findMany({
       where: {
@@ -92,8 +92,9 @@ export class SubscriptionsService {
           select: { confirmedAt: true },
         },
       },
-      orderBy: [{ pinnedAt: 'desc' }, { publishedAt: 'desc' }, { createdAt: 'desc' }],
-      take: 100,
+      orderBy: [{ pinnedAt: 'desc' }, { publishedAt: 'desc' }, { createdAt: 'desc' }, { id: 'desc' }],
+      take: 101,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     });
     const pendingConfirmationCount = await this.prisma.subscriptionPostRecipient.count({
       where: {
@@ -102,11 +103,13 @@ export class SubscriptionsService {
         post: { status: SubscriptionPostStatus.PUBLISHED },
       },
     });
+    const page = posts.slice(0, 100);
+    const nextCursor = posts.length > 100 ? page.at(-1)!.id : null;
     const progress = await this.getConfirmationProgress(
-      posts.map((post) => post.id),
+      page.map((post) => post.id),
       canViewProgress,
     );
-    const items = posts.map((post) =>
+    const items = page.map((post) =>
       this.serializePostSummary(post, progress.get(post.id) ?? null),
     );
     items.sort((left, right) =>
@@ -115,21 +118,25 @@ export class SubscriptionsService {
     );
     return {
       items,
+      nextCursor,
       pendingConfirmationCount,
       unreadCount: pendingConfirmationCount,
     };
   }
 
-  async listManageable(actor: AuthenticatedUser, status?: SubscriptionPostStatus) {
+  async listManageable(actor: AuthenticatedUser, status?: SubscriptionPostStatus, cursor?: string) {
     await this.assertCanManage(actor);
     const posts = await this.prisma.subscriptionPost.findMany({
       where: status ? { status } : undefined,
       include: subscriptionPostInclude,
-      orderBy: [{ updatedAt: 'desc' }],
-      take: 100,
+      orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+      take: 101,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
     });
-    const progress = await this.getConfirmationProgress(posts.map((post) => post.id), true);
-    return { items: posts.map((post) => this.serializePost(post, progress.get(post.id) ?? null)) };
+    const page = posts.slice(0, 100);
+    const nextCursor = posts.length > 100 ? page.at(-1)!.id : null;
+    const progress = await this.getConfirmationProgress(page.map((post) => post.id), true);
+    return { nextCursor, items: page.map((post) => this.serializePost(post, progress.get(post.id) ?? null)) };
   }
 
   async getPublishedPost(actor: AuthenticatedUser, postId: string) {
@@ -195,6 +202,7 @@ export class SubscriptionsService {
     await this.assertCanManage(actor);
     const now = new Date();
     const post = await this.prisma.$transaction(async (transaction) => {
+      await transaction.$queryRaw`SELECT id FROM "SubscriptionPost" WHERE id = ${postId} FOR UPDATE`;
       const current = await transaction.subscriptionPost.findUnique({
         where: { id: postId },
         include: {

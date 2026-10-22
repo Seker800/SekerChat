@@ -1,6 +1,7 @@
 import type { Prisma, OutboxEvent } from '@prisma/client';
 
 export const OUTBOX_EVENT_TYPES = {
+  fileObjectsDeleteRequested: 'file.objects-delete-requested.v1',
   artifactUploaded: 'artifact.uploaded.v1',
   groupLifecycleChanged: 'group.lifecycle.changed.v1',
   serverLifecycleRequested: 'server.lifecycle.requested.v1',

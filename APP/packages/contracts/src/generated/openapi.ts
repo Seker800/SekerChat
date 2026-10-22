@@ -2922,6 +2922,7 @@ export interface components {
             hasAttachments: boolean;
         };
         SubscriptionListResponseDto: {
+            nextCursor: string | null;
             items: components["schemas"]["SubscriptionPostSummaryResponseDto"][];
             pendingConfirmationCount: number;
             /** @deprecated */
@@ -2957,6 +2958,7 @@ export interface components {
             attachments: components["schemas"]["SubscriptionAttachmentResponseDto"][];
         };
         SubscriptionManageListResponseDto: {
+            nextCursor: string | null;
             items: components["schemas"]["SubscriptionPostResponseDto"][];
         };
         SubscriptionSummaryResponseDto: {
@@ -4264,10 +4266,10 @@ export interface operations {
     PresenceLogController_list: {
         parameters: {
             query?: {
-                limit?: string;
-                offset?: string;
+                limit?: number;
+                offset?: number;
                 userId?: string;
-                event?: string;
+                event?: "online" | "offline" | "dnd_on" | "dnd_off";
             };
             header?: never;
             path?: never;
@@ -4568,6 +4570,7 @@ export interface operations {
     SubscriptionsController_list: {
         parameters: {
             query?: {
+                cursor?: string;
                 manage?: "true" | "false";
                 status?: "DRAFT" | "PUBLISHED" | "WITHDRAWN";
             };

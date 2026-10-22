@@ -58,6 +58,7 @@ test('consumeEmailCode assigns ADMIN role for emails in ADMIN_EMAILS', async () 
       recordFailure: async () => {},
       recordSuccess: async () => {},
     } as any,
+    { getRegistrationConfig: async () => ({ registrationOpen: 'true' }) } as never,
   );
 
   const user = await service.consumeEmailCode('admin@example.com', '123456', '1.2.3.4');
@@ -115,6 +116,7 @@ test('consumeEmailCode keeps MEMBER role for non-admin emails', async () => {
       recordFailure: async () => {},
       recordSuccess: async () => {},
     } as any,
+    { getRegistrationConfig: async () => ({ registrationOpen: 'true' }) } as never,
   );
 
   const user = await service.consumeEmailCode('member@example.com', '123456', '1.2.3.4');
@@ -179,6 +181,7 @@ test('consumeEmailCode does not overwrite an existing SUPER_ADMIN role', async (
       recordFailure: async () => {},
       recordSuccess: async () => {},
     } as any,
+    { getRegistrationConfig: async () => ({ registrationOpen: 'true' }) } as never,
   );
 
   const user = await service.consumeEmailCode('owner@example.com', '123456', '1.2.3.4');
@@ -199,6 +202,7 @@ test('requestEmailCode stores a hashed code and does not return the raw value', 
         },
       },
       user: {
+        findUnique: async () => ({ id: 'member' }),
         count: async () => 0,
       },
     } as any,
@@ -218,6 +222,7 @@ test('requestEmailCode stores a hashed code and does not return the raw value', 
       recordFailure: async () => {},
       recordSuccess: async () => {},
     } as any,
+    { getRegistrationConfig: async () => ({ registrationOpen: 'true' }) } as never,
   );
 
   const result = await service.requestEmailCode('member@example.com');

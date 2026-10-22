@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import type { RenderableImageFileRecord } from './file-record.types';
-import { createImageProcessor } from './image-processing-policy';
+import { createImageProcessor, MAX_IMAGE_METADATA_BYTES } from './image-processing-policy';
 import { ObjectStorageGateway } from './object-storage.gateway';
 import { createWriteStream } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -10,7 +10,6 @@ import { join } from 'node:path';
 import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 
-export const MAX_IMAGE_METADATA_BYTES = 50 * 1024 * 1024;
 const MAX_CONCURRENT_METADATA_READS = 2;
 
 @Injectable()

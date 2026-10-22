@@ -1,3 +1,4 @@
+import { assertRegistrationAllowed } from './registration-policy';
 import {
   BadRequestException,
   ConflictException,
@@ -36,21 +37,7 @@ export class PasswordAuthService {
       throw new ForbiddenException('该账号已停用，请联系管理员');
     }
 
-    if (existing) {
-      if (existing.passwordHash) {
-        throw new ConflictException('该邮箱已注册，请直接登录');
-      }
-      const passwordHash = await bcrypt.hash(password, 10);
-      const user = await this.prismaService.user.update({
-        where: { email: normalizedEmail },
-        data: {
-          passwordHash,
-          displayName: displayName?.trim() || existing.displayName,
-          emailVerifiedAt: existing.emailVerifiedAt ?? new Date(),
-        },
-      });
-      return user;
-    }
+    if (existing) throw new ConflictException('该邮箱已注册，请直接登录或通过受信流程设置密码。');
 
     const totalUsers = await this.prismaService.user.count();
 
@@ -73,19 +60,7 @@ export class PasswordAuthService {
     }
 
     const registrationConfig = await this.registrationConfigService.getRegistrationConfig();
-    const whitelistRaw =
-      registrationConfig.emailWhitelist ||
-      this.configService.get<string>('EMAIL_WHITELIST')?.trim();
-    if (whitelistRaw) {
-      const allowed = this.parseEmailWhitelist(whitelistRaw);
-      if (!allowed.includes(normalizedEmail)) {
-        throw new ForbiddenException('该邮箱不在注册白名单中');
-      }
-    }
-
-    if (registrationConfig.registrationOpen !== 'true') {
-      throw new ForbiddenException('注册已关闭，请联系管理员');
-    }
+    assertRegistrationAllowed(normalizedEmail, registrationConfig, this.configService.get<string>('EMAIL_WHITELIST')?.trim());
 
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await this.prismaService.user.create({

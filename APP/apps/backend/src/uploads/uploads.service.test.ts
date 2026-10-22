@@ -1229,3 +1229,16 @@ test('completeUpload skips thumbnail generation for gif attachments', async () =
   assert.equal(thumbnailReadCount, 1);
   assert.equal(thumbnailWriteCount, 0);
 });
+
+test('initiate rejects oversized image processing before contacting storage', async () => {
+  const service = new UploadsService({} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never);
+  await assert.rejects(() => service.initiateUpload('user', { kind: UploadKind.CHAT_ATTACHMENT, groupId: 'group', fileName: 'large.png', mimeType: 'image/png', size: 51 * 1024 * 1024 }), /50MB/);
+});
+
+test('resume distinguishes completed uploads so clients can recover the original result', async () => {
+  const service = new UploadsService({ uploadSession: { findUnique: async () => createUploadSession({ status: 'COMPLETED' }) } } as never,
+    {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never);
+  await assert.rejects(() => service.getUploadedParts('user-1', 'upload-1'), (error: unknown) => {
+    return error instanceof BadRequestException && (error.getResponse() as { code?: string }).code === 'UPLOAD_SESSION_COMPLETED';
+  });
+});

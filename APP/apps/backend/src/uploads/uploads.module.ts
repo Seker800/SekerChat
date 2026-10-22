@@ -1,3 +1,4 @@
+import { UploadResourceInterceptor } from './upload-resource.interceptor';
 import { DynamicModule, InjectionToken, Module, ModuleMetadata } from '@nestjs/common';
 import { ArtifactsModule } from '../artifacts/artifacts.module';
 import { FilesModule } from '../files/files.module';
@@ -29,6 +30,7 @@ import { UploadTargetRegistry } from './upload-target-registry';
     },
     UploadTargetRegistry,
     UploadsService,
+    UploadResourceInterceptor,
     UploadCleanupService,
     UploadRecoveryService,
   ],

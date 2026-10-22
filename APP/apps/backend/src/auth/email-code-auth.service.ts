@@ -1,3 +1,5 @@
+import { RegistrationConfigService } from '../system-config/registration-config.service';
+import { assertRegistrationAllowed } from './registration-policy';
 import {
   ForbiddenException,
   Injectable,
@@ -22,6 +24,7 @@ export class EmailCodeAuthService {
     private readonly prismaService: PrismaService,
     private readonly configService: ConfigService,
     private readonly loginRiskService: LoginRiskService,
+    private readonly registrationConfigService: RegistrationConfigService,
   ) {
     this.codeSigningSecret = this.configService.getOrThrow<string>('JWT_ACCESS_SECRET');
     this.bootstrapSuperAdminEmail =
@@ -38,6 +41,9 @@ export class EmailCodeAuthService {
 
   async requestEmailCode(email: string): Promise<{ deliveryHint: string }> {
     const normalizedEmail = this.normalizeEmail(email);
+    if (!(await this.prismaService.user.findUnique({ where: { email: normalizedEmail } }))) {
+      await this.assertNewAccountAllowed(normalizedEmail);
+    }
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     const code = this.generateEmailCode();
 
@@ -103,6 +109,8 @@ export class EmailCodeAuthService {
       throw new ForbiddenException('该账号已停用，请联系管理员');
     }
 
+    if (!existingUser) await this.assertNewAccountAllowed(normalizedEmail);
+
     const user = existingUser
       ? await this.prismaService.user.update({
           where: { id: existingUser.id },
@@ -138,6 +146,16 @@ export class EmailCodeAuthService {
 
     await this.loginRiskService.recordSuccess(normalizedEmail, ip);
     return user;
+  }
+
+  private async assertNewAccountAllowed(email: string) {
+    if (await this.prismaService.user.count() === 0) {
+      if (!this.bootstrapSuperAdminEmail || email !== this.bootstrapSuperAdminEmail) {
+        throw new ForbiddenException('首个管理员账号必须使用预配置的引导邮箱创建。');
+      }
+      return;
+    }
+    assertRegistrationAllowed(email, await this.registrationConfigService.getRegistrationConfig(), this.configService.get<string>('EMAIL_WHITELIST')?.trim());
   }
 
   private normalizeEmail(email: string): string {

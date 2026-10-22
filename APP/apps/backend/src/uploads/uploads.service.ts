@@ -20,7 +20,7 @@ import { ArtifactRepository } from '../artifacts/artifact.repository';
 import { ArtifactStorageService } from '../artifacts/artifact-storage.service';
 import { ArtifactWorkflowService } from '../artifacts/artifact-workflow.service';
 import { FilesService } from '../files/files.service';
-import { createImageProcessor } from '../files/image-processing-policy';
+import { createImageProcessor, MAX_IMAGE_METADATA_BYTES } from '../files/image-processing-policy';
 import { ObjectSizeMismatchError } from '../files/object-size-mismatch.error';
 import { PrismaService } from '../prisma/prisma.service';
 import { FileUploadConfigService } from '../system-config/file-upload-config.service';
@@ -83,6 +83,9 @@ export class UploadsService {
   ) {}
 
   async initiateUpload(userId: string, dto: InitiateUploadDto) {
+    if (dto.kind === UploadKind.CHAT_ATTACHMENT && dto.mimeType.toLowerCase().startsWith('image/') && dto.size > MAX_IMAGE_METADATA_BYTES) {
+      throw new BadRequestException('图片大小不能超过 50MB。');
+    }
     const targetHandler = this.uploadTargets?.get(dto.kind);
     if (targetHandler) {
       return presentUploadSession(await targetHandler.initiate(userId, dto));
@@ -878,7 +881,7 @@ export class UploadsService {
     // ── thumbnail generation (fire-and-forget, best-effort) ──
     if (txResult.kind === UploadKind.CHAT_ATTACHMENT) {
       const file = txResult.createdFileObject;
-      const shouldGenerateThumbnail = this.filesService.shouldGenerateThumbnail(session.mimeType);
+      const shouldGenerateThumbnail = Number(session.size) <= MAX_IMAGE_METADATA_BYTES && this.filesService.shouldGenerateThumbnail(session.mimeType);
 
       if (shouldGenerateThumbnail) {
         // Run thumbnail generation asynchronously so it doesn't block the upload
@@ -1100,7 +1103,18 @@ export class UploadsService {
   }
 
   async getUploadedParts(userId: string, sessionId: string) {
-    const session = await this.getActiveSessionOrThrow(sessionId, userId);
+    const session = await this.getSessionOrThrow(sessionId, userId);
+    if (session.status === UploadSessionStatus.COMPLETED) {
+      throw new BadRequestException({ code: 'UPLOAD_SESSION_COMPLETED', message: '上传已完成，请恢复原上传结果。' });
+    }
+    if (session.status === UploadSessionStatus.ASSEMBLED || session.status === UploadSessionStatus.FAILED) {
+      return { uploadSessionId: session.id, partSizeBytes: UPLOAD_PART_SIZE_BYTES,
+        parts: this.parseCompletionParts(session.completionParts).map((part) => ({ ...part, size: 0 })) };
+    }
+    if (session.status === UploadSessionStatus.FINALIZING) throw new ServiceUnavailableException('上传正在完成，请稍后重试。');
+    if (session.status !== UploadSessionStatus.INITIATED) {
+      throw new BadRequestException({ code: 'UPLOAD_SESSION_ENDED', message: '上传会话已结束。' });
+    }
     const parts = await this.filesService.listMultipartParts(
       session.objectKey,
       session.multipartUploadId,

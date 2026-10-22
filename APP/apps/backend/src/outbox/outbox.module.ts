@@ -1,3 +1,5 @@
+import { FilesModule } from '../files/files.module';
+import { FileObjectsDeleteOutboxHandler } from './file-objects-delete-outbox.handler';
 import { Module } from '@nestjs/common';
 import { MessagesModule } from '../messages/messages.module';
 import { PrismaModule } from '../prisma/prisma.module';
@@ -16,6 +18,7 @@ import { OutboxRetentionService } from './outbox-retention.service';
 
 @Module({
   imports: [
+    FilesModule,
     PrismaModule,
     MessagesModule,
     RealtimeModule,
@@ -24,6 +27,7 @@ import { OutboxRetentionService } from './outbox-retention.service';
     SubscriptionsModule,
   ],
   providers: [
+    FileObjectsDeleteOutboxHandler,
     ArtifactUploadedOutboxHandler,
     GroupLifecycleOutboxHandler,
     OutboxDispatcherService,

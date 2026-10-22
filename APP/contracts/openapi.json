@@ -988,7 +988,9 @@
             "required": false,
             "in": "query",
             "schema": {
-              "type": "string"
+              "minimum": 1,
+              "maximum": 200,
+              "type": "number"
             }
           },
           {
@@ -996,7 +998,9 @@
             "required": false,
             "in": "query",
             "schema": {
-              "type": "string"
+              "minimum": 0,
+              "maximum": 2147483647,
+              "type": "number"
             }
           },
           {
@@ -1012,7 +1016,13 @@
             "required": false,
             "in": "query",
             "schema": {
-              "type": "string"
+              "type": "string",
+              "enum": [
+                "online",
+                "offline",
+                "dnd_on",
+                "dnd_off"
+              ]
             }
           }
         ],
@@ -1389,6 +1399,15 @@
       "get": {
         "operationId": "SubscriptionsController_list",
         "parameters": [
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
           {
             "name": "manage",
             "required": false,
@@ -6663,6 +6682,10 @@
       "SubscriptionListResponseDto": {
         "type": "object",
         "properties": {
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          },
           "items": {
             "type": "array",
             "items": {
@@ -6678,6 +6701,7 @@
           }
         },
         "required": [
+          "nextCursor",
           "items",
           "pendingConfirmationCount"
         ]
@@ -6811,6 +6835,10 @@
       "SubscriptionManageListResponseDto": {
         "type": "object",
         "properties": {
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          },
           "items": {
             "type": "array",
             "items": {
@@ -6819,6 +6847,7 @@
           }
         },
         "required": [
+          "nextCursor",
           "items"
         ]
       },

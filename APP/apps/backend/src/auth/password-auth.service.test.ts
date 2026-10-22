@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import * as assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ForbiddenException } from '@nestjs/common';
+import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { PasswordAuthService } from './password-auth.service';
 import * as bcrypt from 'bcrypt';
 
@@ -137,4 +137,14 @@ test('changePassword replaces the hash, clears the temporary-password flag, and 
   assert.deepEqual(updateCalls[0].authVersion, { increment: 1 });
   assert.equal(refreshCalls.length, 1);
   assert.equal(deviceCalls.length, 1);
+});
+
+test('public registration cannot set a password on an existing OIDC-only account', async () => {
+  let updated = false;
+  const service = new PasswordAuthService({ user: {
+    findUnique: async () => ({ id: 'owner', email: 'owner@example.com', passwordHash: null, disabledAt: null }),
+    update: async () => { updated = true; return { id: 'owner' }; },
+  } } as never, { get: () => undefined } as never, {} as never, {} as never);
+  await assert.rejects(() => service.register('owner@example.com', 'Attacker123'), ConflictException);
+  assert.equal(updated, false);
 });

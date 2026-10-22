@@ -59,6 +59,7 @@ export class SubscriptionPostResponseDto {
 }
 
 export class SubscriptionListResponseDto {
+  nextCursor!: string | null;
   items!: SubscriptionPostSummaryResponseDto[];
   pendingConfirmationCount!: number;
   /** @deprecated Use pendingConfirmationCount. */
@@ -66,6 +67,7 @@ export class SubscriptionListResponseDto {
 }
 
 export class SubscriptionManageListResponseDto {
+  nextCursor!: string | null;
   items!: SubscriptionPostResponseDto[];
 }
 

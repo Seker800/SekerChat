@@ -16,6 +16,11 @@ export class PinSubscriptionPostDto {
 
 export class ListSubscriptionPostsQueryDto {
   @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  cursor?: string;
+
+  @IsOptional()
   @IsIn(['true', 'false'])
   manage?: string;
 
