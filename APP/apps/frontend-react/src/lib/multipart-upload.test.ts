@@ -72,14 +72,16 @@ describe('uploadFileViaMultipart', () => {
       'upload-1',
       1,
       expect.any(Blob),
-      undefined,
+      expect.any(AbortSignal),
+      expect.any(Function),
     );
     expect(uploadPartMock).toHaveBeenCalledWith(
       'token',
       'upload-1',
       2,
       expect.any(Blob),
-      undefined,
+      expect.any(AbortSignal),
+      expect.any(Function),
     );
     expect(completeUploadMock).toHaveBeenCalledWith('token', 'upload-1', [
       { partNumber: 1, etag: 'etag-part-1' },
@@ -295,7 +297,8 @@ describe('uploadFileViaMultipart', () => {
       'upload-resume-1',
       2,
       expect.any(Blob),
-      undefined,
+      expect.any(AbortSignal),
+      expect.any(Function),
     );
 
     expect(completeUploadMock).toHaveBeenCalledWith('token', 'upload-resume-1', [
@@ -370,5 +373,89 @@ describe('uploadFileViaMultipart', () => {
     expect(localStorage.getItem('sekerchat:upload:legacy')).toBeNull();
     expect(Array.from({ length: localStorage.length }, (_, index) => localStorage.key(index))
       .filter((key) => key?.startsWith('sekerchat:upload:')).length).toBeLessThanOrEqual(100);
+  });
+  it('aggregates in-flight bytes before concurrent parts complete', async () => {
+    initiateUploadMock.mockResolvedValue({ id: 'live', partSizeBytes: 5 });
+    completeUploadMock.mockResolvedValue({ kind: 'CHAT_ATTACHMENT', file: { id: 'file' } });
+    const finishes: Array<() => void> = [];
+    uploadPartMock.mockImplementation((_token, _id, partNumber, _blob, _signal, onBytes) => {
+      onBytes?.(2);
+      return new Promise((resolve) => finishes.push(() => resolve({ partNumber, etag: `etag-${partNumber}` })));
+    });
+    const progress = vi.fn();
+    const result = uploadFileViaMultipart('token', 'CHAT_ATTACHMENT', 'group', new File(['1234567890'], 'test.jpg'), progress);
+    await vi.waitFor(() => expect(finishes).toHaveLength(2));
+    expect(progress).toHaveBeenLastCalledWith(expect.objectContaining({ loaded: 4, percent: 40 }));
+    finishes.forEach((finish) => finish()); await result;
+    expect(progress).toHaveBeenLastCalledWith(expect.objectContaining({ loaded: 10, percent: 100 }));
+  });
+
+  it('does not retry permanent permission errors', async () => {
+    initiateUploadMock.mockResolvedValue({ id: 'denied', partSizeBytes: 5 });
+    uploadPartMock.mockRejectedValue(Object.assign(new Error('没有上传权限'), { status: 403 }));
+    vi.useFakeTimers();
+    const result = expect(uploadFileViaMultipart('token', 'CHAT_ATTACHMENT', 'group', new File(['x'], 'test.jpg'), () => undefined)).rejects.toThrow('没有上传权限');
+    await vi.advanceTimersByTimeAsync(50_000); await result;
+    expect(uploadPartMock).toHaveBeenCalledOnce(); vi.useRealTimers();
+  });
+
+  it('resets failed part bytes on retry without double counting', async () => {
+    vi.useFakeTimers(); initiateUploadMock.mockResolvedValue({ id: 'retry-progress', partSizeBytes: 5 });
+    completeUploadMock.mockResolvedValue({ kind: 'CHAT_ATTACHMENT', file: { id: 'file' } });
+    uploadPartMock
+      .mockImplementationOnce(async (_token, _id, _part, _blob, _signal, onBytes) => { onBytes?.(4); throw new Error('network'); })
+      .mockImplementationOnce(async (_token, _id, partNumber, _blob, _signal, onBytes) => { onBytes?.(2); return { partNumber, etag: 'etag' }; });
+    const progress = vi.fn();
+    const result = uploadFileViaMultipart('token', 'CHAT_ATTACHMENT', 'group', new File(['12345'], 'test.jpg'), progress);
+    await vi.advanceTimersByTimeAsync(2000); await result;
+    const loaded = progress.mock.calls.map(([event]) => event.loaded);
+    expect(loaded).toContain(4); expect(loaded).toContain(2); expect(Math.max(...loaded)).toBe(5);
+    expect(progress).toHaveBeenLastCalledWith(expect.objectContaining({ percent: 100 })); vi.useRealTimers();
+  });
+
+});
+
+describe('upload cancellation coordination', () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.useFakeTimers();
+    initiateUploadMock.mockResolvedValue({ id: 'cancel-coordination', partSizeBytes: 5 });
+    abortUploadMock.mockResolvedValue({ aborted: true });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.clearAllMocks();
+  });
+
+  it('cancels during retry backoff without launching another attempt', async () => {
+    const controller = new AbortController();
+    uploadPartMock.mockRejectedValue(new Error('network failure'));
+    const progress = vi.fn();
+    const result = expect(uploadFileViaMultipart('token', 'CHAT_ATTACHMENT', 'group', new File(['x'], 'test.jpg'), progress, controller.signal)).rejects.toMatchObject({ name: 'AbortError' });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(progress).toHaveBeenLastCalledWith(expect.objectContaining({ stage: 'retrying', retryAttempt: 1 }));
+    controller.abort();
+    await result;
+    await vi.advanceTimersByTimeAsync(50_000);
+    expect(uploadPartMock).toHaveBeenCalledOnce();
+    expect(abortUploadMock).toHaveBeenCalledWith('token', 'cancel-coordination');
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('stops sibling requests and progress updates after a permanent error', async () => {
+    let siblingSignal: AbortSignal | undefined;
+    uploadPartMock.mockImplementation((_token, _id, partNumber, _blob, signal) => {
+      if (partNumber === 1) return Promise.reject(Object.assign(new Error('denied'), { status: 403 }));
+      siblingSignal = signal;
+      return new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError'))));
+    });
+    const progress = vi.fn();
+    await expect(uploadFileViaMultipart('token', 'CHAT_ATTACHMENT', 'group', new File(['1234567890'], 'test.jpg'), progress)).rejects.toThrow('denied');
+    expect(siblingSignal?.aborted).toBe(true);
+    const count = progress.mock.calls.length;
+    await vi.advanceTimersByTimeAsync(50_000);
+    expect(progress).toHaveBeenCalledTimes(count);
+    expect(abortUploadMock).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

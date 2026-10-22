@@ -134,6 +134,14 @@ S3_SECRET_ACCESS_KEY=minioadmin
 
 上传默认走同源 API 代理：浏览器把分片 `PUT` 到当前页面同源的 `/api/uploads/:sessionId/parts/:partNumber`，后端再通过 `S3_ENDPOINT` 写入 MinIO。因此从 `localhost`、局域网 IP 或外网域名访问同一套前端时，上传不依赖固定的 `S3_PUBLIC_ENDPOINT`。
 
+上传进度按浏览器实时发送的字节汇总，并分别显示已确认分片、重试次数、已用时间、完成上传和发送消息阶段。100% 只表示请求体已经发出，仍需等待服务端确认。
+
+分片请求连续 45 秒没有新增发送字节会中止并提示网络停滞；请求体发送完成后，最多等待 120 秒的分片确认。慢速但持续有新增字节的上传不会触发停滞判断，仍受原有 55 分钟单次请求上限约束。网络错误、408、429 和服务端错误沿用最多 3 次重试，间隔为 2、8、30 秒；其他 4xx 错误直接展示。完成上传接口最多等待 120 秒，超时会明确提示。失败时保留会话以便重新选择原文件后续传；主动取消则清理会话。
+
+不要只修改共享分片常量来缩小分片：当前服务端根据固定的 32 MiB 校验分片数量，且上传会话没有持久化各自的分片大小。调整它需要先设计已有会话的兼容方式；S3 非末尾分片还有 [至少 5 MiB 的限制](https://docs.aws.amazon.com/AmazonS3/latest/userguide/qfacts.html)。实时进度采用浏览器原生的 [XHR upload 事件](https://developer.mozilla.org/en-US/docs/Web/API/XMLHttpRequest/upload)，认证刷新继续由统一 API 层负责。
+
+排查上传停滞时，先用浏览器 Network 确认失败阶段，再按 upload session ID 对照代理和后端日志。经授权只读检查生产会话状态与 MinIO 已确认分片，可以区分第一片尚未完成、文件合并和消息创建问题；不要用未认证请求返回 401 来证明对象写入正常。nginx 当前已设置 `proxy_request_buffering off`，仍需核对实际运行配置，含义见 [nginx 官方文档](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_request_buffering)。Node HTTP 服务另有请求体总接收时限，当前 Node 22 默认 300 秒，见 [Node 文档](https://nodejs.org/docs/latest-v22.x/api/http.html#serverrequesttimeout)；浏览器的停滞超时不代表这一服务端时限被延长。
+
 `S3_PUBLIC_ENDPOINT` 只用于可选的对象存储直连下载/预览优化。只有当 MinIO 对所有目标客户端都有同一个稳定可达地址时才设置它；否则留空，让前端回退到后端代理下载/预览。
 
 前端默认继续通过：

@@ -4,6 +4,7 @@ export const BROWSER_COOKIE_CREDENTIAL = 'browser-cookie-session';
 interface FetchApiInternalOptions {
   authRetryAttempted?: boolean;
   disableAuthRetry?: boolean;
+  transport?: (url: string, init: RequestInit) => Promise<Response>;
 }
 
 interface AuthSessionController {
@@ -69,7 +70,8 @@ export async function fetchApi(
   }
 
   try {
-    const response = await fetch(url, { credentials: 'include', ...init, signal: controller.signal });
+    const transport = internalOptions?.transport ?? fetch;
+    const response = await transport(url, { credentials: 'include', ...init, signal: controller.signal });
 
     if (
       response.status === 401
@@ -83,7 +85,7 @@ export async function fetchApi(
           url,
           init,
           timeoutMs,
-          { authRetryAttempted: true },
+          { ...internalOptions, authRetryAttempted: true },
         );
       }
     }

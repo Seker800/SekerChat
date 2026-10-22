@@ -8,12 +8,18 @@ import {
   type UploadKind,
 } from './uploads-api';
 import { mapWithConcurrency } from './async-pool';
+import { waitForUploadRetry } from './upload-transport';
 
 export interface MultipartUploadProgress {
   loaded: number;
   total: number;
   percent: number;
   speedBytesPerSec: number;
+  stage?: 'uploading' | 'retrying' | 'finalizing';
+  retryAttempt?: number;
+  elapsedSeconds?: number;
+  completedParts?: number;
+  totalParts?: number;
 }
 
 export interface MultipartUploadResult {
@@ -234,82 +240,94 @@ export async function uploadFileViaMultipart(
   }
 
   const completedParts = [...baseCompletedParts];
+  const inFlightBytes = new Map<number, number>();
+  const retries = new Map<number, number>();
+  const startedAt = Date.now();
+  let stage: MultipartUploadProgress['stage'] = 'uploading';
   let lastLoadedBytes = loadedBytes;
   let lastTs = Date.now();
   let speedBytesPerSec = 0;
+  let finished = false;
 
-  const updateProgress = (deltaBytes: number) => {
-    loadedBytes += deltaBytes;
+  const updateProgress = () => {
+    if (finished) return;
+    const currentBytes = loadedBytes + [...inFlightBytes.values()].reduce((sum, bytes) => sum + bytes, 0);
     const now = Date.now();
     const elapsed = now - lastTs;
     if (elapsed >= 500) {
-      speedBytesPerSec = Math.max(
-        0,
-        Math.round(((loadedBytes - lastLoadedBytes) / elapsed) * 1000),
-      );
-      lastLoadedBytes = loadedBytes;
+      speedBytesPerSec = Math.max(0, Math.round(((currentBytes - lastLoadedBytes) / elapsed) * 1000));
+      lastLoadedBytes = currentBytes;
       lastTs = now;
     }
     onProgress({
-      loaded: loadedBytes,
+      loaded: currentBytes,
       total: file.size,
-      percent: Math.min(100, Math.round((loadedBytes / file.size) * 100)),
+      percent: Math.min(100, Math.round((currentBytes / file.size) * 100)),
       speedBytesPerSec,
+      stage: retries.size > 0 ? 'retrying' : stage,
+      retryAttempt: Math.max(0, ...retries.values()),
+      elapsedSeconds: Math.floor((now - startedAt) / 1000),
+      completedParts: completedParts.length,
+      totalParts: chunks.length,
     });
   };
 
-  // Report initial progress (resumed state)
-  updateProgress(0);
+  const runController = new AbortController();
+  const onAbort = () => runController.abort();
+  if (signal?.aborted) onAbort();
+  else signal?.addEventListener('abort', onAbort, { once: true });
+  const progressTimer = setInterval(updateProgress, 1000);
+  updateProgress();
 
-  // ── upload pending chunks through the app API ──
-  if (pendingChunks.length > 0) {
-    try {
-      await mapWithConcurrency(pendingChunks, DEFAULT_CONCURRENCY, async (chunk) => {
-        if (signal?.aborted) {
-          throw new DOMException('Upload aborted', 'AbortError');
-        }
-
-        let lastError: Error | undefined;
-        for (let attempt = 0; attempt <= MAX_PART_RETRIES; attempt++) {
-          try {
-            const uploaded = await uploadPart(
-              accessToken,
-              sessionId,
-              chunk.partNumber,
-              chunk.blob,
-              signal,
-            );
-            completedParts.push({ partNumber: chunk.partNumber, etag: uploaded.etag });
-            updateProgress(chunk.blob.size);
-            lastError = undefined;
-            break;
-          } catch (err) {
-            lastError = err instanceof Error ? err : new Error(String(err));
-            if (attempt < MAX_PART_RETRIES && !signal?.aborted) {
-              // Backoff: 2s, 8s, 30s
-              await new Promise((r) => setTimeout(r, RETRY_BACKOFF_MS[attempt]));
-            }
-          }
-        }
-
-        if (lastError) throw lastError;
-      });
-    } catch (error) {
-      // If user cancelled — abort and clean up. Otherwise leave session for resume.
-      if (signal?.aborted) {
+  try {
+    await mapWithConcurrency(pendingChunks, DEFAULT_CONCURRENCY, async (chunk) => {
+      for (let attempt = 0; ; attempt += 1) {
+        if (runController.signal.aborted) throw new DOMException('Upload aborted', 'AbortError');
         try {
-          await abortUpload(accessToken, sessionId);
-        } catch {
-          // Best-effort
+          const uploaded = await uploadPart(
+            accessToken, sessionId, chunk.partNumber, chunk.blob, runController.signal,
+            (loaded) => {
+              inFlightBytes.set(chunk.partNumber, Math.min(chunk.blob.size, Math.max(0, loaded)));
+              updateProgress();
+            },
+          );
+          inFlightBytes.delete(chunk.partNumber);
+          retries.delete(chunk.partNumber);
+          loadedBytes += chunk.blob.size;
+          completedParts.push({ partNumber: chunk.partNumber, etag: uploaded.etag });
+          updateProgress();
+          return;
+        } catch (error) {
+          inFlightBytes.delete(chunk.partNumber);
+          const status = error instanceof Error && 'status' in error ? Number(error.status) : 0;
+          const permanent = status >= 400 && status < 500 && status !== 408 && status !== 429;
+          if (runController.signal.aborted || permanent || attempt >= MAX_PART_RETRIES) throw error;
+          retries.set(chunk.partNumber, attempt + 1);
+          updateProgress();
+          await waitForUploadRetry(RETRY_BACKOFF_MS[attempt]!, runController.signal);
+          retries.delete(chunk.partNumber);
         }
-        removePersistedSession(persistenceKind, targetId, file.name, file.size, file.lastModified);
       }
-      throw error;
-    }
-  }
+    });
 
-  // ── finalize ──
-  const finalized = await completeUpload(accessToken, sessionId, completedParts);
-  removePersistedSession(persistenceKind, targetId, file.name, file.size, file.lastModified);
-  return { finalized };
+    if (runController.signal.aborted) throw new DOMException('Upload aborted', 'AbortError');
+    stage = 'finalizing';
+    speedBytesPerSec = 0;
+    updateProgress();
+    const finalized = await completeUpload(accessToken, sessionId, completedParts);
+    removePersistedSession(persistenceKind, targetId, file.name, file.size, file.lastModified);
+    return { finalized };
+  } catch (error) {
+    // Stop sibling requests before exposing the error; keep confirmed parts resumable.
+    runController.abort();
+    if (signal?.aborted) {
+      await abortUpload(accessToken, sessionId).catch(() => undefined);
+      removePersistedSession(persistenceKind, targetId, file.name, file.size, file.lastModified);
+    }
+    throw error;
+  } finally {
+    finished = true;
+    clearInterval(progressTimer);
+    signal?.removeEventListener('abort', onAbort);
+  }
 }

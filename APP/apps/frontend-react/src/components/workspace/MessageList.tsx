@@ -220,6 +220,8 @@ export function MessageList({
                     percent={pendingUpload.progress.percent}
                     speedBytesPerSec={pendingUpload.progress.speedBytesPerSec}
                     error={pendingUpload.error}
+                    progress={pendingUpload.progress}
+                    creatingMessage={pendingUpload.status === 'creating-message'}
                   />
                   {pendingUpload.status === 'error' ? (
                     <div className={styles.pendingActions}>

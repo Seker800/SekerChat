@@ -1,4 +1,5 @@
 import { fetchApi, apiBaseUrl, authHeaders, bearerHeader, parseResponse } from './api-core';
+import { sendUploadRequest } from './upload-transport';
 import type { components } from '@sekerchat/contracts/openapi';
 
 export type UploadKind = 'CHAT_ATTACHMENT' | 'ARTIFACT' | 'SUBSCRIPTION_ATTACHMENT' | 'ALBUM_PHOTO';
@@ -67,6 +68,7 @@ export async function uploadPart(
   partNumber: number,
   blob: Blob,
   signal?: AbortSignal,
+  onProgress?: (loaded: number) => void,
 ): Promise<{ uploadSessionId: string; partNumber: number; etag: string }> {
   const response = await fetchApi(
     `${apiBaseUrl}/uploads/${uploadSessionId}/parts/${partNumber}`,
@@ -80,9 +82,15 @@ export async function uploadPart(
       signal,
     },
     55 * 60 * 1000,
+    { transport: (url, init) => sendUploadRequest(url, init, onProgress) },
   );
 
-  return parseResponse<{ uploadSessionId: string; partNumber: number; etag: string }>(response);
+  try {
+    return await parseResponse<{ uploadSessionId: string; partNumber: number; etag: string }>(response);
+  } catch (error) {
+    if (error instanceof Error) Object.assign(error, { status: response.status });
+    throw error;
+  }
 }
 
 export async function completeUpload(
@@ -90,17 +98,23 @@ export async function completeUpload(
   uploadSessionId: string,
   parts: CompleteUploadPartInput[],
 ): Promise<FinalizedUploadResponse> {
-  const response = await fetchApi(
-    `${apiBaseUrl}/uploads/${uploadSessionId}/complete`,
-    {
-      method: 'POST',
-      headers: authHeaders(accessToken),
-      body: JSON.stringify({ parts }),
-    },
-    55 * 60 * 1000,
-  );
-
-  return parseResponse<FinalizedUploadResponse>(response);
+  try {
+    const response = await fetchApi(
+      `${apiBaseUrl}/uploads/${uploadSessionId}/complete`,
+      {
+        method: 'POST',
+        headers: authHeaders(accessToken),
+        body: JSON.stringify({ parts }),
+      },
+      120_000,
+    );
+    return await parseResponse<FinalizedUploadResponse>(response);
+  } catch (error) {
+    if ((error instanceof Error || error instanceof DOMException) && error.name === 'AbortError') {
+      throw new Error('完成上传超时，请稍后重试。');
+    }
+    throw error;
+  }
 }
 
 export async function abortUpload(
