@@ -18,5 +18,6 @@ any additional high/critical vulnerability appears.
 - Reviewed: 2026-10-22 against the installed lockfile and GHSA advisory; HTTP input still cannot supply recursive configuration object graphs.
 - Review by: 2026-11-21, or immediately when upgrading Prisma.
 - The existing audit gate remains restricted to this exact chain; Markdown and Vite advisories are fixed by compatible patch upgrades rather than added to the exception.
+- 2026-10-23 release preparation: upgraded the locked DOMPurify dependency from 3.4.13 to 3.4.17, the upstream patch for the newly reported sanitization advisories. No additional audit exception was added.
 
 Reference: [GitHub Advisory GHSA-ggr8-5vv4-36mx](https://github.com/advisories/GHSA-ggr8-5vv4-36mx)

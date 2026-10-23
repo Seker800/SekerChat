@@ -151,7 +151,7 @@ test.describe('review web smoke', () => {
   test('shows add-to-artifacts actions beside attachments while the channel is packaging', async ({
     page,
   }) => {
-    await page.route('**/fixture-design.svg', async (route) => {
+    await page.route('**/fixture-design-thumbnail.svg', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'image/svg+xml',
@@ -196,7 +196,8 @@ test.describe('review web smoke', () => {
                 metadataUrl: '/api/groups/group-1/files/file-image',
                 uploaderId: 'user-member',
                 kind: 'image',
-                thumbnailUrl: null,
+                thumbnailUrl: '/fixture-design-thumbnail.svg',
+                thumbnailStatus: 'READY',
               },
               readReceipt: null,
               revokedAt: null,
@@ -239,6 +240,7 @@ test.describe('review web smoke', () => {
 
     await page.goto('/groups/group-1');
     await expect(page.getByRole('button', { name: '添加到产出' })).toHaveCount(2);
+    await expect(page.getByRole('img', { name: 'design.png', exact: true })).toBeVisible();
     await expect(page.getByTestId('workspace-surface')).toHaveScreenshot(
       'workspace-packaging-artifact-actions.png',
       {
