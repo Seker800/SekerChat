@@ -131,7 +131,7 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
       - if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: playwright-report
           path: APP/playwright-report
@@ -147,7 +147,7 @@ jobs:
           dotnet-version: 10.0.x
       - run: dotnet run --project native/desktop-pet/tests/SekerChat.DesktopPet.CoreTests/SekerChat.DesktopPet.CoreTests.csproj --configuration Release
       - run: dotnet publish native/desktop-pet/src/SekerChat.DesktopPet/SekerChat.DesktopPet.csproj --configuration Release --runtime win-x64 --self-contained true --output native/desktop-pet/artifacts/win-x64
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: desktop-pet-win-x64-unsigned-test
           path: APP/native/desktop-pet/artifacts/win-x64/SekerChat.DesktopPet.exe
@@ -170,14 +170,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: docker build --file ${{ matrix.dockerfile }} --tag ${{ matrix.image }} .
       - name: Generate image SBOM
-        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
         with:
           image: ${{ matrix.image }}
           artifact-name: sekerchat-${{ matrix.name }}-sbom.spdx.json
           output-file: sekerchat-${{ matrix.name }}-sbom.spdx.json
           format: spdx-json
       - name: Scan image vulnerabilities
-        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
         with:
           image: ${{ matrix.image }}
           config: .grype.yaml
