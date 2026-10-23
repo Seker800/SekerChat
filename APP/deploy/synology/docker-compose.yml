@@ -41,7 +41,10 @@ services:
       HOST: 0.0.0.0
       PORT: 3100
       NODE_ENV: production
-    mem_limit: 512m
+    # A 94 MP progressive JPEG needs ~550 MiB transient native decoder memory.
+    # Include API/Prisma headroom; operation caching is disabled in the image policy.
+    mem_limit: 1g
+    memswap_limit: 1536m
     healthcheck:
       test:
         [

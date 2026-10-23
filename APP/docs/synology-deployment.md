@@ -128,6 +128,16 @@ curl -fsS "http://${NAS_LAN_IP}:8080/api/health/ready"
 
 ## 生产内存趋势监控
 
+后端容器预算为 1 GiB RAM、RAM 与 swap 合计 1536 MiB。共享图像策略关闭 libvips 操作缓存，运行镜像设置 `MALLOC_ARENA_MAX=2`，避免串行历史预览任务仍保留原生解码内存。约 94 MP 的渐进式 JPEG 单次解码需要约 550 MiB，不能以压缩文件大小或普通 PNG 的占用估计。报告按每条采样的实际容器限额判断内存余量。
+
+发布涉及图片处理时，在本机使用实际候选镜像验证连续解码；输入为至少 90 MP 的渐进式 JPEG，可使用私有导出样本，不提交图片。该检查禁用网络与 swap，限制 1 GiB，并预留 220 MiB 模拟 API 占用：
+
+```bash
+node scripts/smoke-image-memory.mjs sekerchat-backend:v<version> /absolute/path/to/progressive-sample.jpg
+```
+
+此检查必须在独立临时容器运行，不能通过 `docker exec` 把额外的 Node/Prisma/解码验收进程塞入线上后端配额。图片处理仍复用串行任务队列与持久化重试状态；该预算覆盖已验证样本，不表示任意尺寸文件都有固定内存上限。
+
 `memory-monitor.sh` 在群晖上运行，只读取 `/proc` 和 Docker 容器状态，不读取 `.env`、数据库内容或对象存储文件，也不会重启容器。默认每分钟采样一次，连续运行 48 小时，结果保存在群晖的 `monitoring/data/`。
 
 在本机上传并启动：

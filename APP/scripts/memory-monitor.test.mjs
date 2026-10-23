@@ -7,6 +7,21 @@ import test from 'node:test';
 
 const appRoot = resolve(import.meta.dirname, '..');
 
+test('memory thresholds follow each sample container limit', async () => {
+  const { summarizeMemorySamples } = await import('./analyze-memory-monitor.mjs');
+  const sample = {
+    timestamp_epoch: 1, timestamp_iso: 'test', backend_exists: true,
+    backend_mem_bytes: 600 * 1048576, backend_limit_bytes: 1024 * 1048576,
+    backend_restart_count: 0, backend_oom_killed: false,
+    host_mem_available_kib: 1048576, host_swap_used_kib: 0,
+    host_pswpin_pages: 0, host_pswpout_pages: 0,
+  };
+  assert.equal(summarizeMemorySamples([sample]).status, 'healthy');
+  assert.equal(summarizeMemorySamples([{ ...sample, backend_mem_bytes: 850 * 1048576 }]).status, 'warning');
+  assert.equal(summarizeMemorySamples([{ ...sample, backend_mem_bytes: 970 * 1048576 }]).status, 'critical');
+  assert.equal(summarizeMemorySamples([{ ...sample, backend_limit_bytes: 512 * 1048576 }]).status, 'critical');
+});
+
 test('Synology sampler records host and SekerChat container memory', () => {
   const fixture = createCollectorFixture();
   const result = spawnSync(

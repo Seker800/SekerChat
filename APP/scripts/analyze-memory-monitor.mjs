@@ -56,10 +56,14 @@ export function summarizeMemorySamples(inputSamples) {
     findings.push(`监控期间 backend 发生 ${backend.restartDelta} 次重启。`);
     severity = Math.max(severity, 2);
   }
-  if (backend.maxMiB >= 480) {
-    findings.push(`backend 峰值 ${format(backend.maxMiB)} MiB，已经逼近 512 MiB 上限。`);
+  const backendUsageRatios = samples
+    .filter((sample) => sample.backend_exists && sample.backend_mem_bytes > 0)
+    .map((sample) => sample.backend_mem_bytes / (sample.backend_limit_bytes || 512 * MIB));
+  const maxBackendUsageRatio = Math.max(0, ...backendUsageRatios);
+  if (maxBackendUsageRatio >= 0.9375) {
+    findings.push(`backend 峰值 ${format(backend.maxMiB)} MiB，最高占容器限额 ${format(maxBackendUsageRatio * 100)}%。`);
     severity = Math.max(severity, 2);
-  } else if (backend.maxMiB >= 420) {
+  } else if (maxBackendUsageRatio >= 0.82) {
     findings.push(`backend 峰值 ${format(backend.maxMiB)} MiB，内存余量偏低。`);
     severity = Math.max(severity, 1);
   }

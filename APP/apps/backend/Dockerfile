@@ -29,6 +29,7 @@ FROM node:22-bookworm-slim@sha256:d649c27dae7ba0137b3cef5dd75baa422c08dc3d9e3fc0
 
 WORKDIR /app
 ENV NODE_ENV=production
+ENV MALLOC_ARENA_MAX=2
 
 RUN apt-get update -y \
   && apt-get upgrade -y --no-install-recommends \
