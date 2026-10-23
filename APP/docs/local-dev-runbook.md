@@ -275,3 +275,9 @@ SEKERCHAT_PREVIEW_INTEGRATION=1 node --require ts-node/register --test src/files
 Browser regression: `cd APP && npx playwright test tests/e2e/workspace-image-preview.spec.ts`.
 This covers explicit failure, retry completion without fetching the original,
 and reuse of an already opened original.
+
+全屏原图预览沿用私有媒体缓存和同源下载链路，按响应流接收的实际字节更新进度。
+有可靠的 Content-Length 时显示百分比和已下载/总大小；未知长度或压缩响应只显示已接收大小，
+不会猜测百分比。下载结束后仍保留“正在解析图片”状态，直到浏览器完成图片加载。
+关闭预览移除该观察者；多个预览共享下载，最后一个观察者关闭时才取消请求。
+加载浮层在桌面和窄屏使用同一套布局，并支持系统减少动态效果偏好。

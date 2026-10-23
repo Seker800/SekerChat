@@ -642,3 +642,59 @@ test('failed large-image previews stay explicit, retry durably, and never silent
   await expect(page.getByTestId('image-preview-image')).toBeVisible();
   expect(originals).toBe(firstOpenRequests);
 });
+
+test('shows streamed original progress in a compact loader on desktop and mobile', async ({ page }) => {
+  await installAuthenticatedAppWithOptions(page, {
+    messagesResponse: { status: 200, body: { groupId: 'group-1', items: [{
+      id: 'progress-message', groupId: 'group-1', senderId: 'user-admin', type: 'image', text: null,
+      mentionedUserIds: [], replyTo: null, createdAt: '2026-04-10T12:00:00.000Z',
+      sender: { id: 'user-admin', email: 'admin@local.invalid', displayName: '管理员' },
+      attachment: {
+        id: 'progress-file', fileId: 'progress-file', groupId: 'group-1', originalName: '旅行照片.png',
+        mimeType: 'image/svg+xml', size: oversizedSvg.length, width: 900, height: 2400,
+        contentUrl: 'http://127.0.0.1:4173/api/groups/group-1/files/progress/content',
+        thumbnailUrl: 'http://assets.local/previews/progress-thumbnail.svg',
+        metadataUrl: 'http://assets.local/previews/progress.json', uploaderId: 'user-admin', kind: 'image',
+        createdAt: '2026-04-10T12:00:00.000Z',
+      },
+    }] } },
+  });
+  await page.route('**/previews/progress-thumbnail.svg', (route) => route.fulfill({ contentType: 'image/svg+xml', body: oversizedSvg }));
+  // Keep a real browser Response stream open between chunks so the UI can render
+  // intermediate progress; route.fulfill buffers the complete response body.
+  await page.addInitScript((body) => {
+    const nativeFetch = window.fetch;
+    window.fetch = (input, init) => {
+      const url = input instanceof Request ? input.url : String(input);
+      if (!url.endsWith('/api/groups/group-1/files/progress/content')) return nativeFetch(input, init);
+      const bytes = new TextEncoder().encode(body);
+      const midpoint = Math.floor(bytes.length / 2);
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(bytes.slice(0, midpoint));
+          window.addEventListener('finish-preview-test', () => {
+            controller.enqueue(bytes.slice(midpoint));
+            controller.close();
+          }, { once: true });
+        },
+      });
+      return Promise.resolve(new Response(stream, { headers: { 'content-type': 'image/svg+xml', 'content-length': String(bytes.length) } }));
+    };
+  }, oversizedSvg);
+  await page.goto('/groups/group-1');
+  await page.getByRole('button', { name: '全屏查看 旅行照片.png' }).click();
+  const bar = page.getByRole('progressbar', { name: '大图加载进度' });
+  const percent = Math.floor(Math.floor(oversizedSvg.length / 2) / oversizedSvg.length * 100);
+  await expect(bar).toHaveAttribute('aria-valuenow', String(percent));
+  await expect(page.getByRole('status')).toContainText(`${percent}%`);
+  await expect(bar.locator('span')).toHaveCSS('animation-name', 'none');
+  await page.screenshot({ path: 'test-results/image-preview-progress-desktop.png' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  const bounds = await page.getByRole('status').boundingBox();
+  expect(bounds!.x).toBeGreaterThanOrEqual(16);
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(374);
+  await page.screenshot({ path: 'test-results/image-preview-progress-mobile.png' });
+  await page.evaluate(() => window.dispatchEvent(new Event('finish-preview-test')));
+  await expect(page.getByTestId('image-preview-image')).toBeVisible();
+  await expect(bar).toHaveCount(0);
+});

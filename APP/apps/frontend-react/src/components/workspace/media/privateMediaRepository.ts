@@ -52,6 +52,38 @@ interface ThumbnailRequest {
   signal?: AbortSignal;
 }
 
+export interface PreviewDownloadProgress {
+  loaded: number;
+  total: number | null;
+}
+
+interface PreviewRequest extends ThumbnailRequest {
+  onProgress?: (progress: PreviewDownloadProgress) => void;
+}
+
+interface PreviewEntry extends ThumbnailEntry {
+  progress: PreviewDownloadProgress;
+  progressListeners: Set<(progress: PreviewDownloadProgress) => void>;
+}
+
+async function readPreviewBlob(response: Response, onProgress: (progress: PreviewDownloadProgress) => void): Promise<Blob> {
+  const length = Number(response.headers.get('content-length'));
+  const encoding = response.headers.get('content-encoding');
+  let total = Number.isFinite(length) && length > 0 && (!encoding || encoding === 'identity') ? length : null;
+  let loaded = 0;
+  onProgress({ loaded, total });
+  if (!response.body) return response.blob();
+  const stream = response.body.pipeThrough(new TransformStream<Uint8Array, Uint8Array>({
+    transform(chunk, controller) {
+      loaded += chunk.byteLength;
+      if (total !== null && loaded > total) total = null;
+      onProgress({ loaded, total });
+      controller.enqueue(chunk);
+    },
+  }));
+  return new Response(stream, { headers: { 'content-type': response.headers.get('content-type') ?? '' } }).blob();
+}
+
 interface OriginalUrlRequest {
   viewerId: string;
   accessToken: string;
@@ -87,7 +119,7 @@ export function createPrivateMediaRepository(options: RepositoryOptions = {}) {
   const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
   const thumbnails = new Map<string, ThumbnailEntry>();
   const originals = new Map<string, OriginalUrlEntry>();
-  const previews = new Map<string, ThumbnailEntry>();
+  const previews = new Map<string, PreviewEntry>();
   const previewMaxBytes = options.previewMaxBytes ?? PREVIEW_MAX_BYTES;
 
   function evictReleasedPreviews() {
@@ -233,7 +265,7 @@ export function createPrivateMediaRepository(options: RepositoryOptions = {}) {
     };
   }
 
-  async function acquirePreview(request: ThumbnailRequest): Promise<ThumbnailLease> {
+  async function acquirePreview(request: PreviewRequest): Promise<ThumbnailLease> {
     if (request.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
     const key = mediaKey(request.viewerId, 'original', request.url);
     let entry = previews.get(key);
@@ -248,6 +280,8 @@ export function createPrivateMediaRepository(options: RepositoryOptions = {}) {
     }
     if (!entry) {
       entry = {
+        progress: { loaded: 0, total: null },
+        progressListeners: new Set(),
         invalidated: false,
         key,
         pendingConsumers: 0,
@@ -270,7 +304,13 @@ export function createPrivateMediaRepository(options: RepositoryOptions = {}) {
           PREVIEW_REQUEST_TIMEOUT_MS,
         );
         if (!response.ok) throw new Error(`Preview request failed: ${response.status}`);
-        const blob = await response.blob();
+        const blob = await readPreviewBlob(response, (progress) => {
+          controller.signal.throwIfAborted();
+          target.progress = progress;
+          for (const listener of target.progressListeners) listener(progress);
+        });
+        target.progress = { loaded: blob.size, total: blob.size };
+        for (const listener of target.progressListeners) listener(target.progress);
         if (target.invalidated) throw new DOMException('Aborted', 'AbortError');
         target.src = createObjectUrl(blob);
         target.size = blob.size;
@@ -286,7 +326,17 @@ export function createPrivateMediaRepository(options: RepositoryOptions = {}) {
       });
       previews.set(key, target);
     }
-    const resolved = entry.pending ? await waitForPendingThumbnail(entry, request.signal) : entry;
+    const onProgress = request.onProgress;
+    if (onProgress) {
+      entry.progressListeners.add(onProgress);
+      onProgress(entry.progress);
+    }
+    let resolved: ThumbnailEntry;
+    try {
+      resolved = entry.pending ? await waitForPendingThumbnail(entry, request.signal) : entry;
+    } finally {
+      if (onProgress) entry.progressListeners.delete(onProgress);
+    }
     if (request.signal?.aborted) throw new DOMException('Aborted', 'AbortError');
     if (!resolved.src) throw new Error('Preview response produced no object URL.');
     resolved.references += 1;

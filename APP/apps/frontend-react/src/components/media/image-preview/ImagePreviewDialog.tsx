@@ -1,8 +1,11 @@
-import { IconRefresh } from '@tabler/icons-react';
+import { IconPhoto, IconRefresh } from '@tabler/icons-react';
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
 import styles from './ImagePreviewDialog.module.css';
 import type { PreviewImage } from './useImagePreviewState';
-import { privateMediaRepository } from '../../workspace/media/privateMediaRepository';
+import {
+  privateMediaRepository,
+  type PreviewDownloadProgress,
+} from '../../workspace/media/privateMediaRepository';
 
 interface ImagePreviewDialogProps {
   activeDimensions: { width: number; height: number } | null;
@@ -19,6 +22,12 @@ interface ImagePreviewDialogProps {
 }
 
 type PreviewLoadStatus = 'loading' | 'loaded' | 'error';
+
+function formatProgressBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 export function ImagePreviewDialog({
   activeDimensions,
@@ -44,6 +53,9 @@ export function ImagePreviewDialog({
     attempt: number;
     objectUrl: string;
   } | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState<
+    (PreviewDownloadProgress & { src: string; attempt: number }) | null
+  >(null);
   const activeLoadState =
     loadState.src === image.src
       ? loadState
@@ -60,6 +72,10 @@ export function ImagePreviewDialog({
         accessToken: image.accessToken,
         url: image.src,
         signal: controller.signal,
+        onProgress: (progress) => {
+          if (!controller.signal.aborted)
+            setDownloadProgress({ ...progress, src: image.src, attempt: activeLoadState.attempt });
+        },
       })
       .then((lease) => {
         if (controller.signal.aborted) {
@@ -86,6 +102,22 @@ export function ImagePreviewDialog({
         ? cachedSource.objectUrl
         : null
       : image.src;
+
+  const progress =
+    downloadProgress?.src === image.src && downloadProgress.attempt === activeLoadState.attempt
+      ? downloadProgress
+      : null;
+  const isDecoding = Boolean(image.accessToken && image.viewerId && displaySource);
+  const percent = isDecoding
+    ? 100
+    : progress?.total
+      ? Math.min(100, Math.floor((progress.loaded / progress.total) * 100))
+      : null;
+  const progressText = progress
+    ? progress.total
+      ? `${formatProgressBytes(progress.loaded)} / ${formatProgressBytes(progress.total)}`
+      : `已接收 ${formatProgressBytes(progress.loaded)}`
+    : '正在连接图片…';
 
   useEffect(() => {
     const stage =
@@ -119,11 +151,38 @@ export function ImagePreviewDialog({
           >
             {activeLoadState.status === 'loading' ? (
               <>
-                <div className={styles.previewProgress} aria-hidden="true">
-                  <span />
+                <div className={styles.previewLoadHeader}>
+                  <div className={styles.previewLoadIcon} aria-hidden="true">
+                    <IconPhoto size={24} stroke={1.6} />
+                  </div>
+                  <div className={styles.previewLoadCopy}>
+                    <strong>{isDecoding ? '正在解析图片…' : '正在加载大图…'}</strong>
+                    <span title={image.alt}>{isDecoding ? '即将呈现原图' : image.alt}</span>
+                  </div>
+                  <span className={styles.previewPercent}>
+                    {percent === null ? '…' : `${percent}%`}
+                  </span>
                 </div>
-                <strong>正在加载大图…</strong>
-                <span>图片较大或网络较慢时可能需要一点时间</span>
+                <div
+                  className={styles.previewProgress}
+                  role="progressbar"
+                  aria-label="大图加载进度"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={percent ?? undefined}
+                  aria-valuetext={
+                    isDecoding
+                      ? '下载完成，正在解析图片'
+                      : `${percent === null ? '' : `${percent}% · `}${progressText}`
+                  }
+                  data-determinate={percent !== null}
+                >
+                  <span style={percent === null ? undefined : { width: `${percent}%` }} />
+                </div>
+                <div className={styles.previewLoadMeta}>
+                  <span>{progressText}</span>
+                  <span>{isDecoding ? '下载完成' : '原始画质'}</span>
+                </div>
               </>
             ) : (
               <>

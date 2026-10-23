@@ -1,6 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { createRef } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ImagePreviewDialog } from './ImagePreviewDialog';
 import { privateMediaRepository } from '../../workspace/media/privateMediaRepository';
 
@@ -25,6 +25,48 @@ function renderDialog(overrides: Partial<Parameters<typeof ImagePreviewDialog>[0
 }
 
 describe('shared ImagePreviewDialog', () => {
+  afterEach(() => vi.restoreAllMocks());
+  it('shows actual download percentage and decoding separately, then removes progress', async () => {
+    let report!: (value: { loaded: number; total: number | null }) => void;
+    let finish!: (lease: { src: string; release: () => void }) => void;
+    const acquire = vi.spyOn(privateMediaRepository, 'acquirePreview').mockImplementation(({ onProgress }) => {
+      report = onProgress!;
+      return new Promise((resolve) => { finish = resolve; });
+    });
+    const view = renderDialog({ image: { src: '/api/groups/g/files/f/content', alt: 'large', accessToken: 'token', viewerId: 'user' } });
+    expect(screen.getByRole('progressbar')).not.toHaveAttribute('aria-valuenow');
+    act(() => report({ loaded: 1024, total: 4096 }));
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '25');
+    expect(screen.getByRole('status')).toHaveTextContent('25%');
+    expect(screen.getByRole('status')).toHaveTextContent('1.0 KB / 4.0 KB');
+    await act(async () => finish({ src: 'blob:large', release: vi.fn() }));
+    expect(screen.getByRole('status')).toHaveTextContent('正在解析图片');
+    fireEvent.load(screen.getByTestId('image-preview-image'));
+    expect(screen.queryByRole('progressbar')).toBeNull();
+    view.unmount();
+    acquire.mockRestore();
+  });
+
+  it('shows unknown-length bytes and resets progress when retrying a failed download', async () => {
+    let report!: (value: { loaded: number; total: number | null }) => void;
+    let fail!: (error: Error) => void;
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    vi.spyOn(privateMediaRepository, 'acquirePreview').mockImplementation(({ onProgress }) => {
+      report = onProgress!;
+      return new Promise((_resolve, reject) => { fail = reject; });
+    });
+    const view = renderDialog({ image: { src: '/api/groups/g/files/f/content', alt: 'large', accessToken: 'token', viewerId: 'user' } });
+    act(() => report({ loaded: 2048, total: null }));
+    expect(screen.getByRole('status')).toHaveTextContent('已接收 2.0 KB');
+    expect(screen.getByRole('progressbar')).not.toHaveAttribute('aria-valuenow');
+    await act(async () => fail(new Error('network failed')));
+    expect(screen.getByRole('alert')).toHaveTextContent('图片加载失败');
+    fireEvent.click(screen.getByRole('button', { name: '重新加载' }));
+    expect(screen.getByRole('status')).toHaveTextContent('正在连接图片');
+    expect(screen.getByRole('status')).not.toHaveTextContent('2.0 KB');
+    view.unmount();
+  });
+
   it('uses a leased original, releases it on close, and loads a changed image', async () => {
     const release = vi.fn();
     const acquire = vi

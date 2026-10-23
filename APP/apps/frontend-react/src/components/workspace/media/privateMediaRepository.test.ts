@@ -14,6 +14,51 @@ describe('private media repository', () => {
     vi.restoreAllMocks();
   });
 
+  it('reports streamed original progress to shared consumers and replays cached completion', async () => {
+    let source!: ReadableStreamDefaultController<Uint8Array>;
+    const stream = new ReadableStream<Uint8Array>({ start(controller) { source = controller; } });
+    const fetcher = vi.fn(async () => new Response(stream, { headers: { 'content-length': '8', 'content-type': 'image/png' } }));
+    const repository = createPrivateMediaRepository({ fetcher, createObjectUrl: () => 'blob:original', revokeObjectUrl: vi.fn() });
+    const request = { viewerId: 'user', accessToken: 'token', url: '/api/groups/g/files/f/content' };
+    const firstProgress = vi.fn();
+    const secondProgress = vi.fn();
+    const controller = new AbortController();
+    const first = repository.acquirePreview({ ...request, signal: controller.signal, onProgress: firstProgress });
+    const firstRejected = expect(first).rejects.toHaveProperty('name', 'AbortError');
+    const second = repository.acquirePreview({ ...request, onProgress: secondProgress });
+    source.enqueue(new Uint8Array(4));
+    await vi.waitFor(() => expect(secondProgress).toHaveBeenLastCalledWith({ loaded: 4, total: 8 }));
+    expect(firstProgress).toHaveBeenLastCalledWith({ loaded: 4, total: 8 });
+    controller.abort();
+    await firstRejected;
+    const callsAfterAbort = firstProgress.mock.calls.length;
+    source.enqueue(new Uint8Array(4));
+    source.close();
+    (await second).release();
+    expect(secondProgress).toHaveBeenLastCalledWith({ loaded: 8, total: 8 });
+    expect(firstProgress).toHaveBeenCalledTimes(callsAfterAbort);
+    const cachedProgress = vi.fn();
+    (await repository.acquirePreview({ ...request, onProgress: cachedProgress })).release();
+    expect(cachedProgress).toHaveBeenLastCalledWith({ loaded: 8, total: 8 });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    repository.clear();
+  });
+
+  it('reports bytes without a guessed total when response length is unknown or encoded', async () => {
+    for (const headers of [new Headers(), new Headers({ 'content-length': '2', 'content-encoding': 'gzip' }), new Headers({ 'content-length': '2' })]) {
+      let source!: ReadableStreamDefaultController<Uint8Array>;
+      const response = new Response(new ReadableStream<Uint8Array>({ start(controller) { source = controller; } }), { headers });
+      const repository = createPrivateMediaRepository({ fetcher: async () => response, createObjectUrl: () => 'blob:original', revokeObjectUrl: vi.fn() });
+      const onProgress = vi.fn();
+      const pending = repository.acquirePreview({ viewerId: 'user', accessToken: 'token', url: '/content', onProgress });
+      source.enqueue(new Uint8Array(4));
+      await vi.waitFor(() => expect(onProgress).toHaveBeenLastCalledWith({ loaded: 4, total: null }));
+      source.close();
+      (await pending).release();
+      repository.clear();
+    }
+  });
+
   it('reuses a loaded private original after closing and reopening', async () => {
     const fetcher = vi.fn(async () => thumbnailResponse('large-original'));
     const revokeObjectUrl = vi.fn();
