@@ -116,12 +116,13 @@ async function parseJsonResponse(response) {
   return payload;
 }
 
-async function postJsonWithAuth(apiBaseUrl, pathname, cookie, body, timeoutMs) {
+async function postJsonWithAuth(apiBaseUrl, browserOrigin, pathname, cookie, body, timeoutMs) {
   const response = await withTimeout(
     fetch(`${apiBaseUrl}${pathname}`, {
       method: 'POST',
       headers: {
         Cookie: cookie,
+        Origin: browserOrigin,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
@@ -378,6 +379,7 @@ async function main() {
     const groupName = `smoke-${Date.now()}`;
     const group = await postJsonWithAuth(
       apiBaseUrl,
+      browserOrigin,
       '/groups',
       alice.cookie,
       { name: groupName },
@@ -390,6 +392,7 @@ async function main() {
 
     await postJsonWithAuth(
       apiBaseUrl,
+      browserOrigin,
       `/groups/${group.id}/members`,
       alice.cookie,
       { email: bob.email },
@@ -410,6 +413,7 @@ async function main() {
 
     const firstMessage = await postJsonWithAuth(
       apiBaseUrl,
+      browserOrigin,
       `/groups/${group.id}/messages`,
       alice.cookie,
       { type: 'text', text: firstMessageText },
@@ -451,6 +455,7 @@ async function main() {
 
     const secondMessage = await postJsonWithAuth(
       apiBaseUrl,
+      browserOrigin,
       `/groups/${group.id}/messages`,
       alice.cookie,
       { type: 'text', text: secondMessageText },
