@@ -35,6 +35,7 @@ import { WorkspaceModule } from './workspace/workspace.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { HealthReadinessService } from './health-readiness.service';
 import { AlbumModule } from './album/album.module';
+import { NetworkModule } from './network/network.module';
 
 @Module({
   imports: [
@@ -68,6 +69,7 @@ import { AlbumModule } from './album/album.module';
     WorkspaceModule,
     SubscriptionsModule,
     AlbumModule,
+    NetworkModule,
   ],
   controllers: [AppController, RealtimeController],
   providers: [

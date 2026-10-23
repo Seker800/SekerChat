@@ -5761,6 +5761,40 @@
           "Workspace"
         ]
       }
+    },
+    "/api/network/status": {
+      "get": {
+        "operationId": "NetworkController_getStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "showWarning"
+                  ],
+                  "properties": {
+                    "showWarning": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
+        "tags": [
+          "network"
+        ]
+      }
     }
   },
   "info": {

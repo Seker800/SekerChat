@@ -1,6 +1,15 @@
 #!/bin/sh
 set -eu
 
+SEKERCHAT_TRUSTED_EDGE_PROXY=${SEKERCHAT_TRUSTED_EDGE_PROXY:-127.0.0.1/32}
+case "$SEKERCHAT_TRUSTED_EDGE_PROXY" in
+  *[!0-9a-fA-F:./]*|0.0.0.0/0|::/0)
+    printf '%s\n' 'SEKERCHAT_TRUSTED_EDGE_PROXY must be one explicit proxy IP or CIDR, not all addresses.' >&2
+    exit 1
+    ;;
+esac
+export SEKERCHAT_TRUSTED_EDGE_PROXY
+
 S3_PUBLIC_ENDPOINT=${S3_PUBLIC_ENDPOINT:-}
 if [ -n "$S3_PUBLIC_ENDPOINT" ]; then
   if ! printf '%s\n' "$S3_PUBLIC_ENDPOINT" | grep -Eq "^https?://[^[:space:];\"']+$"; then

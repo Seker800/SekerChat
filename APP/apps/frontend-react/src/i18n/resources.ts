@@ -1,6 +1,11 @@
 export const resources = {
   'zh-CN': {
     translation: {
+      networkReminder: {
+        title: '网络提醒',
+        message: '当前连接出口位于中国大陆以外，可能导致访问变慢。如你正在中国大陆使用，请将 SekerChat 设为「直连」。',
+        acknowledge: '知道了',
+      },
       language: {
         label: '语言',
         chinese: '简体中文',
@@ -234,6 +239,11 @@ export const resources = {
   },
   en: {
     translation: {
+      networkReminder: {
+        title: 'Network reminder',
+        message: 'Your connection exits outside mainland China, which may slow down access. If you are using SekerChat in mainland China, set its address to bypass your proxy.',
+        acknowledge: 'Got it',
+      },
       language: {
         label: 'Language',
         chinese: '简体中文',

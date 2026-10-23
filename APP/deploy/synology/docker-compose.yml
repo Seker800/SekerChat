@@ -14,6 +14,7 @@ services:
         condition: service_healthy
     environment:
       S3_PUBLIC_ENDPOINT: ${S3_PUBLIC_ENDPOINT:-}
+      SEKERCHAT_TRUSTED_EDGE_PROXY: ${FRONTEND_TRUSTED_EDGE_PROXY:-127.0.0.1/32}
     ports:
       - '${FRONTEND_PORT:-8080}:80'
     networks:

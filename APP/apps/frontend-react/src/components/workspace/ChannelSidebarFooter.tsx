@@ -3,6 +3,7 @@ import type { CurrentUserResponse } from '../../lib/auth-api';
 import { Avatar } from '../shared/Avatar';
 import styles from './ChannelSidebar.module.css';
 import { useTranslation } from 'react-i18next';
+import { NetworkReminder, useNetworkReminder } from './NetworkReminder';
 
 type AttendanceActionKind = 'checkin' | 'checkout';
 type AttendanceActionPhase = 'idle' | 'running' | 'success';
@@ -43,9 +44,10 @@ export function ChannelSidebarFooter({
   onToggleDnd,
 }: ChannelSidebarFooterProps) {
   const { t } = useTranslation();
+  const networkReminder = useNetworkReminder();
   return (
     <div className={styles.userPanel}>
-      {isAttendancePanelMounted ? (
+      {networkReminder.visible ? <NetworkReminder /> : isAttendancePanelMounted ? (
         <div
           className={styles.attendanceCard}
           data-testid="attendance-popover"
