@@ -12,6 +12,7 @@ docker/.env.docker*
 npm-debug.log*
 deploy/synology/runtime
 .deploy-artifacts
+.local
 .git
 .omx
 playwright-report
