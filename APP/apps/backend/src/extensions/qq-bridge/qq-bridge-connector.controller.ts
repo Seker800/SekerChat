@@ -17,6 +17,7 @@ import { ApiBody, ApiConsumes, ApiCreatedResponse, ApiTags } from '@nestjs/swagg
 import { memoryStorage } from 'multer';
 import type { Response } from 'express';
 import { Prisma } from '@prisma/client';
+import { isDeepStrictEqual } from 'node:util';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QqBridgeIngestService } from './qq-bridge-ingest.service';
 import { QqBridgeDeliveryService } from './qq-bridge-delivery.service';
@@ -58,13 +59,29 @@ export class QqBridgeConnectorController {
     };
   }
   @Post('heartbeat') async heartbeat(@Req() request: BridgeRequest, @Body() dto: HeartbeatDto) {
-    await this.prisma.qqBridgeConnector.update({
-      where: { id: request.connector.id },
-      data: {
-        lastSeenAt: new Date(),
-        connected: dto.connected,
-        ...(dto.groups ? { catalog: dto.groups as unknown as Prisma.InputJsonValue } : {}),
-      },
+    const connector = request.connector;
+    const now = new Date();
+    const catalogChanged =
+      dto.groups !== undefined && !isDeepStrictEqual(dto.groups, connector.catalog);
+    if (
+      connector.connected === dto.connected &&
+      !catalogChanged &&
+      connector.lastSeenAt &&
+      now.getTime() - connector.lastSeenAt.getTime() < 15_000
+    ) {
+      return { ok: true };
+    }
+    // Heartbeat observations are replaceable; delivery leases and messages are not.
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SET LOCAL synchronous_commit = off`;
+      await tx.qqBridgeConnector.update({
+        where: { id: request.connector.id },
+        data: {
+          lastSeenAt: now,
+          connected: dto.connected,
+          ...(dto.groups ? { catalog: dto.groups as unknown as Prisma.InputJsonValue } : {}),
+        },
+      });
     });
     return { ok: true };
   }

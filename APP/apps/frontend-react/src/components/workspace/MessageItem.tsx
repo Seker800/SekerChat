@@ -1,4 +1,4 @@
-import { useMemo, useState, type Ref } from 'react';
+import { memo, useMemo, useState, type Ref } from 'react';
 import { downloadFile, resolveApiResourceUrl } from '../../lib/api-core';
 import type { MessageResponse } from '../../lib/messages-files-api';
 import { userDisplayName } from '../../lib/users-api';
@@ -56,7 +56,7 @@ interface MessageItemProps {
   onSetEditText: React.Dispatch<React.SetStateAction<string>>;
 }
 
-export function MessageItem({
+export const MessageItem = memo(function MessageItem({
   accessToken,
   activeReceiptMessageId,
   currentUserId,
@@ -516,4 +516,4 @@ export function MessageItem({
       ) : null}
     </article>
   );
-}
+});

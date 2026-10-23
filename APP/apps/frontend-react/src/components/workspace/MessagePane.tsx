@@ -4,7 +4,7 @@ import type { MessageResponse } from '../../lib/messages-files-api';
 import type { PendingUpload } from './useComposer';
 import { ContextMenu, type ContextMenuItem } from './ContextMenu';
 import { ImagePreviewDialog } from '../media/image-preview/ImagePreviewDialog';
-import { MessageList } from './MessageList';
+import { MessageList, type MessageListNavigation } from './MessageList';
 import { MessageMediaProvider } from './media/MessageMediaProvider';
 import { fallbackCopyText } from './messagePaneUtils';
 import type { MessageArtifactAction } from './messageArtifactAction';
@@ -12,6 +12,7 @@ import styles from './MessagePane.module.css';
 import { useImagePreviewState } from '../media/image-preview/useImagePreviewState';
 import { useMessageScrollAnchor } from './useMessageScrollAnchor';
 import { useTranslation } from 'react-i18next';
+import type { VisibleMessageAnchor } from './messageViewportCoordinator';
 
 interface MessagePaneProps {
   accessToken?: string;
@@ -66,6 +67,7 @@ export function MessagePane({
 }: MessagePaneProps) {
   const { t } = useTranslation();
   const resolvedAccessToken = useResolvedAccessToken(accessToken);
+  const navigationRef = useRef<MessageListNavigation | null>(null);
   const messageRefs = useRef(new Map<string, HTMLElement>());
   const receiptContainerRefs = useRef(new Map<string, HTMLDivElement>());
   const [menuState, setMenuState] = useState<{
@@ -76,6 +78,10 @@ export function MessagePane({
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [activeReceiptMessageId, setActiveReceiptMessageId] = useState<string | null>(null);
+  const restoreVirtualAnchor = useCallback((anchor: VisibleMessageAnchor) => {
+    return navigationRef.current?.restoreAnchor(anchor) ?? false;
+  }, []);
+  const captureVirtualAnchor = useCallback(() => navigationRef.current?.captureAnchor() ?? null, []);
   const { handleContentResized, handleScroll, streamRef } = useMessageScrollAnchor({
     activeGroupId,
     currentUserId,
@@ -84,6 +90,8 @@ export function MessagePane({
     messages,
     onLoadOlderMessages,
     onVisibleLatestMessage,
+    restoreVirtualAnchor,
+    captureVirtualAnchor,
   });
   const imagePreview = useImagePreviewState();
   const handleCloseMenu = useCallback(() => {
@@ -199,6 +207,7 @@ export function MessagePane({
 
   function jumpToMessage(messageId: string) {
     const target = messageRefs.current.get(messageId);
+    if (!target && navigationRef.current?.jumpToMessage(messageId)) return;
     if (!target) {
       onUnsupportedAction?.(t('messages.originalUnavailable'));
       return;
@@ -292,6 +301,9 @@ export function MessagePane({
     >
       <MessageMediaProvider rootRef={streamRef} scopeKey={activeGroupId}>
         <MessageList
+          key={activeGroupId}
+          streamRef={streamRef}
+          navigationRef={navigationRef}
           accessToken={resolvedAccessToken}
           activeReceiptMessageId={activeReceiptMessageId}
           currentUserId={currentUserId}

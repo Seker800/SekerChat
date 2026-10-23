@@ -55,6 +55,19 @@ describe('useComposer pending uploads', () => {
     vi.clearAllMocks();
   });
 
+  it('typing does not rerender the workspace hook owner', () => {
+    let renders = 0;
+    const { result } = renderHook(() => {
+      renders++;
+      return useComposer({ accessToken: 'token', selectedGroupId: 'group-1', messages: [], channelName: 'General',
+        currentUser: { id: 'user', email: 'user@example.com', displayName: 'User', avatarUrl: null }, onError: vi.fn(), refetchMessages: vi.fn() });
+    }, { wrapper: createWrapper() });
+    const before = renders;
+    act(() => result.current.composer.onChange('typing locally'));
+    expect(result.current.composer.text).toBe('typing locally');
+    expect(renders).toBe(before);
+  });
+
   it('retries message creation using the completed file without uploading again', async () => {
     uploadFileViaMultipartMock.mockResolvedValue({ finalized: { kind: 'CHAT_ATTACHMENT', file: { id: 'completed-file', kindLabel: 'file' } } });
     createMessageMock.mockRejectedValueOnce(new Error('response lost')).mockResolvedValueOnce({ id: 'message' });

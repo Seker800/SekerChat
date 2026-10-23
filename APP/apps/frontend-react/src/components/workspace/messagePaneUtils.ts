@@ -1,4 +1,5 @@
 import MarkdownIt from 'markdown-it';
+import { dateFormatter } from '../../utils/date-formatters';
 import type { MessageResponse } from '../../lib/messages-files-api';
 import { userDisplayName } from '../../lib/users-api';
 
@@ -191,12 +192,12 @@ export function isSameCalendarDay(
   if (!previous) return false;
 
   return (
-    new Intl.DateTimeFormat(locale, {
+    dateFormatter(locale, {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
     }).format(new Date(messageDisplayTime(previous))) ===
-    new Intl.DateTimeFormat(locale, {
+    dateFormatter(locale, {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -205,7 +206,7 @@ export function isSameCalendarDay(
 }
 
 export function formatDayDivider(value: string, locale = 'zh-CN'): string {
-  return new Intl.DateTimeFormat(locale, {
+  return dateFormatter(locale, {
     month: 'long',
     day: 'numeric',
     weekday: 'long',

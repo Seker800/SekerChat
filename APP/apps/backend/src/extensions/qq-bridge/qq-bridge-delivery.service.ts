@@ -98,6 +98,25 @@ export class QqBridgeDeliveryService implements OnModuleInit, OnModuleDestroy {
   }
 
   async claim(connectorId: string) {
+    // A read-only hint avoids locking the connector (and generating WAL) on idle polls.
+    // The locked transaction below remains authoritative, including lease recovery.
+    const work = await this.prisma.$queryRaw<Array<{ id: string }>>`
+      SELECT d.id FROM "QqBridgeDelivery" d
+      JOIN "QqBridgeBinding" b ON b.id = d."bindingId"
+      JOIN "QqBridgeConnector" c ON c.id = b."connectorId"
+      WHERE c.id = ${connectorId} AND c.enabled AND c."revokedAt" IS NULL
+        AND b.enabled AND b.bidirectional AND b."archivedAt" IS NULL
+        AND (
+          (d.status = 'pending' AND d.revision = b.revision AND NOT EXISTS (
+            SELECT 1 FROM "QqBridgeDelivery" blocked
+            WHERE blocked."bindingId" = b.id AND blocked.status IN ('claimed', 'started', 'uncertain')
+          ))
+          OR (d.status IN ('claimed', 'started') AND d."leaseUntil" < CURRENT_TIMESTAMP)
+        )
+      LIMIT 1
+    `;
+    if (!work.length) return null;
+
     return this.prisma.$transaction(async (tx) => {
       await tx.$queryRaw`SELECT id FROM "QqBridgeConnector" WHERE id = ${connectorId} FOR UPDATE`;
       const connector = await tx.qqBridgeConnector.findUniqueOrThrow({

@@ -1,3 +1,5 @@
+import { dateFormatter } from './date-formatters';
+
 export function formatRelativeTime(value: string, locale = 'zh-CN'): string {
   const now = Date.now();
   const target = new Date(value).getTime();
@@ -18,7 +20,7 @@ export function formatRelativeTime(value: string, locale = 'zh-CN'): string {
 }
 
 export function formatTimestamp(value: string, locale = 'zh-CN'): string {
-  return new Intl.DateTimeFormat(locale, {
+  return dateFormatter(locale, {
     month: 'numeric',
     day: 'numeric',
     hour: '2-digit',

@@ -1,4 +1,6 @@
-import { useLayoutEffect, useRef, type ClipboardEvent as ReactClipboardEvent } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent as ReactClipboardEvent } from 'react';
+import { useStore } from 'zustand';
+import type { StoreApi } from 'zustand/vanilla';
 import type { MentionSuggestion } from './useComposer';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import type { MessageResponse } from '../../lib/messages-files-api';
@@ -6,6 +8,8 @@ import styles from './Composer.module.css';
 import { useTranslation } from 'react-i18next';
 
 interface ComposerProps {
+  draftStore?: StoreApi<{ text: string }>;
+  groupMembers?: Array<{ userId: string; displayName: string | null; email: string }>;
   channelName: string;
   text: string;
   isSending: boolean;
@@ -60,7 +64,68 @@ function extractClipboardImageFiles(event: ReactClipboardEvent<HTMLTextAreaEleme
   return itemFiles.map(normalizeClipboardImageFile);
 }
 
-export function Composer({
+export function Composer(props: ComposerProps) {
+  return props.draftStore ? (
+    <DraftComposer {...props} draftStore={props.draftStore} />
+  ) : (
+    <ComposerView {...props} />
+  );
+}
+
+function DraftComposer({
+  draftStore,
+  groupMembers,
+  ...props
+}: ComposerProps & { draftStore: StoreApi<{ text: string }> }) {
+  const text = useStore(draftStore, (state) => state.text);
+  const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
+  const mentionQuery = useMemo(() => {
+    const atIndex = text.lastIndexOf('@');
+    if (atIndex < 0 || (atIndex > 0 && ![' ', '\n'].includes(text[atIndex - 1]!))) return null;
+    const query = text.slice(atIndex + 1);
+    return /[ \n]/.test(query) ? null : { query, atIndex };
+  }, [text]);
+  const mentionSuggestions = useMemo(() => {
+    if (!mentionQuery) return [];
+    const query = mentionQuery.query.toLowerCase();
+    return (groupMembers ?? [])
+      .filter(
+        (member) =>
+          (member.displayName || member.email).toLowerCase().includes(query) ||
+          member.email.toLowerCase().includes(query),
+      )
+      .slice(0, 8)
+      .map((member) => ({ ...member, displayName: member.displayName || member.email }));
+  }, [groupMembers, mentionQuery]);
+  useEffect(() => setMentionActiveIndex(0), [mentionSuggestions]);
+  const replaceMention = (replacement: string) => {
+    if (!mentionQuery) return;
+    props.onChange(
+      text.slice(0, mentionQuery.atIndex) +
+        replacement +
+        text.slice(mentionQuery.atIndex + 1 + mentionQuery.query.length),
+    );
+  };
+  return (
+    <ComposerView
+      {...props}
+      text={text}
+      isMentionActive={mentionSuggestions.length > 0}
+      mentionSuggestions={mentionSuggestions}
+      mentionActiveIndex={mentionActiveIndex}
+      onMentionNavigate={(direction) =>
+        setMentionActiveIndex((index) => {
+          const max = mentionSuggestions.length - 1;
+          return direction === 'up' ? (index <= 0 ? max : index - 1) : index >= max ? 0 : index + 1;
+        })
+      }
+      onMentionSelect={(suggestion) => replaceMention(`@${suggestion.displayName} `)}
+      onMentionDismiss={() => replaceMention('')}
+    />
+  );
+}
+
+function ComposerView({
   channelName,
   text,
   isSending,

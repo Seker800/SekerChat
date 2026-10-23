@@ -22,6 +22,8 @@ interface UseMessageScrollAnchorOptions {
   messages: MessageResponse[];
   onLoadOlderMessages?: () => void | Promise<void>;
   onVisibleLatestMessage?: () => void;
+  restoreVirtualAnchor?: (anchor: VisibleMessageAnchor) => boolean;
+  captureVirtualAnchor?: () => VisibleMessageAnchor | null;
 }
 
 type ScrollWriteReason = 'latest-edge' | 'older-anchor';
@@ -38,6 +40,8 @@ export function useMessageScrollAnchor({
   messages,
   onLoadOlderMessages,
   onVisibleLatestMessage,
+  restoreVirtualAnchor,
+  captureVirtualAnchor,
 }: UseMessageScrollAnchorOptions) {
   const streamRef = useRef<HTMLElement | null>(null);
   const modeRef = useRef<MessageViewportMode>('PinnedToBottom');
@@ -99,6 +103,10 @@ export function useMessageScrollAnchor({
     if (!element || !anchor || modeRef.current !== 'LoadingOlder') {
       return false;
     }
+    if (restoreVirtualAnchor?.(anchor)) {
+      markProgrammaticScroll('older-anchor');
+      return true;
+    }
 
     const anchorNode = anchor.messageId
       ? element.querySelector<HTMLElement>(`[data-message-id="${CSS.escape(anchor.messageId)}"]`)
@@ -110,7 +118,7 @@ export function useMessageScrollAnchor({
     markProgrammaticScroll('older-anchor');
     restoreVisibleMessageAnchor(element, anchor);
     return true;
-  }, [markProgrammaticScroll]);
+  }, [markProgrammaticScroll, restoreVirtualAnchor]);
 
   const startOlderLoad = useCallback(() => {
     const element = streamRef.current;
@@ -119,7 +127,8 @@ export function useMessageScrollAnchor({
     }
 
     modeRef.current = 'LoadingOlder';
-    olderLoadAnchorRef.current = captureVisibleMessageAnchor(element);
+    const anchor = captureVisibleMessageAnchor(element);
+    olderLoadAnchorRef.current = anchor.messageId ? anchor : (captureVirtualAnchor?.() ?? anchor);
     loadRequestSettledRef.current = false;
     const requestId = ++loadRequestIdRef.current;
 
@@ -137,7 +146,7 @@ export function useMessageScrollAnchor({
         settleOlderLoad();
       });
     });
-  }, [hasMoreOlderMessages, onLoadOlderMessages, restoreOlderAnchor, settleOlderLoad]);
+  }, [hasMoreOlderMessages, onLoadOlderMessages, restoreOlderAnchor, settleOlderLoad, captureVirtualAnchor]);
 
   const handleScroll = useCallback(() => {
     const element = streamRef.current;
@@ -156,7 +165,9 @@ export function useMessageScrollAnchor({
     modeRef.current = modeAfterUserScroll(modeRef.current, element, Boolean(hasMoreOlderMessages));
 
     if (modeRef.current === 'TopEdgeArmed' && isInsideTopBand(element)) {
-      startOlderLoad();
+      // Let virtual rows for the new scroll offset commit before capturing the
+      // visible anchor. The scroll event can arrive while only old rows exist.
+      window.requestAnimationFrame(startOlderLoad);
     }
   }, [hasMoreOlderMessages, startOlderLoad]);
 

@@ -1,5 +1,14 @@
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { RetryNotice } from '../shared/RetryNotice';
-import { Fragment, type RefCallback } from 'react';
+import {
+  Fragment,
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useState,
+  type RefCallback,
+  type RefObject,
+} from 'react';
 import type { MessageResponse } from '../../lib/messages-files-api';
 import type { PendingUpload } from './useComposer';
 import { UploadProgressBar } from '../shared/UploadProgressBar';
@@ -14,8 +23,17 @@ import styles from './MessagePane.module.css';
 import type { PreviewImage } from '../media/image-preview/useImagePreviewState';
 import type { MessageArtifactAction } from './messageArtifactAction';
 import { useTranslation } from 'react-i18next';
+import type { VisibleMessageAnchor } from './messageViewportCoordinator';
+
+export interface MessageListNavigation {
+  jumpToMessage: (messageId: string) => boolean;
+  restoreAnchor: (anchor: VisibleMessageAnchor) => boolean;
+  captureAnchor: () => VisibleMessageAnchor | null;
+}
 
 interface MessageListProps {
+  streamRef: RefObject<HTMLElement | null>;
+  navigationRef: RefObject<MessageListNavigation | null>;
   accessToken?: string;
   activeReceiptMessageId: string | null;
   currentUserId: string;
@@ -119,6 +137,8 @@ function LoadingMessageSkeletons() {
 }
 
 export function MessageList({
+  streamRef,
+  navigationRef,
   accessToken,
   activeReceiptMessageId,
   currentUserId,
@@ -151,60 +171,164 @@ export function MessageList({
 }: MessageListProps) {
   const { t, i18n } = useTranslation();
   const language = i18n.resolvedLanguage === 'en' ? 'en' : 'zh-CN';
-  return (
-    <>
-      {hasMoreOlderMessages || isLoadingOlderMessages ? (
+  const virtualized = messages.length > 100;
+  const rows = useMemo(() => {
+    const result: Array<{ key: string; kind: 'history' | 'day' | 'message'; index: number }> = [
+      { key: 'history', kind: 'history', index: -1 },
+    ];
+    messages.forEach((message, index) => {
+      const key = message.clientKey ?? message.id;
+      if (!isSameCalendarDay(messages[index - 1], message, language)) {
+        result.push({ key: `day:${key}`, kind: 'day', index });
+      }
+      result.push({ key, kind: 'message', index });
+    });
+    return result;
+  }, [messages, language]);
+  const getItemKey = useCallback((index: number) => rows[index]!.key, [rows]);
+  const [restoration, setRestoration] = useState<{
+    messageId: string | null;
+    padding: number;
+  } | null>(null);
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => streamRef.current,
+    getItemKey,
+    estimateSize: () => 80,
+    overscan: 8,
+    scrollPaddingStart: restoration?.padding ?? 0,
+    enabled: virtualized,
+  });
+  const restorationIndex = restoration
+    ? rows.findIndex(
+        (row) => row.kind === 'message' && messages[row.index]!.id === restoration.messageId,
+      )
+    : -1;
+  useLayoutEffect(() => {
+    if (restorationIndex >= 0) virtualizer.scrollToIndex(restorationIndex, { align: 'start' });
+  }, [restoration, restorationIndex, virtualizer]);
+  const virtualRows = virtualizer.getVirtualItems();
+  const totalSize = virtualizer.getTotalSize();
+  useLayoutEffect(() => {
+    navigationRef.current = {
+      captureAnchor() {
+        const root = streamRef.current;
+        if (!root || !virtualized) return null;
+        const first = virtualizer.getVirtualItemForOffset(root.scrollTop)?.index ?? 0;
+        const index = rows.findIndex((row, index) => index >= first && row.kind === 'message');
+        if (index < 0) return null;
+        const offset = virtualizer.getOffsetForIndex(index, 'start')?.[0];
+        if (offset === undefined) return null;
+        return {
+          messageId: messages[rows[index]!.index]!.id,
+          offsetTop: offset + parseFloat(getComputedStyle(root).paddingTop) - root.scrollTop,
+          scrollHeight: root.scrollHeight,
+          scrollTop: root.scrollTop,
+        };
+      },
+      restoreAnchor(anchor) {
+        const root = streamRef.current;
+        if (!virtualized || !root || !messages.some((message) => message.id === anchor.messageId))
+          return false;
+        setRestoration({
+          messageId: anchor.messageId,
+          padding: anchor.offsetTop - parseFloat(getComputedStyle(root).paddingTop),
+        });
+        return true;
+      },
+      jumpToMessage(messageId) {
+        const index = rows.findIndex(
+          (row) => row.kind === 'message' && messages[row.index]!.id === messageId,
+        );
+        if (index < 0 || !virtualized) return false;
+        virtualizer.scrollToIndex(index, { align: 'center' });
+        return true;
+      },
+    };
+    return () => {
+      navigationRef.current = null;
+    };
+  }, [messages, rows, navigationRef, virtualized, virtualizer]);
+  useLayoutEffect(() => {
+    if (virtualized) onMessageContentResized();
+  }, [totalSize, virtualized, onMessageContentResized]);
+  const renderRow = (row: (typeof rows)[number]) => {
+    if (row.kind === 'history')
+      return hasMoreOlderMessages || isLoadingOlderMessages ? (
         <div className={styles.dayDivider} style={{ marginTop: 0, marginBottom: 12 }}>
           <span>
             {isLoadingOlderMessages ? t('messages.loadingOlder') : t('messages.loadOlder')}
           </span>
         </div>
-      ) : null}
+      ) : null;
+    const item = messages[row.index]!;
+    if (row.kind === 'day')
+      return (
+        <div className={styles.dayDivider}>
+          <span>{formatDayDivider(messageDisplayTime(item), language)}</span>
+        </div>
+      );
+    const isCompact = isCompactWithPrevious(messages[row.index - 1], item);
+    return (
+      <MessageItem
+        accessToken={accessToken}
+        activeReceiptMessageId={activeReceiptMessageId}
+        currentUserId={currentUserId}
+        currentUserMentionTargets={currentUserMentionTargets}
+        canManageFileShare={canManageFileShare}
+        artifactAction={artifactAction}
+        editText={editText}
+        editingMessageId={editingMessageId}
+        isCompact={isCompact}
+        item={item}
+        messageRef={registerMessageRef(item.id)}
+        receiptContainerRef={registerReceiptContainerRef(item.id)}
+        onClearPendingError={onClearPendingError}
+        onContextMenu={onContextMenu}
+        onEditMessage={onEditMessage}
+        onPreviewImage={onPreviewImage}
+        onJumpToMessage={onJumpToMessage}
+        onReply={onReply}
+        onRetryPendingMessage={onRetryPendingMessage}
+        onMessageContentResized={onMessageContentResized}
+        onSetActiveReceiptMessageId={onSetActiveReceiptMessageId}
+        onSetEditingMessageId={onSetEditingMessageId}
+        onSetEditText={onSetEditText}
+      />
+    );
+  };
+  return (
+    <>
       {isLoadingMessages ? <LoadingMessageSkeletons /> : null}
-      {!isLoadingMessages && loadError ? <div className={styles.empty}><RetryNotice message={loadError} retryLabel="重试加载消息" onRetry={onRetryLoad} /></div> : null}
+      {!isLoadingMessages && loadError ? (
+        <div className={styles.empty}>
+          <RetryNotice message={loadError} retryLabel="重试加载消息" onRetry={onRetryLoad} />
+        </div>
+      ) : null}
       {!isLoadingMessages && !loadError && !messages.length ? (
         <div className={styles.empty}>{t('messages.empty')}</div>
       ) : null}
-      {messages.map((item, index) => {
-        const previous = messages[index - 1];
-        const isCompact = isCompactWithPrevious(previous, item);
-        const showDivider = !isSameCalendarDay(previous, item, language);
-
-        return (
-          <Fragment key={item.clientKey ?? item.id}>
-            {showDivider ? (
-              <div className={styles.dayDivider}>
-                <span>{formatDayDivider(messageDisplayTime(item), language)}</span>
-              </div>
-            ) : null}
-            <MessageItem
-              accessToken={accessToken}
-              activeReceiptMessageId={activeReceiptMessageId}
-              currentUserId={currentUserId}
-              currentUserMentionTargets={currentUserMentionTargets}
-              canManageFileShare={canManageFileShare}
-              artifactAction={artifactAction}
-              editText={editText}
-              editingMessageId={editingMessageId}
-              isCompact={isCompact}
-              item={item}
-              messageRef={registerMessageRef(item.id)}
-              receiptContainerRef={registerReceiptContainerRef(item.id)}
-              onClearPendingError={onClearPendingError}
-              onContextMenu={onContextMenu}
-              onEditMessage={onEditMessage}
-              onPreviewImage={onPreviewImage}
-              onJumpToMessage={onJumpToMessage}
-              onReply={onReply}
-              onRetryPendingMessage={onRetryPendingMessage}
-              onMessageContentResized={onMessageContentResized}
-              onSetActiveReceiptMessageId={onSetActiveReceiptMessageId}
-              onSetEditingMessageId={onSetEditingMessageId}
-              onSetEditText={onSetEditText}
-            />
-          </Fragment>
-        );
-      })}
+      {virtualized ? (
+        <div
+          style={{
+            paddingTop: virtualRows[0]?.start ?? 0,
+            paddingBottom: Math.max(0, totalSize - (virtualRows.at(-1)?.end ?? 0)),
+          }}
+        >
+          {virtualRows.map((row) => (
+            <div
+              key={row.key}
+              data-index={row.index}
+              ref={virtualizer.measureElement}
+              style={{ display: 'flow-root' }}
+            >
+              {renderRow(rows[row.index]!)}
+            </div>
+          ))}
+        </div>
+      ) : (
+        rows.map((row) => <Fragment key={row.key}>{renderRow(row)}</Fragment>)
+      )}
       {pendingUploads && pendingUploads.length > 0 ? (
         <div className={styles.pendingUploads}>
           {pendingUploads.map((pendingUpload) => (
@@ -227,7 +351,11 @@ export function MessageList({
                     creatingMessage={pendingUpload.status === 'creating-message'}
                   />
                   {pendingUpload.status === 'uploading' ? (
-                    <button type="button" className={styles.pendingDismiss} onClick={() => onClearPendingError?.(pendingUpload.localId)}>
+                    <button
+                      type="button"
+                      className={styles.pendingDismiss}
+                      onClick={() => onClearPendingError?.(pendingUpload.localId)}
+                    >
                       取消上传
                     </button>
                   ) : null}

@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { chatAttachmentMbToBytes, DEFAULT_CHAT_ATTACHMENT_MAX_MB } from '@sekerchat/shared';
+import { createStore } from 'zustand/vanilla';
 import { useWorkspaceStore } from '../../store/workspace-store';
 import {
   createMessage,
@@ -48,19 +49,6 @@ function getReplyTarget(messages: MessageResponse[], replyToMessageId: string): 
   return messages.find((item) => item.id === replyToMessageId) ?? null;
 }
 
-function extractMentionQuery(text: string): { query: string; atIndex: number } | null {
-  const lastAt = text.lastIndexOf('@');
-  if (lastAt < 0) return null;
-
-  const beforeAt = lastAt === 0 ? ' ' : text[lastAt - 1];
-  if (beforeAt !== ' ' && beforeAt !== '\n') return null;
-
-  const query = text.slice(lastAt + 1);
-  if (query.includes(' ') || query.includes('\n')) return null;
-
-  return { query, atIndex: lastAt };
-}
-
 export function useComposer({
   accessToken,
   selectedGroupId,
@@ -73,8 +61,10 @@ export function useComposer({
   chatAttachmentMaxMB,
 }: UseComposerOptions) {
   const queryClient = useQueryClient();
-  const [draft, setDraft] = useState('');
-  const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
+  const [draftStore] = useState(() => createStore<{ text: string }>(() => ({ text: '' })));
+  const setDraft = useCallback((value: string | ((current: string) => string)) => {
+    draftStore.setState(({ text }) => ({ text: typeof value === 'function' ? value(text) : value }));
+  }, [draftStore]);
   const [pendingUploadsByGroupId, setPendingUploadsByGroupId] = useState<Record<string, PendingUpload[]>>({});
   const { composerSeedText, replyToMessageId, setComposerSeedText, setReplyToMessageId } = useWorkspaceStore();
   const mounted = useRef(true);
@@ -115,53 +105,7 @@ export function useComposer({
       return normalizedCurrent ? `${normalizedCurrent} ${composerSeedText}` : composerSeedText;
     });
     setComposerSeedText('');
-  }, [composerSeedText, setComposerSeedText]);
-
-  const mentionQuery = useMemo(() => extractMentionQuery(draft), [draft]);
-
-  const mentionSuggestions: MentionSuggestion[] = useMemo(() => {
-    if (!mentionQuery || !groupMembers?.length) return [];
-    const lowerQuery = mentionQuery.query.toLowerCase();
-    return groupMembers
-      .filter((m) => {
-        const name = (m.displayName || m.email).toLowerCase();
-        return name.includes(lowerQuery) || m.email.toLowerCase().includes(lowerQuery);
-      })
-      .slice(0, 8)
-      .map((m) => ({
-        userId: m.userId,
-        displayName: m.displayName || m.email,
-        email: m.email,
-      }));
-  }, [mentionQuery, groupMembers]);
-
-  const isMentionActive = mentionSuggestions.length > 0;
-
-  useEffect(() => {
-    setMentionActiveIndex(0);
-  }, [mentionSuggestions]);
-
-  const handleChange = useCallback((value: string) => {
-    setDraft(value);
-  }, []);
-
-  const selectMention = useCallback((suggestion: MentionSuggestion) => {
-    if (!mentionQuery) return;
-    setDraft((current) => {
-      const before = current.slice(0, mentionQuery.atIndex);
-      const after = current.slice(mentionQuery.atIndex + 1 + mentionQuery.query.length);
-      return `${before}@${suggestion.displayName} ${after}`;
-    });
-  }, [mentionQuery]);
-
-  const dismissMention = useCallback(() => {
-    if (!mentionQuery) return;
-    setDraft((current) => {
-      const before = current.slice(0, mentionQuery.atIndex);
-      const after = current.slice(mentionQuery.atIndex + 1 + mentionQuery.query.length);
-      return `${before}${after}`;
-    });
-  }, [mentionQuery]);
+  }, [composerSeedText, setComposerSeedText, setDraft]);
 
   const sendMessageMutation = useMutation({
     scope: { id: `text-message:${selectedGroupId || 'none'}` },
@@ -236,7 +180,7 @@ export function useComposer({
   });
 
   const sendDraft = useCallback(() => {
-    const text = draft.trim();
+    const text = draftStore.getState().text.trim();
     if (!selectedGroupId || !text) {
       return;
     }
@@ -299,7 +243,7 @@ export function useComposer({
     void sendMessageMutation
       .mutateAsync({ targetGroupId, text, localId, savedReplyToId })
       .catch(() => undefined);
-  }, [draft, selectedGroupId, messages, currentUser, queryClient, sendMessageMutation, setComposerSeedText, setReplyToMessageId]);
+  }, [draftStore, setDraft, selectedGroupId, messages, currentUser, queryClient, sendMessageMutation, setComposerSeedText, setReplyToMessageId]);
 
   const runUploadEntry = useCallback(async (targetGroupId: string, entry: PendingUpload) => {
     if (!mounted.current || !entry.file || activeUploads.current.has(entry.localId)) return;
@@ -415,7 +359,9 @@ export function useComposer({
       channelName,
       isSending: sendMessageMutation.isPending,
       isUploading: pendingUploads.some((p) => p.status === 'uploading'),
-      onChange: handleChange,
+      onChange: setDraft,
+      draftStore,
+      groupMembers,
       onClearReply: () => setReplyToMessageId(''),
       onSeedMention: (mention: string) => {
         const normalizedMention = mention.trim();
@@ -436,19 +382,7 @@ export function useComposer({
       },
       onSend: sendDraft,
       replyTarget: getReplyTarget(messages, replyToMessageId),
-      text: draft,
-      isMentionActive,
-      mentionSuggestions,
-      mentionActiveIndex,
-      onMentionNavigate: (direction: 'up' | 'down') => {
-        setMentionActiveIndex((prev) => {
-          const max = mentionSuggestions.length - 1;
-          if (direction === 'up') return prev <= 0 ? max : prev - 1;
-          return prev >= max ? 0 : prev + 1;
-        });
-      },
-      onMentionSelect: selectMention,
-      onMentionDismiss: dismissMention,
+      get text() { return draftStore.getState().text; },
     },
     replyToMessageId,
     pendingUploads,
