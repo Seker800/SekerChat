@@ -1,3 +1,5 @@
+import { FilePreviewJobService } from './file-preview-job.service';
+import { FilePreviewWorkerService } from './file-preview-worker.service';
 import { FileRetirementService } from './file-retirement.service';
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../prisma/prisma.module';
@@ -14,6 +16,8 @@ import { MediaVideoService } from './media-video.service';
   imports: [PrismaModule, SystemConfigModule],
   controllers: [FilesController],
   providers: [
+    FilePreviewJobService,
+    FilePreviewWorkerService,
     ObjectStorageGateway,
     FileAccessService,
     FileUrlService,

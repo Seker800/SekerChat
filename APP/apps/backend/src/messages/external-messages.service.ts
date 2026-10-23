@@ -5,6 +5,7 @@ import { OUTBOX_EVENT_TYPES } from '../outbox/outbox.types';
 import { type ExternalAuthor } from './external-author';
 import { messageSelect } from './message-record.types';
 import { FilesService } from '../files/files.service';
+import { previewJobForImage } from '../files/file-preview-state';
 import { createImageProcessor } from '../files/image-processing-policy';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -41,6 +42,7 @@ export class ExternalMessagesService {
         update: { updatedAt: new Date() },
         create: {
           storageKey,
+          previewJob: previewJobForImage(`image/${format}`),
           originalName: `qq-image.${format}`,
           mimeType: `image/${format}`,
           size: buffer.length,

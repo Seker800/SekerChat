@@ -1044,7 +1044,7 @@ test('completeUpload counts transient MP4 preprocessing failures toward the retr
   );
 });
 
-test('completeUpload returns intrinsic dimensions for image attachments', async () => {
+test('completeUpload commits durable preview work without reading image metadata', async () => {
   const prisma = {
     group: {
       findFirst: async () => ({
@@ -1069,18 +1069,21 @@ test('completeUpload returns intrinsic dimensions for image attachments', async 
           update: async () => undefined,
         },
         fileObject: {
-          create: async () => ({
-            id: 'file-1',
-            groupId: 'group-1',
-            originalName: 'evidence.png',
-            mimeType: 'image/png',
-            size: 2048n,
-            createdAt: new Date('2026-07-01T00:00:00.000Z'),
-            uploaderId: 'user-1',
-            thumbnailStorageKey: null,
-            imageWidth: 1200,
-            imageHeight: 600,
-          }),
+          create: async ({ data }: { data: { previewJob: unknown } }) => {
+            assert.deepEqual(data.previewJob, { create: {} });
+            return {
+              id: 'file-1',
+              groupId: 'group-1',
+              originalName: 'evidence.png',
+              mimeType: 'image/png',
+              size: 2048n,
+              createdAt: new Date('2026-07-01T00:00:00.000Z'),
+              uploaderId: 'user-1',
+              thumbnailStorageKey: null,
+              imageWidth: null,
+              imageHeight: null,
+            };
+          },
         },
       }),
   };
@@ -1091,7 +1094,7 @@ test('completeUpload returns intrinsic dimensions for image attachments', async 
     getStreamFromS3: async () => ({
       stream: Readable.from([Buffer.from('demo')]),
     }),
-    getImageDimensionsFromS3Object: async () => ({ width: 1200, height: 600 }),
+    getImageDimensionsFromS3Object: async () => assert.fail('image work ran in completion request'),
     createDirectFileAccessUrl: () => 'http://backend.test/files/content',
     createDirectFileMetadataUrl: () => 'http://backend.test/files/meta',
     createThumbnailAccessUrl: () => 'http://backend.test/files/thumb',
@@ -1127,8 +1130,8 @@ test('completeUpload returns intrinsic dimensions for image attachments', async 
   ]);
 
   assert.equal(result.kind, 'CHAT_ATTACHMENT');
-  assert.equal(result.file.width, 1200);
-  assert.equal(result.file.height, 600);
+  assert.equal(result.file.width, null);
+  assert.equal(result.file.height, null);
 });
 
 test('completeUpload skips thumbnail generation for gif attachments', async () => {
@@ -1230,15 +1233,51 @@ test('completeUpload skips thumbnail generation for gif attachments', async () =
   assert.equal(thumbnailWriteCount, 0);
 });
 
-test('initiate rejects oversized image processing before contacting storage', async () => {
-  const service = new UploadsService({} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never);
-  await assert.rejects(() => service.initiateUpload('user', { kind: UploadKind.CHAT_ATTACHMENT, groupId: 'group', fileName: 'large.png', mimeType: 'image/png', size: 51 * 1024 * 1024 }), /50MB/);
+test('large images use the configured attachment limit instead of a hidden image-only limit', async () => {
+  const service = new UploadsService(
+    createPrismaDouble() as never,
+    {
+      initiateMultipartUpload: async () => ({ uploadId: 'multipart-large' }),
+      buildDirectUploadStorageKey: () => 'group/large.png',
+      normalizeDirectUploadOriginalName: (name: string) => name,
+    } as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    { getChatAttachmentMaxBytes: async () => 10 * 1024 * 1024 * 1024 } as never,
+    {} as never,
+    {} as never,
+  );
+  const result = await service.initiateUpload('user', {
+    kind: UploadKind.CHAT_ATTACHMENT,
+    groupId: 'group',
+    fileName: 'large.png',
+    mimeType: 'image/png',
+    size: 151 * 1024 * 1024,
+  });
+  assert.equal(result.size, 151 * 1024 * 1024);
 });
 
 test('resume distinguishes completed uploads so clients can recover the original result', async () => {
-  const service = new UploadsService({ uploadSession: { findUnique: async () => createUploadSession({ status: 'COMPLETED' }) } } as never,
-    {} as never, {} as never, {} as never, {} as never, {} as never, {} as never, {} as never);
-  await assert.rejects(() => service.getUploadedParts('user-1', 'upload-1'), (error: unknown) => {
-    return error instanceof BadRequestException && (error.getResponse() as { code?: string }).code === 'UPLOAD_SESSION_COMPLETED';
-  });
+  const service = new UploadsService(
+    {
+      uploadSession: { findUnique: async () => createUploadSession({ status: 'COMPLETED' }) },
+    } as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
+    {} as never,
+  );
+  await assert.rejects(
+    () => service.getUploadedParts('user-1', 'upload-1'),
+    (error: unknown) => {
+      return (
+        error instanceof BadRequestException &&
+        (error.getResponse() as { code?: string }).code === 'UPLOAD_SESSION_COMPLETED'
+      );
+    },
+  );
 });

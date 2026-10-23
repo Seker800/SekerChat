@@ -52,7 +52,7 @@ function createFilesService() {
     prisma as never,
     objectStorage as never,
     new FileAccessService(prisma as never),
-    new ImageMetadataService(prisma as never, objectStorage as never),
+    new ImageMetadataService(objectStorage as never),
     new FileUrlService(config as never),
   );
 }
@@ -78,4 +78,29 @@ test('getThumbnailStream reads the thumbnail object key and forwards the validat
   assert.equal(requestedValidator, '"previous-etag"');
   assert.ok('stream' in result);
   assert.equal('contentLength' in result ? result.contentLength : undefined, 128);
+});
+
+test('missing thumbnails never fall through to the original object', async () => {
+  const service = createFilesService();
+  (service as any).fileAccess.getReadableFile = async () => ({
+    ...fileRecord,
+    thumbnailStorageKey: null,
+  });
+  (service as any).objectStorage.get = () => assert.fail('original was loaded for a thumbnail');
+  await assert.rejects(service.getThumbnailStream('user-1', 'group-1', 'file-1'), /缩略图尚未生成/);
+});
+
+test('preview retry checks membership before scheduling any work', async () => {
+  const service = createFilesService();
+  let scheduled = false;
+  (service as any).fileAccess.getReadableFile = async () => {
+    throw new Error('Group access denied');
+  };
+  (service as any).prismaService.filePreviewJob = {
+    upsert: () => {
+      scheduled = true;
+    },
+  };
+  await assert.rejects(service.retryPreview('outsider', 'group-1', 'file-1'), /access denied/);
+  assert.equal(scheduled, false);
 });

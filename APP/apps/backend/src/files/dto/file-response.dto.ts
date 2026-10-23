@@ -10,6 +10,8 @@ export class FileMetadataResponseDto {
   contentUrl!: string;
   metadataUrl!: string;
   thumbnailUrl!: string | null;
+  thumbnailStatus?: string;
+  thumbnailError?: string | null;
   uploaderId!: string;
   kind!: 'image' | 'file';
 }

@@ -1,5 +1,15 @@
 import { isPassiveImageMimeType } from './file-content-policy';
-import { Controller, Get, Headers, Param, Res, StreamableFile, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Headers,
+  HttpCode,
+  Param,
+  Post,
+  Res,
+  StreamableFile,
+  UseGuards,
+} from '@nestjs/common';
 import type { Response } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -41,6 +51,17 @@ export class FilesController {
     @Param('fileId') fileId: string,
   ) {
     return this.filesService.getFileMetadata(user.sub, groupId, fileId);
+  }
+
+  @Post(':fileId/preview/retry')
+  @HttpCode(200)
+  @ApiOkResponse({ type: FileMetadataResponseDto })
+  retryPreview(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('groupId') groupId: string,
+    @Param('fileId') fileId: string,
+  ) {
+    return this.filesService.retryPreview(user.sub, groupId, fileId);
   }
 
   @Get(':fileId/thumbnail')

@@ -3,6 +3,7 @@ import styles from './MessagePane.module.css';
 import type { PreviewImage } from '../media/image-preview/useImagePreviewState';
 import { getMessageImageShellLayout } from './messageImageSizing';
 import { useMessageMediaScheduler } from './media/MessageMediaProvider';
+import { useAttachmentThumbnail } from './media/useAttachmentThumbnail';
 import { privateMediaRepository, type ThumbnailLease } from './media/privateMediaRepository';
 
 interface ProtectedImageAttachmentProps {
@@ -11,6 +12,8 @@ interface ProtectedImageAttachmentProps {
   src: string;
   previewSrc?: string;
   alt: string;
+  thumbnailStatus?: string;
+  thumbnailError?: string | null;
   imageWidth?: number | null;
   imageHeight?: number | null;
   onLoad?: () => void;
@@ -72,6 +75,8 @@ export function ProtectedImageAttachment({
   alt,
   imageWidth,
   imageHeight,
+  thumbnailStatus,
+  thumbnailError,
   onLoad,
   onPreview,
   accessory,
@@ -82,13 +87,20 @@ export function ProtectedImageAttachment({
   const thumbnailLeaseRef = useRef<ThumbnailLease | null>(null);
   const [resolvedSrc, setResolvedSrc] = useState('');
   const [loadState, setLoadState] = useState<ImageLoadState>('loading');
-  const [sourceState, setSourceState] = useState<'primary' | 'fallback'>('primary');
   const [isOpeningPreview, setIsOpeningPreview] = useState(false);
   const [measuredDimensions, setMeasuredDimensions] = useState<{
     width: number;
     height: number;
   } | null>(null);
-  const currentSource = sourceState === 'primary' ? src : previewSrc || src;
+  const thumbnail = useAttachmentThumbnail({
+    src,
+    contentUrl: previewSrc,
+    status: thumbnailStatus,
+    error: thumbnailError,
+    accessToken,
+    element: shellElement,
+  });
+  const currentSource = thumbnail.src;
   const effectiveDimensions = useMemo(() => {
     if (hasIntrinsicDimensions(imageWidth, imageHeight)) {
       return { width: imageWidth, height: imageHeight };
@@ -105,7 +117,6 @@ export function ProtectedImageAttachment({
   );
 
   useEffect(() => {
-    setSourceState('primary');
     setLoadState('loading');
     setMeasuredDimensions(null);
   }, [previewSrc, src]);
@@ -157,10 +168,6 @@ export function ProtectedImageAttachment({
       } catch (error) {
         if (cancelled || signal.aborted || isAbortError(error)) return;
         console.warn('Protected image load failed:', error);
-        if (sourceState === 'primary' && previewSrc && previewSrc !== src) {
-          setSourceState('fallback');
-          return;
-        }
         setLoadState('error');
       }
     }
@@ -191,7 +198,6 @@ export function ProtectedImageAttachment({
     previewSrc,
     scheduleMediaLoad,
     shellElement,
-    sourceState,
     src,
     viewerId,
   ]);
@@ -228,10 +234,7 @@ export function ProtectedImageAttachment({
   }, [imageHeight, imageWidth, measuredDimensions, resolvedSrc]);
 
   function handleImageError() {
-    if (sourceState === 'primary' && previewSrc && previewSrc !== src) {
-      setSourceState('fallback');
-      return;
-    }
+    setResolvedSrc('');
     setLoadState('error');
   }
 
@@ -291,11 +294,24 @@ export function ProtectedImageAttachment({
             />
           ) : (
             <div className={styles.imagePlaceholder} data-testid="image-attachment-placeholder">
-              {loadState === 'error' ? '图片加载失败' : '图片加载中...'}
+              {!currentSource
+                ? thumbnail.message
+                : loadState === 'error'
+                  ? '缩略图加载失败，点击查看原图'
+                  : '图片加载中...'}
             </div>
           )}
         </button>
       </div>
+      {thumbnail.canRetry ? (
+        <button
+          className={styles.actionButton}
+          type="button"
+          onClick={() => void thumbnail.retry()}
+        >
+          重试生成缩略图
+        </button>
+      ) : null}
       {accessory ? <div className={styles.imageAttachmentAccessory}>{accessory}</div> : null}
     </div>
   );

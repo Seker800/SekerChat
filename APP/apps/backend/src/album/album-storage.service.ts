@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { createHash, randomUUID } from 'node:crypto';
 import { FilesService } from '../files/files.service';
 import { ObjectStorageGateway } from '../files/object-storage.gateway';
+import { withStoredImage } from '../files/stored-image-processing';
 import { createImageProcessor } from '../files/image-processing-policy';
 import { PrismaService } from '../prisma/prisma.service';
 import { AlbumMediaAccessService } from './album-media-access.service';
@@ -114,14 +115,12 @@ export class AlbumStorageService {
   }
 
   private async generateImageThumbnail(storageKey: string): Promise<Buffer> {
-    const { stream } = await this.objects.get(storageKey);
-    const chunks: Buffer[] = [];
-    for await (const chunk of stream) {
-      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-    }
-    return createImageProcessor(Buffer.concat(chunks))
-      .resize({ width: 800, height: 800, fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 85 })
-      .toBuffer();
+    return withStoredImage(this.objects, storageKey, (filename) =>
+      createImageProcessor(filename)
+        .rotate()
+        .resize({ width: 800, height: 800, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 85 })
+        .toBuffer(),
+    );
   }
 }

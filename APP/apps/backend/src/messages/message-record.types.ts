@@ -1,4 +1,5 @@
 import { Prisma } from '@prisma/client';
+import { filePreviewJobSelect } from '../files/file-preview-state';
 import { fileObjectSelect } from '../files/file-record.types';
 
 export const messageSelect = {
@@ -34,6 +35,7 @@ export const messageSelect = {
       createdAt: true,
       uploaderId: true,
       storageKey: true,
+      previewJob: { select: filePreviewJobSelect },
       thumbnailStorageKey: true,
       thumbnailSize: true,
       imageWidth: true,
@@ -70,6 +72,7 @@ export const messageSelect = {
           createdAt: true,
           uploaderId: true,
           storageKey: true,
+          previewJob: { select: filePreviewJobSelect },
           thumbnailStorageKey: true,
           thumbnailSize: true,
           imageWidth: true,

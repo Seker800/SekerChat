@@ -1,10 +1,12 @@
 import sharp from 'sharp';
 
-export const MAX_IMAGE_METADATA_BYTES = 50 * 1024 * 1024;
-export const MAX_IMAGE_INPUT_PIXELS = 40_000_000;
-
+// Large artwork is supported. Native work is serialized and streamed through disk
+// by withStoredImage; pixel count must not redefine whether an upload succeeded.
 export function createImageProcessor(input?: Buffer | string) {
-  return input
-    ? sharp(input, { limitInputPixels: MAX_IMAGE_INPUT_PIXELS, failOn: 'warning' })
-    : sharp({ limitInputPixels: MAX_IMAGE_INPUT_PIXELS, failOn: 'warning' });
+  const options = {
+    limitInputPixels: false as const,
+    sequentialRead: true,
+    failOn: 'warning' as const,
+  };
+  return input ? sharp(input, options) : sharp(options);
 }

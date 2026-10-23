@@ -290,7 +290,9 @@ export function MessageItem({
                           <ProtectedImageAttachment
                             accessToken={accessToken}
                             viewerId={currentUserId}
-                            src={replyAttachmentThumbnailUrl || replyAttachmentContentUrl}
+                            src={replyAttachmentThumbnailUrl}
+                            thumbnailStatus={item.replyTo.attachment.thumbnailStatus}
+                            thumbnailError={item.replyTo.attachment.thumbnailError}
                             previewSrc={replyAttachmentContentUrl}
                             alt={item.replyTo.attachment.originalName}
                             imageWidth={item.replyTo.attachment.width}
@@ -421,7 +423,9 @@ export function MessageItem({
                         <ProtectedImageAttachment
                           accessToken={accessToken}
                           viewerId={currentUserId}
-                          src={attachmentThumbnailUrl || attachmentContentUrl}
+                          src={attachmentThumbnailUrl}
+                          thumbnailStatus={item.attachment.thumbnailStatus}
+                          thumbnailError={item.attachment.thumbnailError}
                           previewSrc={attachmentContentUrl}
                           alt={item.attachment.originalName}
                           imageWidth={item.attachment.width}

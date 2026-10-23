@@ -1,6 +1,8 @@
+import { filePreviewJobSelect } from './file-preview-state';
 import { Prisma } from '@prisma/client';
 
 export const fileObjectSelect = {
+  previewJob: { select: filePreviewJobSelect },
   id: true,
   groupId: true,
   storageKey: true,
@@ -15,7 +17,9 @@ export const fileObjectSelect = {
   createdAt: true,
 } satisfies Prisma.FileObjectSelect;
 
-export type FileObjectRecord = Prisma.FileObjectGetPayload<{ select: typeof fileObjectSelect }>;
+type SelectedFile = Prisma.FileObjectGetPayload<{ select: typeof fileObjectSelect }>;
+export type FileObjectRecord = Omit<SelectedFile, 'previewJob'> &
+  Partial<Pick<SelectedFile, 'previewJob'>>;
 export type RenderableImageFileRecord = Pick<
   FileObjectRecord,
   'id' | 'groupId' | 'storageKey' | 'mimeType' | 'imageWidth' | 'imageHeight'

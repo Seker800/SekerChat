@@ -740,8 +740,7 @@ describe('MessagePane image preview', () => {
     expect(previewImage).toHaveStyle({ width: '300px', height: '225px' });
   });
 
-  it('falls back to the original image when the thumbnail request fails', async () => {
-    // Thumbnail view-url fails, falls back to original contentUrl via view-url
+  it('shows thumbnail failure without silently loading the original', async () => {
     fetchMock
       .mockResolvedValueOnce({ ok: false, text: async () => '', headers: new Headers() })
       .mockResolvedValue(
@@ -753,7 +752,7 @@ describe('MessagePane image preview', () => {
       attachment: {
         ...imageMessage.attachment!,
         contentUrl: 'http://localhost:3000/api/groups/group-1/files/original/content',
-        thumbnailUrl: 'http://localhost:3000/api/groups/group-1/files/thumb/content',
+        thumbnailUrl: 'http://localhost:3000/api/groups/group-1/files/thumb/thumbnail',
       },
     };
 
@@ -767,21 +766,23 @@ describe('MessagePane image preview', () => {
       />,
     );
 
-    // Falls back to original image via view-url
-    expect(await screen.findByAltText('evidence.png')).toHaveAttribute(
-      'src',
-      'https://media.example.test/bucket/evidence.png',
+    await waitFor(() =>
+      expect(screen.getByTestId('image-attachment-placeholder')).toHaveTextContent(
+        '缩略图加载失败',
+      ),
     );
+    expect(screen.queryByRole('img', { name: 'evidence.png' })).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  it('shows an explicit error state when both thumbnail and original fail', async () => {
+  it('shows an explicit error when the thumbnail fails', async () => {
     fetchMock.mockResolvedValue({ ok: false, text: async () => '', headers: new Headers() });
     const failingMessage: MessageResponse = {
       ...imageMessage,
       attachment: {
         ...imageMessage.attachment!,
         contentUrl: 'http://localhost:3000/api/groups/group-1/files/thumb/content',
-        thumbnailUrl: 'http://localhost:3000/api/groups/group-1/files/thumb/content',
+        thumbnailUrl: 'http://localhost:3000/api/groups/group-1/files/thumb/thumbnail',
       },
     };
 
@@ -796,7 +797,9 @@ describe('MessagePane image preview', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByTestId('image-attachment-placeholder')).toHaveTextContent('图片加载失败');
+      expect(screen.getByTestId('image-attachment-placeholder')).toHaveTextContent(
+        '缩略图加载失败',
+      );
     });
   });
 
@@ -836,10 +839,7 @@ describe('MessagePane image preview', () => {
   });
 
   it('opens the original image on click when no thumbnail url exists', async () => {
-    // Both thumbnail and preview use view-url
-    fetchMock.mockResolvedValue(
-      mockJsonResponse({ url: 'https://media.example.test/bucket/evidence.png' }),
-    );
+    fetchMock.mockResolvedValue(mockBlobResponse());
     const noThumbnailMessage: MessageResponse = {
       ...imageMessage,
       attachment: {
@@ -857,10 +857,12 @@ describe('MessagePane image preview', () => {
       />,
     );
 
-    // Image loads via presigned view-url
-    expect(await screen.findByAltText('evidence.png')).toHaveAttribute(
+    expect(screen.getByTestId('image-attachment-placeholder')).toHaveTextContent('点击查看原图');
+    expect(fetchMock).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '全屏查看 evidence.png' }));
+    expect(await screen.findByTestId('image-preview-image')).toHaveAttribute(
       'src',
-      'https://media.example.test/bucket/evidence.png',
+      'blob:preview-image',
     );
   });
 
@@ -912,10 +914,8 @@ describe('MessagePane image preview', () => {
     );
   });
 
-  it('renders gif attachments from the original asset when thumbnail url is absent', async () => {
-    fetchMock.mockResolvedValue(
-      mockJsonResponse({ url: 'https://media.example.test/bucket/animated.gif' }),
-    );
+  it('loads animated originals only after an explicit preview click', async () => {
+    fetchMock.mockResolvedValue(mockBlobResponse());
     const gifMessage: MessageResponse = {
       ...imageMessage,
       attachment: {
@@ -937,9 +937,12 @@ describe('MessagePane image preview', () => {
       />,
     );
 
-    expect(await screen.findByAltText('animated.gif')).toHaveAttribute(
+    expect(screen.queryByRole('img', { name: 'animated.gif' })).toBeNull();
+    expect(fetchMock).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: '全屏查看 animated.gif' }));
+    expect(await screen.findByTestId('image-preview-image')).toHaveAttribute(
       'src',
-      'https://media.example.test/bucket/animated.gif',
+      'blob:preview-image',
     );
   });
 
@@ -1894,6 +1897,13 @@ describe('MessagePane message grouping', () => {
 
     try {
       const handleLoadOlderMessages = vi.fn();
+      const readyImageMessage: MessageResponse = {
+        ...imageMessage,
+        attachment: {
+          ...imageMessage.attachment!,
+          thumbnailUrl: 'http://backend.test/files/evidence-thumbnail.png',
+        },
+      };
       const olderMessage: MessageResponse = {
         ...textMessageAfterSystem,
         id: 'message-older-image',
@@ -1905,7 +1915,7 @@ describe('MessagePane message grouping', () => {
         <MessagePane
           accessToken="token"
           activeGroupId="group-1"
-          messages={[imageMessage]}
+          messages={[readyImageMessage]}
           currentUserId="user-1"
           hasMoreOlderMessages
           onLoadOlderMessages={handleLoadOlderMessages}
@@ -1933,7 +1943,7 @@ describe('MessagePane message grouping', () => {
         <MessagePane
           accessToken="token"
           activeGroupId="group-1"
-          messages={[olderMessage, imageMessage]}
+          messages={[olderMessage, readyImageMessage]}
           currentUserId="user-1"
           hasMoreOlderMessages
           isLoadingOlderMessages
@@ -1948,7 +1958,7 @@ describe('MessagePane message grouping', () => {
         <MessagePane
           accessToken="token"
           activeGroupId="group-1"
-          messages={[olderMessage, imageMessage]}
+          messages={[olderMessage, readyImageMessage]}
           currentUserId="user-1"
           hasMoreOlderMessages
           isLoadingOlderMessages={false}

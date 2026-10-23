@@ -5,38 +5,49 @@ import { Readable } from 'node:stream';
 import sharp from 'sharp';
 import { ImageMetadataService } from './image-metadata.service';
 
-const maxBytes = 50 * 1024 * 1024;
-
-test('metadata rejects oversized objects before reading their body', async () => {
-  let read = false;
-  const stream = Readable.from((async function* () { read = true; yield Buffer.from('x'); })());
-  const service = new ImageMetadataService({} as never, {
-    get: async () => ({ stream, contentLength: maxBytes + 1 }),
+test('metadata reads large objects through disk without a separate image size restriction', async () => {
+  const png = await sharp({ create: { width: 4, height: 3, channels: 3, background: 'white' } })
+    .png()
+    .toBuffer();
+  const stream = Readable.from(
+    (async function* () {
+      yield png;
+      const padding = Buffer.alloc(1024 * 1024);
+      for (let i = 0; i < 51; i++) yield padding;
+    })(),
+  );
+  const service = new ImageMetadataService({
+    get: async () => ({ stream, contentLength: 51 * 1024 * 1024 + png.length }),
   } as never);
-  await assert.rejects(() => service.fromObject('large', 'image/png'), /50MB/);
-  assert.equal(read, false);
+  assert.deepEqual(await service.fromObject('large', 'image/png'), { width: 4, height: 3 });
   assert.equal(stream.destroyed, true);
 });
 
-test('metadata bounds the stream even when storage reports an incorrect length', async () => {
-  const stream = Readable.from((async function* () {
-    const chunk = Buffer.alloc(1024 * 1024);
-    for (let i = 0; i < 51; i++) yield chunk;
-  })());
-  const service = new ImageMetadataService({} as never, {
-    get: async () => ({ stream, contentLength: 1 }),
-  } as never);
-  await assert.rejects(() => service.fromObject('large', 'image/png'), /50MB/);
-  assert.equal(stream.destroyed, true);
-});
-
-test('bounded metadata still reads a valid image and skips untrusted active formats', async () => {
-  const buffer = await sharp({ create: { width: 4, height: 3, channels: 3, background: 'white' } }).png().toBuffer();
+test('serializing legacy dimensions never reads originals or writes to the database', async () => {
   let reads = 0;
-  const service = new ImageMetadataService({} as never, {
-    get: async () => { reads++; return { stream: Readable.from([buffer]), contentLength: buffer.length }; },
+  const service = new ImageMetadataService({
+    get: () => {
+      reads++;
+      throw new Error('unexpected original read');
+    },
   } as never);
-  assert.deepEqual(await service.fromObject('small', 'image/png'), { width: 4, height: 3 });
+  assert.deepEqual(
+    await service.resolve({
+      id: 'legacy',
+      groupId: 'g',
+      storageKey: 'large',
+      mimeType: 'image/png',
+      imageWidth: null,
+      imageHeight: null,
+    }),
+    { width: null, height: null },
+  );
+  assert.equal(reads, 0);
+});
+
+test('metadata skips active formats without contacting storage', async () => {
+  const service = new ImageMetadataService({
+    get: () => assert.fail('active image read'),
+  } as never);
   assert.equal(await service.fromObject('active', 'image/svg+xml'), null);
-  assert.equal(reads, 1);
 });

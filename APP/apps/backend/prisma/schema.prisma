@@ -455,6 +455,7 @@ model FileObject {
   messages               Message[]
   externalAvatarMessages Message[]      @relation("ExternalMessageAvatar")
   share                  FileShare?
+  previewJob             FilePreviewJob?
   promotedArtifact       GroupArtifact? @relation("ArtifactSourceFile")
 
   @@index([groupId, createdAt])
@@ -938,4 +939,21 @@ model Task {
   completedBy User? @relation("TaskCompleter", fields: [completedById], references: [id], onDelete: SetNull)
 
   @@index([groupId])
+}
+
+// Retained after completion/failure so derived media work is inspectable.
+model FilePreviewJob {
+  fileId       String   @id
+  status       String   @default("PENDING")
+  attempts     Int      @default(0)
+  leaseVersion Int      @default(0)
+  availableAt  DateTime @default(dbgenerated("timezone('UTC'::text, CURRENT_TIMESTAMP)"))
+  lockedAt     DateTime?
+  lastError    String?
+  createdAt    DateTime @default(dbgenerated("timezone('UTC'::text, CURRENT_TIMESTAMP)"))
+  updatedAt    DateTime @default(dbgenerated("timezone('UTC'::text, CURRENT_TIMESTAMP)")) @updatedAt
+  file         FileObject @relation(fields: [fileId], references: [id], onDelete: Cascade)
+
+  @@index([status, availableAt])
+  @@index([status, lockedAt])
 }

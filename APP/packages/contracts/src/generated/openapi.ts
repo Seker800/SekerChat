@@ -244,6 +244,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/groups/{groupId}/files/{fileId}/preview/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["FilesController_retryPreview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/groups/{groupId}/files/{fileId}/thumbnail": {
         parameters: {
             query?: never;
@@ -2722,6 +2738,8 @@ export interface components {
             contentUrl: string;
             metadataUrl: string;
             thumbnailUrl: string | null;
+            thumbnailStatus?: string;
+            thumbnailError?: string | null;
             uploaderId: string;
             /** @enum {string} */
             kind: "file" | "image";
@@ -2798,13 +2816,15 @@ export interface components {
             /** @enum {string} */
             kind: "file" | "image";
             thumbnailUrl: string | null;
+            thumbnailStatus?: string;
+            thumbnailError?: string | null;
             isSharing?: boolean;
         };
         MessageReplyResponseDto: {
             id: string;
             senderId: string;
             /** @enum {string} */
-            type: "text" | "file" | "image" | "system";
+            type: "file" | "text" | "image" | "system";
             textPreview: string | null;
             sender: components["schemas"]["MessageSenderResponseDto"];
             attachment: components["schemas"]["MessageAttachmentResponseDto"] | null;
@@ -2831,7 +2851,7 @@ export interface components {
             groupId: string;
             senderId: string;
             /** @enum {string} */
-            type: "text" | "file" | "image" | "system";
+            type: "file" | "text" | "image" | "system";
             text: string | null;
             revokedAt: string | null;
             editedAt: string | null;
@@ -3949,6 +3969,28 @@ export interface operations {
         };
     };
     FilesController_getFileMetadata: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                groupId: string;
+                fileId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileMetadataResponseDto"];
+                };
+            };
+        };
+    };
+    FilesController_retryPreview: {
         parameters: {
             query?: never;
             header?: never;

@@ -18,6 +18,8 @@ export interface FileObjectResponse {
   uploaderId: string;
   kind: FileKind;
   thumbnailUrl: string | null;
+  thumbnailStatus?: string;
+  thumbnailError?: string | null;
 }
 
 export interface GroupArtifactResponse {

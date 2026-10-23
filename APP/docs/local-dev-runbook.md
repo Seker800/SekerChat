@@ -234,3 +234,44 @@ curl -sS http://127.0.0.1:5173/api/health
 5. 只让本机后端连接恢复后的本机库
 
 不要为了图快把开发配置里的 `DATABASE_URL` 或 `S3_ENDPOINT` 临时指回群晖。
+
+## Large image previews
+
+Large artwork uses the configured attachment upload limit; there is no additional
+40-million-pixel or 50-MiB image restriction. Corrupt/unsupported files still fail
+media processing explicitly without redefining a completed upload.
+
+Chat image uploads create a `FilePreviewJob` in the same transaction as the file.
+The preview worker copies one original at a time to a private temporary file,
+extracts dimensions and generates a small JPEG, then commits metadata and READY
+state together. Chat and album native processing share this serialization boundary;
+original bytes are streamed to disk rather than concatenated in backend memory.
+The runtime requires writable temporary disk space large enough for an original.
+This coordination assumes the single active production backend described in
+`architecture.md`.
+
+Jobs retain status, attempts and the last error after failures. Retries use UTC
+scheduling, heartbeat leases and version-guarded completion. A stopped worker's
+lease can be reclaimed after five minutes; five repeated failures/crashes leave an
+inspectable FAILED job. Historical images are queued by the additive migration,
+so no production repair script or manual database edit is required. Migration and
+worker execution in production still require explicit deployment authorization.
+
+Message reads serialize stored dimensions; they never fetch originals to repair
+missing metadata. The message list shows thumbnail progress/failure and an explicit
+original-view action. It does not fall back to an original automatically. Visible
+pending thumbnails refresh their status, and members can retry a failed preview
+through the authenticated file route. Error details stay in the job record; public
+responses show a user-facing error without internal storage paths.
+
+Local verification (the integration test refuses non-loopback data services and
+creates/removes its own isolated database and object fixtures):
+
+```bash
+cd APP/apps/backend
+SEKERCHAT_PREVIEW_INTEGRATION=1 node --require ts-node/register --test src/files/file-preview.integration.test.ts
+```
+
+Browser regression: `cd APP && npx playwright test tests/e2e/workspace-image-preview.spec.ts`.
+This covers explicit failure, retry completion without fetching the original,
+and reuse of an already opened original.

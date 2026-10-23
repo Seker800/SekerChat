@@ -1,3 +1,4 @@
+import { previewStatus } from '../files/file-preview-state';
 import { readExternalAuthor } from './external-author';
 import { Injectable } from '@nestjs/common';
 import { AvatarsService } from '../avatars/avatars.service';
@@ -103,6 +104,10 @@ export class MessageSerializerService {
       width: dimensions.width,
       height: dimensions.height,
       contentUrl: this.filesService.createFileAccessUrl(attachmentFile),
+      thumbnailStatus: previewStatus(attachmentFile.previewJob, attachmentFile.thumbnailStorageKey),
+      thumbnailError: attachmentFile.previewJob?.lastError
+        ? '缩略图生成失败，可重试或点击查看原图。'
+        : null,
       thumbnailUrl: this.filesService.shouldExposeInlineThumbnail(
         attachmentFile.mimeType,
         attachmentFile.thumbnailStorageKey,

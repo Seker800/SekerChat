@@ -20,7 +20,7 @@ import { ArtifactRepository } from '../artifacts/artifact.repository';
 import { ArtifactStorageService } from '../artifacts/artifact-storage.service';
 import { ArtifactWorkflowService } from '../artifacts/artifact-workflow.service';
 import { FilesService } from '../files/files.service';
-import { createImageProcessor, MAX_IMAGE_METADATA_BYTES } from '../files/image-processing-policy';
+import { previewJobForImage } from '../files/file-preview-state';
 import { ObjectSizeMismatchError } from '../files/object-size-mismatch.error';
 import { PrismaService } from '../prisma/prisma.service';
 import { FileUploadConfigService } from '../system-config/file-upload-config.service';
@@ -83,9 +83,6 @@ export class UploadsService {
   ) {}
 
   async initiateUpload(userId: string, dto: InitiateUploadDto) {
-    if (dto.kind === UploadKind.CHAT_ATTACHMENT && dto.mimeType.toLowerCase().startsWith('image/') && dto.size > MAX_IMAGE_METADATA_BYTES) {
-      throw new BadRequestException('图片大小不能超过 50MB。');
-    }
     const targetHandler = this.uploadTargets?.get(dto.kind);
     if (targetHandler) {
       return presentUploadSession(await targetHandler.initiate(userId, dto));
@@ -491,7 +488,7 @@ export class UploadsService {
       }
     }
     const imageDimensions =
-      (session.kind === UploadKind.CHAT_ATTACHMENT || session.kind === UploadKind.ALBUM_PHOTO) &&
+      session.kind === UploadKind.ALBUM_PHOTO &&
       session.mimeType.startsWith('image/') &&
       session.mimeType !== 'image/svg+xml'
         ? await this.filesService
@@ -644,6 +641,7 @@ export class UploadsService {
                 originalName: session.originalName,
                 mimeType: session.mimeType,
                 size: session.size,
+                previewJob: previewJobForImage(session.mimeType),
                 imageWidth: imageDimensions?.width ?? null,
                 imageHeight: imageDimensions?.height ?? null,
               },
@@ -881,23 +879,6 @@ export class UploadsService {
     // ── thumbnail generation (fire-and-forget, best-effort) ──
     if (txResult.kind === UploadKind.CHAT_ATTACHMENT) {
       const file = txResult.createdFileObject;
-      const shouldGenerateThumbnail = Number(session.size) <= MAX_IMAGE_METADATA_BYTES && this.filesService.shouldGenerateThumbnail(session.mimeType);
-
-      if (shouldGenerateThumbnail) {
-        // Run thumbnail generation asynchronously so it doesn't block the upload
-        // response. When the NAS is under memory pressure (swap), sharp can stall
-        // for tens of seconds and cause the client to time out.
-        this.generateThumbnail(session.objectKey, file.id, file.groupId).catch((error) => {
-          this.logger.warn(
-            'thumbnail_generation_failed_in_complete_upload',
-            JSON.stringify({
-              fileId: file.id,
-              error: error instanceof Error ? error.message : 'Unknown',
-            }),
-          );
-        });
-      }
-
       return {
         kind: UploadKind.CHAT_ATTACHMENT,
         file: {
@@ -1105,13 +1086,26 @@ export class UploadsService {
   async getUploadedParts(userId: string, sessionId: string) {
     const session = await this.getSessionOrThrow(sessionId, userId);
     if (session.status === UploadSessionStatus.COMPLETED) {
-      throw new BadRequestException({ code: 'UPLOAD_SESSION_COMPLETED', message: '上传已完成，请恢复原上传结果。' });
+      throw new BadRequestException({
+        code: 'UPLOAD_SESSION_COMPLETED',
+        message: '上传已完成，请恢复原上传结果。',
+      });
     }
-    if (session.status === UploadSessionStatus.ASSEMBLED || session.status === UploadSessionStatus.FAILED) {
-      return { uploadSessionId: session.id, partSizeBytes: UPLOAD_PART_SIZE_BYTES,
-        parts: this.parseCompletionParts(session.completionParts).map((part) => ({ ...part, size: 0 })) };
+    if (
+      session.status === UploadSessionStatus.ASSEMBLED ||
+      session.status === UploadSessionStatus.FAILED
+    ) {
+      return {
+        uploadSessionId: session.id,
+        partSizeBytes: UPLOAD_PART_SIZE_BYTES,
+        parts: this.parseCompletionParts(session.completionParts).map((part) => ({
+          ...part,
+          size: 0,
+        })),
+      };
     }
-    if (session.status === UploadSessionStatus.FINALIZING) throw new ServiceUnavailableException('上传正在完成，请稍后重试。');
+    if (session.status === UploadSessionStatus.FINALIZING)
+      throw new ServiceUnavailableException('上传正在完成，请稍后重试。');
     if (session.status !== UploadSessionStatus.INITIATED) {
       throw new BadRequestException({ code: 'UPLOAD_SESSION_ENDED', message: '上传会话已结束。' });
     }
@@ -1505,44 +1499,6 @@ export class UploadsService {
     }
 
     return `${suffix}-${baseName}`;
-  }
-
-  private async generateThumbnail(
-    objectKey: string,
-    fileId: string,
-    fileGroupId: string,
-  ): Promise<void> {
-    const { stream } = await this.filesService.getStreamFromS3(objectKey);
-
-    const thumbBuffer = await new Promise<Buffer>((resolve, reject) => {
-      const chunks: Buffer[] = [];
-      stream
-        .pipe(
-          createImageProcessor()
-            .resize({ width: 400, withoutEnlargement: true })
-            .jpeg({ quality: 85 }),
-        )
-        .on('data', (chunk: Buffer) => chunks.push(chunk))
-        .on('end', () => resolve(Buffer.concat(chunks)))
-        .on('error', reject);
-    });
-
-    const idx = objectKey.indexOf('/');
-    const groupId = objectKey.slice(0, idx);
-    const objKey = objectKey.slice(idx + 1);
-    const thumbKey = `${groupId}/thumb/${objKey}.jpg`;
-
-    await this.filesService.uploadBufferToS3(thumbKey, thumbBuffer, 'image/jpeg');
-
-    await this.prismaService.fileObject.update({
-      where: { id: fileId },
-      data: { thumbnailStorageKey: thumbKey, thumbnailSize: thumbBuffer.length },
-    });
-
-    this.logger.log(
-      'thumbnail_generated',
-      JSON.stringify({ fileId, thumbKey, size: thumbBuffer.length, fileGroupId }),
-    );
   }
 
   private async getWritableGroupOrThrow(groupId: string, userId: string, kind: UploadKind) {

@@ -171,4 +171,44 @@ describe('ProtectedImageAttachment', () => {
 
     expect(shell).toHaveStyle({ width: 'min(100%, 120px)', aspectRatio: '120 / 320' });
   });
+  it('does not silently fetch the original when a thumbnail fails', async () => {
+    const fetchMock = vi.fn(async () => new Response('', { status: 404 }));
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <ProtectedImageAttachment
+        accessToken="browser-cookie-session"
+        src="/api/groups/g/files/f/thumbnail"
+        previewSrc="/api/groups/g/files/f/content"
+        alt="large.png"
+        onPreview={() => undefined}
+      />,
+    );
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(screen.getByTestId('image-attachment-placeholder')).toHaveTextContent(
+        '缩略图加载失败',
+      ),
+    );
+    expect(fetchMock.mock.calls).toHaveLength(1);
+    expect(screen.queryByRole('img')).toBeNull();
+  });
+
+  it('does not load the original when no thumbnail exists and still allows explicit preview', () => {
+    const onPreview = vi.fn();
+    render(
+      <ProtectedImageAttachment
+        accessToken="browser-cookie-session"
+        src=""
+        previewSrc="/api/groups/g/files/f/content"
+        alt="large.png"
+        onPreview={onPreview}
+      />,
+    );
+    expect(screen.getByTestId('image-attachment-placeholder')).toHaveTextContent('点击查看原图');
+    expect(screen.queryByRole('img')).toBeNull();
+    fireEvent.click(screen.getByRole('button'));
+    expect(onPreview).toHaveBeenCalledWith(
+      expect.objectContaining({ src: '/api/groups/g/files/f/content' }),
+    );
+  });
 });

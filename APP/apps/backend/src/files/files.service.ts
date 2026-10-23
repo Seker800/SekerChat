@@ -13,7 +13,7 @@ import {
   RangeNotSatisfiableException,
 } from '../common/range-parser';
 import { PrismaService } from '../prisma/prisma.service';
-import { createImageProcessor } from './image-processing-policy';
+import { previewJobForImage, previewStatus } from './file-preview-state';
 import { ObjectStorageGateway, type CompletedMultipartPart } from './object-storage.gateway';
 import { FileAccessService } from './file-access.service';
 import {
@@ -68,55 +68,12 @@ export class FilesService {
       throw new ServiceUnavailableException('对象存储不可用，请检查 S3 配置或存储服务状态。');
     }
 
-    let thumbnailStorageKey: string | null = null;
-    let thumbnailSize: number | null = null;
-    const isImage = file.mimetype.startsWith('image/') && file.mimetype !== 'image/svg+xml';
-    let imageDimensions: { width: number; height: number } | null = null;
-
-    if (isImage) {
-      try {
-        imageDimensions = await this.getImageDimensionsFromBuffer(file.buffer, file.mimetype);
-      } catch (error) {
-        this.logger.warn(
-          'image_metadata_extraction_failed',
-          JSON.stringify({
-            storageKey,
-            error: error instanceof Error ? error.message : 'Unknown',
-          }),
-        );
-      }
-
-      try {
-        const thumbnailBuffer = await createImageProcessor(file.buffer)
-          .resize({ width: 400, withoutEnlargement: true })
-          .jpeg({ quality: 85 })
-          .toBuffer();
-
-        thumbnailStorageKey = this.buildThumbnailStorageKey(storageKey);
-        thumbnailSize = thumbnailBuffer.length;
-
-        await this.objectStorage.put(thumbnailStorageKey, thumbnailBuffer, 'image/jpeg');
-      } catch (error) {
-        this.logger.warn(
-          'thumbnail_generation_failed',
-          JSON.stringify({
-            storageKey,
-            error: error instanceof Error ? error.message : 'Unknown',
-          }),
-        );
-        thumbnailStorageKey = null;
-      }
-    }
-
     const created = await this.prismaService.fileObject.create({
       data: {
         groupId,
         uploaderId: userId,
         storageKey,
-        thumbnailStorageKey,
-        thumbnailSize,
-        imageWidth: imageDimensions?.width ?? null,
-        imageHeight: imageDimensions?.height ?? null,
+        previewJob: previewJobForImage(file.mimetype),
         originalName: normalizedOriginalName || 'upload.bin',
         mimeType: file.mimetype || 'application/octet-stream',
         size: file.size,
@@ -135,6 +92,21 @@ export class FilesService {
     );
 
     return this.serializeFileObject(created);
+  }
+
+  async retryPreview(userId: string, groupId: string, fileId: string) {
+    const file = await this.getReadableFileOrThrow(groupId, fileId, userId);
+    if (!previewJobForImage(file.mimeType)) throw new BadRequestException('此文件不支持图片预览。');
+    await this.prismaService.filePreviewJob.upsert({
+      where: { fileId },
+      create: { fileId },
+      update: {},
+    });
+    await this.prismaService.filePreviewJob.updateMany({
+      where: { fileId, status: 'FAILED' },
+      data: { status: 'PENDING', attempts: 0, availableAt: new Date(), lockedAt: null },
+    });
+    return this.getFileMetadata(userId, groupId, fileId);
   }
 
   async getFileMetadata(userId: string, groupId: string, fileId: string) {
@@ -234,7 +206,8 @@ export class FilesService {
   async getThumbnailStream(userId: string, groupId: string, fileId: string, ifNoneMatch?: string) {
     const file = await this.getReadableFileOrThrow(groupId, fileId, userId);
 
-    const key = file.thumbnailStorageKey ?? file.storageKey;
+    if (!file.thumbnailStorageKey) throw new NotFoundException('缩略图尚未生成。');
+    const key = file.thumbnailStorageKey;
 
     try {
       const object = await this.objectStorage.get(key, { ifNoneMatch });
@@ -309,6 +282,8 @@ export class FilesService {
       createdAt: file.createdAt,
       contentUrl: this.createFileAccessUrl(file),
       metadataUrl: this.fileUrls.metadata(file),
+      thumbnailStatus: previewStatus(file.previewJob, file.thumbnailStorageKey),
+      thumbnailError: file.previewJob?.lastError ? '缩略图生成失败，可重试或点击查看原图。' : null,
       thumbnailUrl: this.shouldExposeInlineThumbnail(file.mimeType, file.thumbnailStorageKey)
         ? this.createThumbnailAccessUrl(file)
         : null,

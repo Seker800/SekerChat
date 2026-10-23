@@ -371,16 +371,18 @@ test('shows replied image thumbnails and opens the original through the page ori
   expect(requestedPaths.filter((path) => path.endsWith('/content'))).toHaveLength(
     firstOpenContentRequests,
   );
-  console.log(JSON.stringify({
-    scenario: 'mocked private 2048x1536 PNG',
-    encodedBytes: largeRasterPng.length,
-    firstOpenContentRequests,
-    completedDownloadMs: completedDownloadMs.map(Math.round),
-    coldDecodedMs: Math.round(coldDecodedMs),
-    coldDecodeCallMs: Math.round(coldDecodeCallMs),
-    warmDecodedMs: Math.round(warmDecodedMs),
-    warmDecodeCallMs: Math.round(warmDecodeCallMs),
-  }));
+  console.log(
+    JSON.stringify({
+      scenario: 'mocked private 2048x1536 PNG',
+      encodedBytes: largeRasterPng.length,
+      firstOpenContentRequests,
+      completedDownloadMs: completedDownloadMs.map(Math.round),
+      coldDecodedMs: Math.round(coldDecodedMs),
+      coldDecodeCallMs: Math.round(coldDecodeCallMs),
+      warmDecodedMs: Math.round(warmDecodedMs),
+      warmDecodeCallMs: Math.round(warmDecodeCallMs),
+    }),
+  );
 });
 
 test('reserves image attachment shell height from metadata before the image finishes loading', async ({
@@ -545,4 +547,98 @@ test('loads stable thumbnails from the newest visible messages first and reuses 
   await expect(page.locator('img[alt^="image-"]')).toHaveCount(4);
 
   expect(thumbnailRequests).toHaveLength(requestsAfterInitialLoad);
+});
+
+test('failed large-image previews stay explicit, retry durably, and never silently download originals', async ({
+  page,
+}) => {
+  const contentUrl = 'http://127.0.0.1:4173/api/groups/group-1/files/large-file/content';
+  const thumbnailUrl = contentUrl.replace('/content', '/thumbnail');
+  const attachment = {
+    id: 'large-file',
+    fileId: 'large-file',
+    groupId: 'group-1',
+    uploaderId: 'user-admin',
+    originalName: 'large-artwork.png',
+    mimeType: 'image/png',
+    size: 151 * 1024 * 1024,
+    width: 6800,
+    height: 11027,
+    createdAt: '2026-04-10T12:00:00.000Z',
+    contentUrl,
+    metadataUrl: contentUrl.replace('/content', ''),
+    thumbnailUrl: null,
+    thumbnailStatus: 'FAILED',
+    thumbnailError: '缩略图生成失败，可重试或点击查看原图。',
+    kind: 'image',
+  };
+  await installAuthenticatedAppWithOptions(page, {
+    messagesResponse: {
+      status: 200,
+      body: {
+        groupId: 'group-1',
+        items: [
+          {
+            id: 'large-message',
+            groupId: 'group-1',
+            senderId: 'user-admin',
+            type: 'image',
+            text: null,
+            mentionedUserIds: [],
+            replyTo: null,
+            attachment,
+            createdAt: attachment.createdAt,
+            sender: { id: 'user-admin', email: 'admin@local.invalid', displayName: '管理员' },
+          },
+        ],
+      },
+    },
+  });
+  let originals = 0;
+  let retries = 0;
+  await page.route(contentUrl, async (route) => {
+    originals++;
+    await route.fulfill({
+      status: 200,
+      contentType: 'image/svg+xml',
+      headers: { 'cache-control': 'no-store' },
+      body: oversizedSvg,
+    });
+  });
+  await page.route(thumbnailUrl, async (route) =>
+    route.fulfill({ status: 200, contentType: 'image/svg+xml', body: oversizedSvg }),
+  );
+  await page.route(attachment.metadataUrl, async (route) =>
+    route.fulfill({
+      status: 200,
+      json: { ...attachment, thumbnailStatus: 'READY', thumbnailError: null, thumbnailUrl },
+    }),
+  );
+  await page.route(`${attachment.metadataUrl}/preview/retry`, async (route) => {
+    retries++;
+    await route.fulfill({
+      status: 200,
+      json: { ...attachment, thumbnailStatus: 'PENDING', thumbnailError: null },
+    });
+  });
+  await page.goto('/groups/group-1');
+  await expect(page.getByTestId('image-attachment-placeholder')).toContainText('缩略图生成失败');
+  expect(originals).toBe(0);
+  await page
+    .getByTestId('image-attachment-shell')
+    .screenshot({ path: 'test-results/large-image-preview-failed.png' });
+  await page.getByRole('button', { name: '重试生成缩略图' }).click();
+  await expect(page.getByTestId('image-attachment-placeholder')).toContainText('缩略图生成中');
+  await expect(page.getByRole('img', { name: 'large-artwork.png', exact: true })).toBeVisible({
+    timeout: 10000,
+  });
+  expect(originals).toBe(0);
+  expect(retries).toBe(1);
+  await page.getByRole('button', { name: '全屏查看 large-artwork.png' }).click();
+  await expect(page.getByTestId('image-preview-image')).toBeVisible();
+  const firstOpenRequests = originals;
+  await page.getByTestId('image-preview-backdrop').click({ position: { x: 8, y: 8 } });
+  await page.getByRole('button', { name: '全屏查看 large-artwork.png' }).click();
+  await expect(page.getByTestId('image-preview-image')).toBeVisible();
+  expect(originals).toBe(firstOpenRequests);
 });
