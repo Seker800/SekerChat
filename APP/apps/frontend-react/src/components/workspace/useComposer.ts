@@ -12,6 +12,8 @@ import type { SystemConfig } from '../../lib/system-config-api';
 import { trackLocallySentMessage, trackSendingEnd, trackSendingStart } from '../../hooks/localMessageTracker';
 import { uploadFileViaMultipart, type MultipartUploadProgress as UploadProgress } from '../../lib/multipart-upload';
 import { createClientMessageId } from '../../lib/client-message-id';
+import { useClipboardBatch } from './useClipboardBatch';
+import type { ClipboardPart } from './clipboard-content';
 
 interface UseComposerOptions {
   accessToken: string;
@@ -79,6 +81,21 @@ export function useComposer({
   }, []);
   const pendingUploads = selectedGroupId ? (pendingUploadsByGroupId[selectedGroupId] ?? []) : [];
   const chatAttachmentMaxBytes = chatAttachmentMbToBytes(chatAttachmentMaxMB ?? DEFAULT_CHAT_ATTACHMENT_MAX_MB);
+
+  const clipboardBatch = useClipboardBatch({
+    accessToken,
+    groupId: selectedGroupId,
+    maxBytes: chatAttachmentMaxBytes,
+    replyToMessageId,
+    onMessage: (message, groupId) => {
+      trackLocallySentMessage(message.id);
+      queryClient.setQueryData<{ groupId: string; items: MessageResponse[] }>(
+        ['messages', groupId],
+        (current) => ({ groupId, items: [...(current?.items ?? []).filter((item) => item.id !== message.id), message] }),
+      );
+      void queryClient.invalidateQueries({ queryKey: ['messages', groupId] });
+    },
+  });
 
   const updatePendingUploadsForGroup = useCallback(
     (groupId: string, updater: (current: PendingUpload[]) => PendingUpload[]) => {
@@ -356,6 +373,11 @@ export function useComposer({
 
   return {
     composer: {
+      ...clipboardBatch,
+      onPasteContent: (parts: ClipboardPart[]) => {
+        clipboardBatch.onPasteContent(parts);
+        if (selectedGroupId && parts.length) setReplyToMessageId('');
+      },
       channelName,
       isSending: sendMessageMutation.isPending,
       isUploading: pendingUploads.some((p) => p.status === 'uploading'),

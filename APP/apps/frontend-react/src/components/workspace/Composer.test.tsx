@@ -133,6 +133,27 @@ describe('Composer attachment picker', () => {
     expect(uploadedFiles[0]?.name).toMatch(/^clipboard-image-\d+\.png$/);
   });
 
+  it('dispatches ordered HTML content immediately without modifying the draft', () => {
+    const onPasteContent = vi.fn();
+    const onChange = vi.fn();
+    render(<Composer channelName="general" text="existing draft" isSending={false} isUploading={false}
+      replyTarget={null} onChange={onChange} onClearReply={() => undefined}
+      onPickAttachments={() => undefined} onSend={() => undefined} onPasteContent={onPasteContent} />);
+    const target = screen.getByTestId('message-composer');
+    const event = createEvent.paste(target);
+    Object.defineProperty(event, 'clipboardData', { value: {
+      files: [], items: [], getData: (type: string) => type === 'text/html'
+        ? '<p>before</p><img src="https://example.com/a.png"><p>after</p>' : 'before after',
+    } });
+    fireEvent(target, event);
+    expect(event.defaultPrevented).toBe(true);
+    expect(onPasteContent).toHaveBeenCalledWith([
+      { kind: 'text', text: 'before' }, { kind: 'image', source: 'https://example.com/a.png' }, { kind: 'text', text: 'after' },
+    ]);
+    expect(onChange).not.toHaveBeenCalled();
+    expect(target).toHaveValue('existing draft');
+  });
+
   it('does not intercept plain text paste', () => {
     const onPickAttachments = vi.fn();
 

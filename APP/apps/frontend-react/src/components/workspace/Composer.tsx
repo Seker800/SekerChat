@@ -2,6 +2,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEv
 import { useStore } from 'zustand';
 import type { StoreApi } from 'zustand/vanilla';
 import type { MentionSuggestion } from './useComposer';
+import { readClipboardContent, type ClipboardPart } from './clipboard-content';
+import type { PasteBatchStatus } from './useClipboardBatch';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import type { MessageResponse } from '../../lib/messages-files-api';
 import styles from './Composer.module.css';
@@ -19,6 +21,8 @@ interface ComposerProps {
   onClearReply: () => void;
   onPickAttachments: (files: File[]) => void;
   onSend: () => void;
+  onPasteContent?: (parts: ClipboardPart[]) => void;
+  pasteBatch?: PasteBatchStatus | null;
   isMentionActive?: boolean;
   mentionSuggestions?: MentionSuggestion[];
   mentionActiveIndex?: number;
@@ -135,6 +139,8 @@ function ComposerView({
   onClearReply,
   onPickAttachments,
   onSend,
+  onPasteContent,
+  pasteBatch,
   isMentionActive,
   mentionSuggestions,
   mentionActiveIndex,
@@ -192,6 +198,18 @@ function ComposerView({
           <button className={styles.bannerButton} type="button" onClick={onClearReply}>
             {t('common.close')}
           </button>
+        </div>
+      ) : null}
+      {pasteBatch ? (
+        <div className={styles.pasteStatus} role={pasteBatch.error ? 'alert' : 'status'} data-testid="clipboard-batch-status">
+          <span>{t('composer.pasteProgress', { sent: pasteBatch.sent, total: pasteBatch.total })}
+            {pasteBatch.queued ? ` · ${t('composer.pasteQueued', { count: pasteBatch.queued })}` : ''}
+            {pasteBatch.error ? ` · ${pasteBatch.error}` : ''}
+          </span>
+          {pasteBatch.error ? <>
+            <button type="button" className={styles.bannerButton} onClick={pasteBatch.retry}>{t('composer.pasteRetry')}</button>
+            <button type="button" className={styles.bannerButton} onClick={pasteBatch.discard}>{t('composer.pasteDiscard')}</button>
+          </> : null}
         </div>
       ) : null}
       <div className={styles.shell}>
@@ -259,6 +277,14 @@ function ComposerView({
               value={text}
               onChange={(event) => onChange(event.target.value)}
               onPaste={(event) => {
+                if (onPasteContent) {
+                  const parts = readClipboardContent(event.clipboardData);
+                  if (parts) {
+                    event.preventDefault();
+                    onPasteContent(parts);
+                    return;
+                  }
+                }
                 const imageFiles = extractClipboardImageFiles(event);
                 if (imageFiles.length === 0) {
                   return;

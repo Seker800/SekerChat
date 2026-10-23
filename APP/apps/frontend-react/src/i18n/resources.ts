@@ -42,6 +42,10 @@ export const resources = {
         infoPlaceholder: '信息栏加载占位',
       },
       composer: {
+        pasteProgress: '图文粘贴：已发送 {{sent}} / {{total}} 条',
+        pasteQueued: '等待 {{count}} 批',
+        pasteRetry: '继续发送',
+        pasteDiscard: '丢弃剩余内容',
         replying: '回复中',
         replyingTo: '正在回复 {{name}}',
         uploadAttachment: '上传附件',
@@ -271,6 +275,10 @@ export const resources = {
         infoPlaceholder: 'Information rail loading placeholder',
       },
       composer: {
+        pasteProgress: 'Pasting messages: {{sent}} / {{total}} sent',
+        pasteQueued: '{{count}} queued',
+        pasteRetry: 'Resume sending',
+        pasteDiscard: 'Discard remaining',
         replying: 'Replying',
         replyingTo: 'Replying to {{name}}',
         uploadAttachment: 'Upload attachment',
