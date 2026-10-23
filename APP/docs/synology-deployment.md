@@ -123,8 +123,62 @@ NAS_LAN_IP=your-nas-lan-ip
 curl -fsS "http://${NAS_LAN_IP}:8080/api/health/ready"
 ```
 
-然后验证登录、发送消息、文件上传/预览、server 切换和 WebSocket 重连。用户真实外网入口可能通过
-路由器映射到 `5173`；不要把它与 NAS 本机监听的 `8080` 混为一谈。
+然后验证登录、发送消息、文件上传/预览、server 切换和 WebSocket 重连。当前正式用户入口为
+`https://yuntai.design:5173`；不要把它与 NAS 本机的 HTTP 回源端口 `8080` 混为一谈。
+
+## HTTPS 入口（2026-10-23）
+
+当前链路为：公网/内网回流 TCP `5173` → NAS DSM HTTPS `5173` →
+`http://127.0.0.1:8080` → frontend 同源 API / WebSocket 代理 → backend。
+OpenWrt 的既有 `pf_sekerchat` 只将目的端口从 `8080` 改为 `5173`，保留原域名、
+公网端口及 NAT reflection；其他映射、DDNS 和 OpenClash 配置未变。
+
+DSM 规则名为 `SekerChat HTTPS`，来源主机名为 `yuntai.design`，已添加 DSM 内建
+WebSocket 请求头，回源 HTTP 1.1，连接超时 60 秒，发送/读取超时 600 秒。
+仅将该服务绑定已有的有效 ZeroSSL ECC 域名证书，未改变 DSM 系统默认证书或其他服务绑定。
+证书北京时间 2026-12-09 到期；直接使用 NAS IP 访问不属于域名证书的覆盖范围。
+
+生产私有 `.env` 的入口配置为：
+
+```env
+APP_BASE_URL=https://yuntai.design:5173
+API_BASE_URL=https://yuntai.design:5173/api
+CORS_ORIGINS=https://yuntai.design:5173
+OIDC_REDIRECT_URI=https://yuntai.design:5173/api/auth/oidc/callback
+S3_PUBLIC_ENDPOINT=
+```
+
+浏览器统一使用域名 HTTPS；旧 HTTP/IP 页面不再作为登录入口。`APP_BASE_URL` 决定会话
+Cookie 的 Secure 属性，不能只改路由器或浏览器地址。文件继续通过同源代理，不新增
+MinIO 公网端口。OIDC 回调地址已同步，但 DSM SSO 提供方的回调注册和完整 OIDC 登录尚未验收；
+其既有 5001 入口仍分配过期默认对象，属于独立证书维护项。
+
+本次复用 v0.9.22 镜像，仅重建 backend 使环境变量生效；无源码、镜像、schema 变更，
+未运行迁移、重建或手工修改 PostgreSQL/MinIO。先通过 app-only 边界校验与 Compose
+`config --quiet`，再重建 backend，待健康后切换路由映射。
+
+已验证：NAS 直达及域名 NAT 回流证书校验成功、首页 200、ready；全新 Chrome 无痕窗口显示
+“连接是安全的”及登录表单；正确来源的合成错误登录为 401，外部来源为 403；WSS 代理
+返回 101，未认证连接按应用规则以 4401 关闭。运行镜像中的会话服务用惰性测试令牌调用，
+两枚 Cookie 配置均为 Secure、HttpOnly、SameSite Lax（未生成真实会话或写入数据库）；
+本机会话与来源校验测试 6 项通过。已有浏览器会话下相册缩略图和全屏大图预览均正常显示。
+尚未验收全新账号登录、真实上传、消息发送或家庭外移动网络；未认证接口响应不能代替这些验收。
+
+DSM 5001 的过期证书在局域网直连和域名回流下均可重现，并非局域网本身不支持 HTTPS。
+Chrome 常规窗口曾允许该域名的证书错误内容，安全面板因此仍显示 broken HTTPS，
+同时明确说明当前 5173 证书有效且 TLS 1.3 连接安全；全新无痕窗口未出现这一状态。
+不要通过关闭证书校验解决问题，也不要将旧浏览器状态误判为新入口证书失效。
+
+续期沿用 NAS 的 `acme-sh-syno`：已只读确认阿里云 DNS-01、ZeroSSL、cron 与
+`synology_dsm` 部署钩子，配置的下次续期时间为北京时间 2026-11-25 11:33。
+尚未实测下一次自动续期或核对部署目标与 DSM 对象的完整对应关系；续期后需检查
+5173/8181 实际证书与服务绑定，不安装重复续期器。
+
+回滚资料：NAS `backups/https-20261023/` 保存切换前 `.env` 与 compose（私有，勿提交）；
+本机 `.omx/backups/openwrt-pre-sekerchat-https-20261023.tar.gz` 保存路由器完整配置
+（含秘密，勿公开）。回滚时先恢复生产入口配置、用当前镜像仅重建 backend 并验证健康，
+再将 `pf_sekerchat.dest_port` 恢复 `8080`，经 `fw4 check` 后提交并重载防火墙。
+只撤销本次代理时必须先恢复映射；不要整机覆盖旧路由备份或触碰数据面。
 
 ## 生产内存趋势监控
 
