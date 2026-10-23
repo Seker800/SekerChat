@@ -123,8 +123,8 @@ NAS_LAN_IP=your-nas-lan-ip
 curl -fsS "http://${NAS_LAN_IP}:8080/api/health/ready"
 ```
 
-然后验证登录、发送消息、文件上传/预览、server 切换和 WebSocket 重连。当前正式用户入口为
-`https://yuntai.design:5173`；不要把它与 NAS 本机的 HTTP 回源端口 `8080` 混为一谈。
+然后验证登录、发送消息、文件上传/预览、server 切换和 WebSocket 重连。当前正式用户入口使用
+维护者私有配置中的域名和 HTTPS `5173`（如 `https://chat.example.com:5173`）；不要把它与 NAS 本机的 HTTP 回源端口 `8080` 混为一谈。
 
 ## HTTPS 入口（2026-10-23）
 
@@ -133,18 +133,18 @@ curl -fsS "http://${NAS_LAN_IP}:8080/api/health/ready"
 OpenWrt 的既有 `pf_sekerchat` 只将目的端口从 `8080` 改为 `5173`，保留原域名、
 公网端口及 NAT reflection；其他映射、DDNS 和 OpenClash 配置未变。
 
-DSM 规则名为 `SekerChat HTTPS`，来源主机名为 `yuntai.design`，已添加 DSM 内建
+DSM 规则名为 `SekerChat HTTPS`，来源主机名使用维护者私有配置中的正式域名，已添加 DSM 内建
 WebSocket 请求头，回源 HTTP 1.1，连接超时 60 秒，发送/读取超时 600 秒。
 仅将该服务绑定已有的有效 ZeroSSL ECC 域名证书，未改变 DSM 系统默认证书或其他服务绑定。
 证书北京时间 2026-12-09 到期；直接使用 NAS IP 访问不属于域名证书的覆盖范围。
 
-生产私有 `.env` 的入口配置为：
+生产私有 `.env` 的入口配置如下（域名为占位示例，真实值仅保留在私有配置）：
 
 ```env
-APP_BASE_URL=https://yuntai.design:5173
-API_BASE_URL=https://yuntai.design:5173/api
-CORS_ORIGINS=https://yuntai.design:5173
-OIDC_REDIRECT_URI=https://yuntai.design:5173/api/auth/oidc/callback
+APP_BASE_URL=https://chat.example.com:5173
+API_BASE_URL=https://chat.example.com:5173/api
+CORS_ORIGINS=https://chat.example.com:5173
+OIDC_REDIRECT_URI=https://chat.example.com:5173/api/auth/oidc/callback
 S3_PUBLIC_ENDPOINT=
 ```
 
