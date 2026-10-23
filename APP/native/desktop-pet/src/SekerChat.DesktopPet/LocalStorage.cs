@@ -11,8 +11,14 @@ public sealed class LocalStorage
         WriteIndented = true,
     };
 
-    private readonly string _directory =
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SekerChat", "DesktopPet");
+    private readonly SemaphoreSlim _settingsWriteLock = new(1, 1);
+    private readonly string _directory;
+
+    public LocalStorage(string? directory = null)
+    {
+        _directory = directory ?? Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SekerChat", "DesktopPet");
+    }
     private string SettingsPath => Path.Combine(_directory, "settings.json");
 
     public string DirectoryPath => _directory;
@@ -21,20 +27,44 @@ public sealed class LocalStorage
 
     public async Task<DesktopSettings> LoadSettingsAsync()
     {
+        var settings = new DesktopSettings();
         try
         {
             var json = await File.ReadAllTextAsync(SettingsPath);
-            return JsonSerializer.Deserialize<DesktopSettings>(json, JsonOptions) ?? new DesktopSettings();
+            settings = JsonSerializer.Deserialize<DesktopSettings>(json, JsonOptions) ?? settings;
+            var migrated = DesktopSettings.Migrate(settings);
+            if (migrated != settings)
+            {
+                await SaveSettingsAsync(migrated);
+            }
+            return migrated;
         }
         catch
         {
-            return new DesktopSettings();
+            return DesktopSettings.Migrate(settings);
         }
     }
 
     public async Task SaveSettingsAsync(DesktopSettings settings)
     {
-        Directory.CreateDirectory(_directory);
-        await File.WriteAllTextAsync(SettingsPath, JsonSerializer.Serialize(settings, JsonOptions));
+        await _settingsWriteLock.WaitAsync();
+        var temporaryPath = SettingsPath + ".tmp";
+        try
+        {
+            Directory.CreateDirectory(_directory);
+            await File.WriteAllTextAsync(temporaryPath, JsonSerializer.Serialize(settings, JsonOptions));
+            File.Move(temporaryPath, SettingsPath, overwrite: true);
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+            }
+            finally
+            {
+                _settingsWriteLock.Release();
+            }
+        }
     }
 }

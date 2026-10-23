@@ -11,6 +11,8 @@ public sealed record PetRestFrame(string AssetPath, int FrameIndex);
 
 public static class PetAssetCatalog
 {
+    private static readonly PetSkin? PrivateSkin = PetSkin.TryLoad(
+        System.IO.Path.Combine(AppContext.BaseDirectory, "PetSkin"));
     private const string Root = "Assets/PixelGoose/Runtime/";
 
     private static readonly IReadOnlyDictionary<PetState, string[]> StateAssets =
@@ -57,10 +59,10 @@ public static class PetAssetCatalog
             [PetState.NotLoggedIn] = new(Root + "Idle", 0),
         };
 
-    public static IReadOnlyList<string> ForState(PetState state) => StateAssets[state];
+    public static IReadOnlyList<string> ForState(PetState state) => PrivateSkin?.ForState(state) ?? StateAssets[state];
 
     public static IReadOnlyList<string> ForInteraction(PetInteraction interaction) =>
-        InteractionAssets[interaction];
+        PrivateSkin?.ForInteraction(interaction) ?? InteractionAssets[interaction];
 
-    public static PetRestFrame RestFor(PetState state) => RestFrames[state];
+    public static PetRestFrame RestFor(PetState state) => PrivateSkin?.RestFor(state) ?? RestFrames[state];
 }

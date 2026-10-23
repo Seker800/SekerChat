@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="src/SekerChat.DesktopPet/SekerChat.DesktopPet.csproj" />
   <Project Path="tests/SekerChat.DesktopPet.CoreTests/SekerChat.DesktopPet.CoreTests.csproj" />
+  <Project Path="tests/SekerChat.DesktopPet.PortableTests/SekerChat.DesktopPet.PortableTests.csproj" />
 </Solution>

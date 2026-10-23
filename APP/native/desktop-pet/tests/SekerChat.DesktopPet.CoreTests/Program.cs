@@ -123,8 +123,8 @@ Check(
     "the default pet size should be 50 percent");
 
 Check(
-    new DesktopSettings().MessageWakeMode,
-    "the desktop pet should stay hidden by default until a message arrives");
+    !new DesktopSettings().MessageWakeMode,
+    "the desktop pet should stay visible by default");
 
 Check(
     new DesktopSettings().WebBaseUrl == "http://localhost:5173",
@@ -146,7 +146,7 @@ var savedPositionSettings = JsonSerializer.Deserialize<DesktopSettings>(
 Check(
     savedPositionSettings?.Left == 1239
     && savedPositionSettings.Top == 727
-    && savedPositionSettings.MessageWakeMode,
+    && !savedPositionSettings.MessageWakeMode,
     "desktop settings should load saved coordinates and apply new defaults to missing fields");
 
 var dndNow = DateTimeOffset.Parse("2026-07-25T00:00:00Z");
@@ -247,7 +247,7 @@ using (var menu = new DesktopPetMenu(
 }
 
 Check(
-    AppVersion.Current == "0.5.10",
+    AppVersion.Current == "0.5.11",
     "desktop-pet should expose its release version");
 
 Check(

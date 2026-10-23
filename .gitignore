@@ -19,6 +19,10 @@ coverage/
 .deploy-artifacts/
 APP/.local/
 
+# Desktop binaries and private, data-only pet skins are never public source assets.
+/APP/native/desktop-pet/artifacts/
+PetSkin/
+
 # Optional private companion repositories
 /Cli/
 

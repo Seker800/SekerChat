@@ -150,6 +150,19 @@ public partial class App : System.Windows.Application
         return Task.CompletedTask;
     }
 
+    protected override void OnSessionEnding(SessionEndingCancelEventArgs e)
+    {
+        // Windows restart/logoff does not go through the tray's Exit command.
+        _webClient?.CloseForExit();
+        base.OnSessionEnding(e);
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        _webClient?.CloseForExit();
+        base.OnExit(e);
+    }
+
     private bool AcquireSingleInstance()
     {
         const string mutexName = @"Local\SekerChatDesktopPet.SingleInstance";

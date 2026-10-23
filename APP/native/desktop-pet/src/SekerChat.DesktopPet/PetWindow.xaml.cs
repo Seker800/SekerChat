@@ -298,6 +298,10 @@ public partial class PetWindow : Window
 
     private static Stream OpenResource(string path)
     {
+        if (Path.IsPathRooted(path))
+        {
+            return File.OpenRead(path);
+        }
         var uri = new Uri(
             $"/SekerChat.DesktopPet;component/{path}",
             UriKind.Relative);

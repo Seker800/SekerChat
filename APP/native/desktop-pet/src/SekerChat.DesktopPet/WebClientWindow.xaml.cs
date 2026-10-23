@@ -51,7 +51,10 @@ public partial class WebClientWindow : FluentWindow
                 var environment = await CoreWebView2Environment.CreateAsync(
                     browserExecutableFolder: null,
                     userDataFolder: _storage.WebViewDataPath);
-                await Browser.EnsureCoreWebView2Async(environment);
+                var controllerOptions = environment.CreateCoreWebView2ControllerOptions();
+                controllerOptions.ProfileName = "Default";
+                controllerOptions.IsInPrivateModeEnabled = false;
+                await Browser.EnsureCoreWebView2Async(environment, controllerOptions);
                 ConfigureBrowser();
                 _initialized = true;
             }
@@ -143,7 +146,9 @@ public partial class WebClientWindow : FluentWindow
 
     public void CloseForExit()
     {
+        if (_allowClose) return;
         _allowClose = true;
+        Browser.Dispose();
         Close();
     }
 
@@ -186,7 +191,9 @@ public partial class WebClientWindow : FluentWindow
 #endif
         core.Settings.IsStatusBarEnabled = false;
         core.Settings.IsPasswordAutosaveEnabled = true;
+        core.Settings.IsGeneralAutofillEnabled = true;
         core.Settings.AreBrowserAcceleratorKeysEnabled = true;
+        core.DownloadStarting += OnDownloadStarting;
         core.WebMessageReceived += OnWebMessageReceived;
         core.NavigationStarting += (_, args) => _navigationState.NavigationStarting(args.Uri);
         core.NavigationCompleted += (_, args) =>
@@ -218,6 +225,43 @@ public partial class WebClientWindow : FluentWindow
             }
             Error?.Invoke($"WebView2 进程异常：{args.ProcessFailedKind}");
         };
+    }
+
+    private async void OnDownloadStarting(object? sender, CoreWebView2DownloadStartingEventArgs args)
+    {
+        using var deferral = args.GetDeferral();
+        try
+        {
+            // Leave the WebView2 event callback before opening a modal native dialog.
+            var accepted = await Dispatcher.InvokeAsync(() =>
+            {
+                var dialog = new Microsoft.Win32.SaveFileDialog
+                {
+                    Title = "选择下载保存位置",
+                    FileName = Path.GetFileName(args.ResultFilePath),
+                    InitialDirectory = Browser.CoreWebView2.Profile.DefaultDownloadFolderPath,
+                    Filter = "所有文件 (*.*)|*.*",
+                    AddExtension = false,
+                    OverwritePrompt = true,
+                };
+                if (dialog.ShowDialog(this) != true) return false;
+                args.ResultFilePath = dialog.FileName;
+                Browser.CoreWebView2.Profile.DefaultDownloadFolderPath = Path.GetDirectoryName(dialog.FileName)!;
+                return true;
+            });
+            args.Cancel = !accepted;
+            // Keep WebView2's download progress UI available after choosing the path.
+            args.Handled = false;
+        }
+        catch (Exception exception)
+        {
+            args.Cancel = true;
+            Error?.Invoke($"无法开始下载：{exception.Message}");
+        }
+        finally
+        {
+            deferral.Complete();
+        }
     }
 
     private async Task ConfigureBridgeAsync()

@@ -31,11 +31,55 @@ Windows 原生桌宠外壳，加上使用独立 Cookie 配置的 WebView2 网页
 - 默认大小为 50%，高 DPI 屏幕下拖拽距离与鼠标保持一致
 - 动作结束回到各状态专用休息姿势，不再停留在空白或扭曲末帧
 - 有新消息时单击宠物，用默认浏览器直接打开最近的未读会话
-- 默认开启“消息唤醒模式”：平时隐藏，仅在非勿扰状态有消息时出现
+- 默认常驻桌面；可选择开启“消息唤醒模式”
 - 普通消息与提及/回复分级提醒
 - 点击系统消息通知后在软件版中打开对应群组或私聊
 
 桌宠不需要专用前端页面、后端 API、设备令牌或数据库迁移。
+
+## 个人表情包与公开版本
+
+维护同一套代码。公开构建只嵌入 CC0 像素鹅；个人版在 EXE 同级放置 `PetSkin/`，
+启动时优先读取该数据包，缺失或清单无效则完整回退为像素鹅。
+原始 GIF、派生帧、个人打包目录均应保存在仓库外，无需另建包含私有素材的 Git 分叉。
+
+资源包使用 `skin.json`，包含 `States`、`Interactions`、`RestFrames`：
+
+```json
+{
+  "States": {"Normal": ["idle"], "Message": ["idle"], "DoNotDisturb": ["idle"], "NotLoggedIn": ["idle"]},
+  "Interactions": {"Dragging": ["idle"], "Clicked": ["idle"]},
+  "RestFrames": {
+    "Normal": {"AssetPath": "idle", "FrameIndex": 0},
+    "Message": {"AssetPath": "idle", "FrameIndex": 0},
+    "DoNotDisturb": {"AssetPath": "idle", "FrameIndex": 0},
+    "NotLoggedIn": {"AssetPath": "idle", "FrameIndex": 0}
+  }
+}
+```
+
+每个动作目录包含 `animation.json`（如 `{"Delays":[100,100]}`，单位毫秒）和
+`frame-000.png` 起的完整合成透明帧，沿用现有 PNG 动画播放器。
+清单引用必须为包内相对路径；不能使用绝对路径或跨目录路径。
+
+```powershell
+cd APP
+# 公开产物：artifacts/win-x64，不自动查找或复制本机私有素材。
+.\scripts\desktop-pet.ps1 publish
+# 个人产物：artifacts/private-win-x64；仅显式传入时复制资源包。
+.\scripts\desktop-pet.ps1 publish -PrivateSkinDirectory 'D:\PersonalAssets\PetSkin'
+```
+
+两个产物目录分开；公开输出目录如果残留 `PetSkin` 会拒绝打包。
+Git 忽略 `PetSkin/` 和桌宠构建产物；个人版必须连同整个 `PetSkin` 目录保存。
+请勿把个人压缩包上传到公开 Release。
+
+核心设置、升级迁移和私有素材校验也可在非 Windows 系统执行：
+
+```sh
+dotnet run --project native/desktop-pet/tests/SekerChat.DesktopPet.PortableTests
+# 可选：追加资源包路径，校验实际的个人包。
+```
 
 ## 开发
 

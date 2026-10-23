@@ -10,15 +10,22 @@ public enum PetState
 
 public sealed record DesktopSettings
 {
+    public const int CurrentSettingsVersion = 1;
+    public int SettingsVersion { get; init; }
     public string WebBaseUrl { get; init; } = "http://localhost:5173";
     public bool AlwaysOnTop { get; init; } = true;
     public bool ClickThrough { get; init; }
-    public bool MessageWakeMode { get; init; } = true;
+    public bool MessageWakeMode { get; init; }
     public bool HideMessageContent { get; init; } = true;
     public bool StartWithWindows { get; init; }
     public double PetScale { get; init; } = 0.5;
     public double? Left { get; init; }
     public double? Top { get; init; }
+
+    public static DesktopSettings Migrate(DesktopSettings settings) =>
+        settings.SettingsVersion < CurrentSettingsVersion
+            ? settings with { SettingsVersion = CurrentSettingsVersion, MessageWakeMode = false }
+            : settings;
 }
 
 public sealed record DesktopUser
