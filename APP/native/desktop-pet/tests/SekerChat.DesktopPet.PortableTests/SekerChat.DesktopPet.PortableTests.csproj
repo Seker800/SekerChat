@@ -11,5 +11,6 @@
     <Compile Include="../../src/SekerChat.DesktopPet/PetStatePolicy.cs" Link="PetStatePolicy.cs" />
     <Compile Include="../../src/SekerChat.DesktopPet/PetAssetCatalog.cs" Link="PetAssetCatalog.cs" />
     <Compile Include="../../src/SekerChat.DesktopPet/PetSkin.cs" Link="PetSkin.cs" />
+    <Compile Include="../../src/SekerChat.DesktopPet/BundledPetSkin.cs" Link="BundledPetSkin.cs" />
   </ItemGroup>
 </Project>

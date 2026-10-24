@@ -40,13 +40,22 @@ switch ($Action) {
     if (-not $PrivateSkinDirectory -and (Test-Path (Join-Path $publishDirectory 'PetSkin'))) {
       throw '公开输出目录含有私有资源包，请先移走该目录再重新构建。'
     }
-    dotnet publish $appProject `
-      --configuration Release `
-      --runtime win-x64 `
-      --self-contained true `
-      --output $publishDirectory
-    if ($LASTEXITCODE -ne 0) {
-      exit $LASTEXITCODE
+    $privateArchive = ''
+    try {
+      if ($PrivateSkinDirectory) {
+        $privateArchive = Join-Path ([System.IO.Path]::GetTempPath()) ('seker-pet-' + [guid]::NewGuid().ToString('N') + '.zip')
+        Compress-Archive -Path (Join-Path $PrivateSkinDirectory '*') -DestinationPath $privateArchive
+      }
+      dotnet publish $appProject `
+        --configuration Release `
+        --runtime win-x64 `
+        --self-contained true `
+        "-p:PrivateSkinArchive=$privateArchive" `
+        --output $publishDirectory
+      if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    }
+    finally {
+      if ($privateArchive -and (Test-Path $privateArchive)) { Remove-Item $privateArchive -Force }
     }
     Copy-Item (Join-Path $desktopRoot 'RELEASE_NOTES.md') $publishDirectory -Force
     Copy-Item (Join-Path $desktopRoot 'USER_GUIDE.md') $publishDirectory -Force
@@ -54,7 +63,6 @@ switch ($Action) {
     if ($PrivateSkinDirectory) {
       $skinOutput = Join-Path $publishDirectory 'PetSkin'
       if (Test-Path $skinOutput) { Remove-Item $skinOutput -Recurse -Force }
-      Copy-Item $PrivateSkinDirectory $skinOutput -Recurse
     }
   }
 }

@@ -247,7 +247,7 @@ using (var menu = new DesktopPetMenu(
 }
 
 Check(
-    AppVersion.Current == "0.5.11",
+    AppVersion.Current == "0.5.12",
     "desktop-pet should expose its release version");
 
 Check(

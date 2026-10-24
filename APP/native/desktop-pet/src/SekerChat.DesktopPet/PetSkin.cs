@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace SekerChat.DesktopPet;
 
-// Optional data-only skin. Private assets never become assembly resources.
+// Data-only skin shared by sidecar packs and the private single-file build.
 public sealed class PetSkin
 {
     private readonly Dictionary<PetState, string[]> _states = [];

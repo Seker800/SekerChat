@@ -9,7 +9,7 @@
     <AssemblyName>SekerChat.DesktopPet</AssemblyName>
     <RootNamespace>SekerChat.DesktopPet</RootNamespace>
     <ApplicationIcon>Assets\AppIcon.ico</ApplicationIcon>
-    <Version>0.5.11</Version>
+    <Version>0.5.12</Version>
     <InformationalVersion>$(Version)</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
@@ -22,5 +22,8 @@
   </ItemGroup>
   <ItemGroup>
     <Resource Include="Assets\PixelGoose\Runtime\**\*.*" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(PrivateSkinArchive)' != ''">
+    <EmbeddedResource Include="$(PrivateSkinArchive)" LogicalName="SekerChat.DesktopPet.PrivateSkin.zip" />
   </ItemGroup>
 </Project>

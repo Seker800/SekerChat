@@ -11,8 +11,7 @@ public sealed record PetRestFrame(string AssetPath, int FrameIndex);
 
 public static class PetAssetCatalog
 {
-    private static readonly PetSkin? PrivateSkin = PetSkin.TryLoad(
-        System.IO.Path.Combine(AppContext.BaseDirectory, "PetSkin"));
+    private static readonly PetSkin? PrivateSkin = LoadPrivateSkin();
     private const string Root = "Assets/PixelGoose/Runtime/";
 
     private static readonly IReadOnlyDictionary<PetState, string[]> StateAssets =
@@ -65,4 +64,14 @@ public static class PetAssetCatalog
         PrivateSkin?.ForInteraction(interaction) ?? InteractionAssets[interaction];
 
     public static PetRestFrame RestFor(PetState state) => PrivateSkin?.RestFor(state) ?? RestFrames[state];
+
+    private static PetSkin? LoadPrivateSkin()
+    {
+        using var bundled = typeof(PetAssetCatalog).Assembly.GetManifestResourceStream(BundledPetSkin.ResourceName);
+        if (bundled is not null)
+        {
+            return BundledPetSkin.TryLoad(bundled, System.IO.Path.Combine(new LocalStorage().DirectoryPath, "Skins"));
+        }
+        return PetSkin.TryLoad(System.IO.Path.Combine(AppContext.BaseDirectory, "PetSkin"));
+    }
 }

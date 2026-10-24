@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Resources;
+using System.IO.Compression;
 using SekerChat.DesktopPet;
 
 var checks = 0;
@@ -63,6 +64,36 @@ try
     Check(skin.ForInteraction(PetInteraction.Dragging).Count == 1, "Interaction should load");
     Check(skin.RestFor(PetState.Message).FrameIndex == 0, "Rest frame should load");
     var validManifest = File.ReadAllText(Path.Combine(root, "skin.json"));
+    var archivePath = Path.Combine(root, "test-skin.zip");
+    using (var archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+    {
+        foreach (var file in new[] { "skin.json", "idle/animation.json", "idle/frame-000.png" })
+            archive.CreateEntryFromFile(Path.Combine(root, file), file);
+    }
+    var cache = Path.Combine(root, "cache");
+    string? cachedAssetPath = null;
+    using (var stream = File.OpenRead(archivePath))
+    {
+        var bundled = BundledPetSkin.TryLoad(stream, cache);
+        Check(bundled is not null, "Embedded skin should extract and load without a sidecar directory");
+        Check(bundled!.ForState(PetState.Normal).Single().StartsWith(cache), "Embedded skin should use the app cache");
+        cachedAssetPath = bundled.ForState(PetState.Normal).Single();
+    }
+    using (var stream = File.OpenRead(archivePath))
+        Check(BundledPetSkin.TryLoad(stream, cache) is not null, "Restart should reuse the validated skin cache");
+    File.Delete(Path.Combine(cachedAssetPath!, "frame-000.png"));
+    using (var stream = File.OpenRead(archivePath))
+        Check(BundledPetSkin.TryLoad(stream, cache) is not null, "Missing cached frame should be repaired from the embedded archive");
+    Check(File.Exists(Path.Combine(cachedAssetPath!, "frame-000.png")), "Cache repair must restore the missing frame");
+    using (var badArchive = new MemoryStream([1, 2, 3]))
+        Check(BundledPetSkin.TryLoad(badArchive, cache) is null, "Broken embedded archive should fall back");
+    var traversalArchive = Path.Combine(root, "traversal.zip");
+    using (var archive = ZipFile.Open(traversalArchive, ZipArchiveMode.Create))
+        using (var writer = new StreamWriter(archive.CreateEntry("../escaped.txt").Open())) writer.Write("blocked");
+    using (var stream = File.OpenRead(traversalArchive))
+        Check(BundledPetSkin.TryLoad(stream, cache) is null, "Zip traversal must be rejected");
+    Check(!File.Exists(Path.Combine(cache, "escaped.txt")), "Extraction must stay within staging");
+    Check(!Directory.EnumerateDirectories(cache, "*.tmp").Any(), "Failed extraction must remove its staging directory");
     foreach (var delays in new[] { "[]", "[0]", "[-1]", "[\"bad\"]", "[2147483648]" })
     {
         File.WriteAllText(Path.Combine(root, "idle", "animation.json"), "{\"Delays\":" + delays + "}");
@@ -98,12 +129,16 @@ if (args.Length >= 2)
     var metadata = executable.GetMetadataReader();
     var resources = executable.GetSectionData(executable.PEHeaders.CorHeader!.ResourcesDirectory.RelativeVirtualAddress);
     var assetKeys = new List<string>();
+    byte[]? bundledSkin = null;
     foreach (var handle in metadata.ManifestResources)
     {
         var resource = metadata.GetManifestResource(handle);
-        if (!metadata.GetString(resource.Name).EndsWith(".g.resources", StringComparison.Ordinal)) continue;
+        var resourceName = metadata.GetString(resource.Name);
         var reader = resources.GetReader((int)resource.Offset, resources.Length - (int)resource.Offset);
-        using var entries = new ResourceReader(new MemoryStream(reader.ReadBytes(reader.ReadInt32())));
+        var payload = reader.ReadBytes(reader.ReadInt32());
+        if (resourceName == BundledPetSkin.ResourceName) bundledSkin = payload;
+        if (!resourceName.EndsWith(".g.resources", StringComparison.Ordinal)) continue;
+        using var entries = new ResourceReader(new MemoryStream(payload));
         foreach (System.Collections.DictionaryEntry entry in entries)
         {
             var key = (string)entry.Key;
@@ -112,6 +147,22 @@ if (args.Length >= 2)
     }
     Check(assetKeys.Count > 0, "Public assembly must contain fallback pet assets");
     Check(assetKeys.All(key => key.StartsWith("assets/pixelgoose/runtime/", StringComparison.Ordinal)), "Public assembly must embed only public pet assets");
+    var expectPrivate = args.Length >= 3 && args[2] == "private";
+    Check((bundledSkin is not null) == expectPrivate, "Private archive must only be present in explicit private builds");
+    if (bundledSkin is not null)
+    {
+        var cache = Path.Combine(Path.GetTempPath(), "seker-embedded-audit-" + Guid.NewGuid());
+        try
+        {
+            using var stream = new MemoryStream(bundledSkin);
+            var actual = BundledPetSkin.TryLoad(stream, cache);
+            var expected = PetSkin.TryLoad(args[0]);
+            Check(actual is not null, "Actual embedded assembly resource must load without sidecar files");
+            Check(Enum.GetValues<PetState>().All(state => actual!.ForState(state).Count == expected!.ForState(state).Count), "Embedded skin must preserve every state animation");
+            Check(new[] { PetInteraction.Dragging, PetInteraction.Clicked }.All(interaction => actual!.ForInteraction(interaction).Count == expected!.ForInteraction(interaction).Count), "Embedded skin must preserve every interaction animation");
+        }
+        finally { if (Directory.Exists(cache)) Directory.Delete(cache, recursive: true); }
+    }
     Console.WriteLine($"PASS: {assetKeys.Count} public animation resources contain only PixelGoose");
 }
 Console.WriteLine($"PASS: {checks} portable desktop-pet checks");

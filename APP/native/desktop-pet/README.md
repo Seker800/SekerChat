@@ -39,8 +39,10 @@ Windows 原生桌宠外壳，加上使用独立 Cookie 配置的 WebView2 网页
 
 ## 个人表情包与公开版本
 
-维护同一套代码。公开构建只嵌入 CC0 像素鹅；个人版在 EXE 同级放置 `PetSkin/`，
-启动时优先读取该数据包，缺失或清单无效则完整回退为像素鹅。
+维护同一套代码。公开构建只嵌入 CC0 像素鹅；v0.5.12 起，显式指定私有资源目录的
+个人构建会把数据包嵌入单 EXE，首次启动自动释放到本机 `Skins/<内容哈希>/` 缓存。
+发布只需个人版 EXE，无需另带 `PetSkin/` 文件夹。损坏缓存会重建，损坏资源会回退为像素鹅。
+未内置私有资源的版本仍支持读取 EXE 同级的 `PetSkin/`，兼容之前的数据包。
 原始 GIF、派生帧、个人打包目录均应保存在仓库外，无需另建包含私有素材的 Git 分叉。
 
 资源包使用 `skin.json`，包含 `States`、`Interactions`、`RestFrames`：
@@ -66,13 +68,14 @@ Windows 原生桌宠外壳，加上使用独立 Cookie 配置的 WebView2 网页
 cd APP
 # 公开产物：artifacts/win-x64，不自动查找或复制本机私有素材。
 .\scripts\desktop-pet.ps1 publish
-# 个人产物：artifacts/private-win-x64；仅显式传入时复制资源包。
+# 个人单 EXE：artifacts/private-win-x64；仅显式传入时嵌入资源包。
 .\scripts\desktop-pet.ps1 publish -PrivateSkinDirectory 'D:\PersonalAssets\PetSkin'
 ```
 
 两个产物目录分开；公开输出目录如果残留 `PetSkin` 会拒绝打包。
-Git 忽略 `PetSkin/` 和桌宠构建产物；个人版必须连同整个 `PetSkin` 目录保存。
-请勿把个人压缩包上传到公开 Release。
+Git 忽略 `PetSkin/` 和桌宠构建产物。个人 EXE 同样包含私有素材，不能上传到公开 Release。
+命令行交叉构建可显式传入 `-p:PrivateSkinArchive=<仓库外的资源包ZIP>`，
+ZIP 顶层必须是 `skin.json` 和动作目录。默认参数为空，不查找本机私有目录。
 
 核心设置、升级迁移和私有素材校验也可在非 Windows 系统执行：
 
