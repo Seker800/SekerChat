@@ -41,6 +41,10 @@ COPY --from=builder /app/apps/backend ./apps/backend
 COPY --from=builder /app/packages/contracts ./packages/contracts
 COPY --from=builder /app/packages/shared ./packages/shared
 
+# Deployment invokes the installed CLI from the workspace root, independently
+# of the backend working directory. Fail this build if it is not available.
+RUN test -x /app/node_modules/.bin/prisma
+
 # npm is a build-time tool. Keeping it in the runtime image needlessly expands
 # the executable and vulnerability surface; Prisma is invoked directly below.
 RUN rm -rf /usr/local/lib/node_modules/npm \

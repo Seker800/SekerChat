@@ -17,6 +17,9 @@
 
 正常发布不得停止、删除或重建 `sekerchat-postgres`、`sekerchat-minio`，不得修改其数据目录。
 
+迁移与 schema 预检统一调用镜像内 workspace 根目录安装的 `/app/node_modules/.bin/prisma`，
+不能假设 CLI 被安装在 backend 子目录。后端镜像构建会检查这一可执行入口；发布前还须用实际镜像运行预检。
+
 ## 版本与产物
 
 发布版本必须同时匹配：

@@ -118,6 +118,7 @@ test('release supports a standalone Compose binary without changing Docker comma
   const calls = readFileSync(fixture.log, 'utf8');
   assert.match(calls, /compose\|--env-file[^\n]*config --services/);
   assert.match(calls, /compose\|--env-file[^\n]*up -d --no-deps backend/);
+  assert.match(calls, /run --rm migrate \/app\/node_modules\/\.bin\/prisma validate --schema prisma\/schema\.prisma/);
   assert.doesNotMatch(calls, /docker\|compose/);
 });
 

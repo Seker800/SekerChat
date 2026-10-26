@@ -30,7 +30,7 @@ SEKERCHAT_ENV_FILE="$ENV_FILE" \
 
 # Validate the schema and image before touching migration history. The old
 # application remains running throughout preflight and migration.
-compose --profile migration run --rm migrate node node_modules/prisma/build/index.js validate --schema prisma/schema.prisma
+compose --profile migration run --rm migrate /app/node_modules/.bin/prisma validate --schema prisma/schema.prisma
 if ! compose --profile migration run --rm migrate; then
   printf 'ERROR: migration failed; old application is still running and no new app was started.\n' >&2
   exit 1

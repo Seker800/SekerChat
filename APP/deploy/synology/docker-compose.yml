@@ -70,8 +70,7 @@ services:
       NODE_ENV: production
     command:
       [
-        'node',
-        'node_modules/prisma/build/index.js',
+        '/app/node_modules/.bin/prisma',
         'migrate',
         'deploy',
         '--schema',
