@@ -109,7 +109,7 @@ describe('ProtectedImageAttachment', () => {
   it('downloads the stable thumbnail once and reuses it after remount', async () => {
     const fetchMock = vi.fn(async (url: string) => {
       if (url.endsWith('/thumbnail')) {
-        return new Response(new Blob(['small-thumbnail'], { type: 'image/jpeg' }), {
+        return new Response('small-thumbnail', {
           status: 200,
           headers: { 'Content-Type': 'image/jpeg' },
         });

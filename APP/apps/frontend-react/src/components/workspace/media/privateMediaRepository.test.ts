@@ -3,7 +3,7 @@ import { BROWSER_COOKIE_CREDENTIAL } from '../../../lib/api-core';
 import { createPrivateMediaRepository } from './privateMediaRepository';
 
 function thumbnailResponse(body = 'thumbnail-bytes') {
-  return new Response(new Blob([body], { type: 'image/jpeg' }), {
+  return new Response(body, {
     status: 200,
     headers: { 'Content-Type': 'image/jpeg' },
   });

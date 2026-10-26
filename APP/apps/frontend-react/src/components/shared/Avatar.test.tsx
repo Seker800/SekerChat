@@ -7,7 +7,7 @@ import styles from './Avatar.module.css';
 
 describe('Avatar', () => {
   beforeEach(() => {
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(new Blob(['avatar'], { type: 'image/png' }))));
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('avatar', { headers: { 'Content-Type': 'image/png' } })));
     vi.stubGlobal('URL', {
       ...URL,
       createObjectURL: vi.fn(() => 'blob:avatar'),
