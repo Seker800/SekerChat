@@ -249,6 +249,7 @@ export function ProtectedImageAttachment({
         alt,
         accessToken: isGroupFileContentUrl(previewTarget) ? accessToken : undefined,
         viewerId: viewerId ?? accessToken,
+        thumbnailUrl: resolvedSrc && isGroupFileThumbnailUrl(currentSource) ? currentSource : undefined,
       });
     } finally {
       setIsOpeningPreview(false);

@@ -26,6 +26,67 @@ function renderDialog(overrides: Partial<Parameters<typeof ImagePreviewDialog>[0
 
 describe('shared ImagePreviewDialog', () => {
   afterEach(() => vi.restoreAllMocks());
+  it('keeps a separately leased thumbnail visible while the original downloads and releases it on close', async () => {
+    const release = vi.fn();
+    let finish!: (lease: { src: string; release: () => void }) => void;
+    vi.spyOn(privateMediaRepository, 'acquireThumbnail').mockResolvedValue({
+      src: 'blob:thumbnail',
+      release,
+    });
+    vi.spyOn(privateMediaRepository, 'acquirePreview').mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const view = renderDialog({
+      image: {
+        src: '/api/groups/g/files/f/content',
+        alt: 'large',
+        accessToken: 'token',
+        viewerId: 'user',
+        thumbnailUrl: '/api/groups/g/files/f/thumbnail',
+      },
+    });
+    expect(await screen.findByTestId('image-preview-thumbnail')).toHaveAttribute(
+      'src',
+      'blob:thumbnail',
+    );
+    expect(screen.getByRole('progressbar')).toBeInTheDocument();
+    expect(screen.queryByTestId('image-preview-image')).toBeNull();
+    await act(async () => finish({ src: 'blob:original', release: vi.fn() }));
+    expect(screen.getByTestId('image-preview-thumbnail')).toBeInTheDocument();
+    fireEvent.load(screen.getByTestId('image-preview-image'));
+    expect(screen.queryByTestId('image-preview-thumbnail')).toBeNull();
+    expect(screen.queryByRole('progressbar')).toBeNull();
+    view.unmount();
+    expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it('continues downloading the original if the optional thumbnail fails', async () => {
+    vi.spyOn(privateMediaRepository, 'acquireThumbnail').mockRejectedValue(
+      new Error('missing thumbnail'),
+    );
+    vi.spyOn(privateMediaRepository, 'acquirePreview').mockResolvedValue({
+      src: 'blob:original',
+      release: vi.fn(),
+    });
+    const view = renderDialog({
+      image: {
+        src: '/api/groups/g/files/f/content',
+        alt: 'large',
+        accessToken: 'token',
+        viewerId: 'user',
+        thumbnailUrl: '/api/groups/g/files/f/thumbnail',
+      },
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('image-preview-image')).toHaveAttribute('src', 'blob:original'),
+    );
+    fireEvent.load(screen.getByTestId('image-preview-image'));
+    expect(screen.queryByRole('alert')).toBeNull();
+    view.unmount();
+  });
   it('shows actual download percentage and decoding separately, then removes progress', async () => {
     let report!: (value: { loaded: number; total: number | null }) => void;
     let finish!: (lease: { src: string; release: () => void }) => void;

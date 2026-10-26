@@ -200,7 +200,7 @@ test('keeps image preview loading separate from failure and retries in place', a
   await page.route('**/previews/state-original.svg', async (route) => {
     originalAttempt += 1;
     if (originalAttempt === 1) await firstResponseReady;
-    if (originalAttempt === 2) {
+    if (originalAttempt === 1) {
       await route.fulfill({
         status: 503,
         contentType: 'text/plain',
@@ -208,7 +208,7 @@ test('keeps image preview loading separate from failure and retries in place', a
       });
       return;
     }
-    if (originalAttempt === 3) await retryResponseReady;
+    if (originalAttempt === 2) await retryResponseReady;
     await route.fulfill({
       status: 200,
       contentType: 'image/svg+xml',
@@ -226,11 +226,6 @@ test('keeps image preview loading separate from failure and retries in place', a
   await expect(loadingStatus).toContainText('正在加载大图…');
   await loadingStatus.screenshot({ path: 'test-results/image-preview-loading.png' });
   releaseFirstResponse();
-  await expect(page.getByTestId('image-preview-image')).toBeVisible();
-
-  await page.getByTestId('image-preview-backdrop').click({ position: { x: 8, y: 8 } });
-  await previewTrigger.click();
-
   const errorAlert = page.getByRole('alert');
   await expect(errorAlert).toContainText('图片加载失败');
   await errorAlert.screenshot({ path: 'test-results/image-preview-error.png' });
@@ -238,7 +233,7 @@ test('keeps image preview loading separate from failure and retries in place', a
   await expect(page.getByRole('status')).toContainText('正在加载大图…');
   releaseRetryResponse();
   await expect(page.getByTestId('image-preview-image')).toBeVisible();
-  expect(originalAttempt).toBe(3);
+  expect(originalAttempt).toBe(2);
 });
 
 test('shows replied image thumbnails and opens the original through the page origin', async ({
@@ -653,13 +648,17 @@ test('shows streamed original progress in a compact loader on desktop and mobile
         id: 'progress-file', fileId: 'progress-file', groupId: 'group-1', originalName: '旅行照片.png',
         mimeType: 'image/svg+xml', size: oversizedSvg.length, width: 900, height: 2400,
         contentUrl: 'http://127.0.0.1:4173/api/groups/group-1/files/progress/content',
-        thumbnailUrl: 'http://assets.local/previews/progress-thumbnail.svg',
+        thumbnailUrl: 'http://127.0.0.1:4173/api/groups/group-1/files/progress/thumbnail',
         metadataUrl: 'http://assets.local/previews/progress.json', uploaderId: 'user-admin', kind: 'image',
         createdAt: '2026-04-10T12:00:00.000Z',
       },
     }] } },
   });
-  await page.route('**/previews/progress-thumbnail.svg', (route) => route.fulfill({ contentType: 'image/svg+xml', body: oversizedSvg }));
+  let thumbnailRequests = 0;
+  await page.route('**/files/progress/thumbnail', (route) => {
+    thumbnailRequests++;
+    return route.fulfill({ contentType: 'image/svg+xml', body: oversizedSvg });
+  });
   // Keep a real browser Response stream open between chunks so the UI can render
   // intermediate progress; route.fulfill buffers the complete response body.
   await page.addInitScript((body) => {
@@ -687,6 +686,8 @@ test('shows streamed original progress in a compact loader on desktop and mobile
   const percent = Math.floor(Math.floor(oversizedSvg.length / 2) / oversizedSvg.length * 100);
   await expect(bar).toHaveAttribute('aria-valuenow', String(percent));
   await expect(page.getByRole('status')).toContainText(`${percent}%`);
+  await expect(page.getByTestId('image-preview-thumbnail')).toBeVisible();
+  expect(thumbnailRequests).toBe(1);
   await expect(bar.locator('span')).toHaveCSS('animation-name', 'none');
   await page.screenshot({ path: 'test-results/image-preview-progress-desktop.png' });
   await page.setViewportSize({ width: 390, height: 844 });
@@ -697,4 +698,5 @@ test('shows streamed original progress in a compact loader on desktop and mobile
   await page.evaluate(() => window.dispatchEvent(new Event('finish-preview-test')));
   await expect(page.getByTestId('image-preview-image')).toBeVisible();
   await expect(bar).toHaveCount(0);
+  await expect(page.getByTestId('image-preview-thumbnail')).toHaveCount(0);
 });

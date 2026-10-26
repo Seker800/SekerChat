@@ -43,6 +43,9 @@ export function ImagePreviewDialog({
   onWheel,
 }: ImagePreviewDialogProps) {
   const onWheelRef = useRef(onWheel);
+  const [thumbnail, setThumbnail] = useState<{ url: string; src: string; viewerId: string } | null>(
+    null,
+  );
   const [loadState, setLoadState] = useState<{
     src: string;
     attempt: number;
@@ -61,6 +64,37 @@ export function ImagePreviewDialog({
       ? loadState
       : { src: image.src, attempt: 0, status: 'loading' as const };
   onWheelRef.current = onWheel;
+
+  // Own a lease independently of the message row, which may be virtualized away.
+  useEffect(() => {
+    if (!image.thumbnailUrl || !image.accessToken || !image.viewerId) return;
+    const controller = new AbortController();
+    const url = image.thumbnailUrl;
+    const viewerId = image.viewerId;
+    let release: (() => void) | undefined;
+    void privateMediaRepository
+      .acquireThumbnail({
+        url,
+        viewerId: image.viewerId,
+        accessToken: image.accessToken,
+        signal: controller.signal,
+      })
+      .then((lease) => {
+        if (controller.signal.aborted) {
+          lease.release();
+          return;
+        }
+        release = lease.release;
+        setThumbnail({ url, src: lease.src, viewerId });
+      })
+      .catch(() => {
+        // A thumbnail is optional; its failure must not fail the original download.
+      });
+    return () => {
+      controller.abort();
+      release?.();
+    };
+  }, [image.thumbnailUrl, image.accessToken, image.viewerId]);
 
   useEffect(() => {
     if (!image.accessToken || !image.viewerId) return;
@@ -143,6 +177,19 @@ export function ImagePreviewDialog({
         aria-label={image.alt}
         data-testid="image-preview-stage"
       >
+        {activeLoadState.status !== 'loaded' &&
+        thumbnail &&
+        thumbnail.url === image.thumbnailUrl &&
+        thumbnail.viewerId === image.viewerId ? (
+          <img
+            className={styles.previewThumbnail}
+            src={thumbnail.src}
+            alt=""
+            aria-hidden="true"
+            onError={() => setThumbnail(null)}
+            data-testid="image-preview-thumbnail"
+          />
+        ) : null}
         {activeLoadState.status !== 'loaded' ? (
           <div
             className={styles.previewLoadState}
