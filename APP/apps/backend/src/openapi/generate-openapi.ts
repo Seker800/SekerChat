@@ -25,7 +25,7 @@ async function main(): Promise<void> {
     process.env[key] ??= value;
   }
 
-  const { AppModule } = await import('../app.module');
+  const { AppModule } = await import('../app.module.js');
   const app = await NestFactory.create(AppModule, { abortOnError: false, logger: false });
   app.setGlobalPrefix('api');
   const serialized = `${JSON.stringify(createOpenApiDocument(app), null, 2)}\n`;

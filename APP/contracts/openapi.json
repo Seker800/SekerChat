@@ -8784,7 +8784,10 @@
         "type": "object",
         "properties": {
           "kind": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "CHAT_ATTACHMENT"
+            ]
           },
           "file": {
             "$ref": "#/components/schemas/FinalizedChatFileResponseDto"
@@ -8799,7 +8802,10 @@
         "type": "object",
         "properties": {
           "kind": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "ARTIFACT"
+            ]
           },
           "artifact": {
             "$ref": "#/components/schemas/FinalizedArtifactValueResponseDto"
@@ -8865,7 +8871,10 @@
         "type": "object",
         "properties": {
           "kind": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "SUBSCRIPTION_ATTACHMENT"
+            ]
           },
           "attachment": {
             "$ref": "#/components/schemas/FinalizedSubscriptionAttachmentValueResponseDto"
@@ -8916,7 +8925,10 @@
         "type": "object",
         "properties": {
           "kind": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "ALBUM_PHOTO"
+            ]
           },
           "photo": {
             "$ref": "#/components/schemas/FinalizedAlbumPhotoValueResponseDto"

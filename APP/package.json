@@ -61,20 +61,22 @@
     "openapi-typescript": "^7.13.0",
     "prettier": "^3.6.2",
     "typescript-eslint": "^8.70.0",
-    "vite": "^6.4.5",
+    "vite": "^8.3.5",
     "vitest": "^5.0.5",
     "vue-eslint-parser": "^10.4.1",
     "ws": "^8.21.3",
-    "jsdom": "^30.1.3"
+    "jsdom": "^30.1.3",
+    "typescript": "5.9.3"
   },
   "dependencies": {
     "helmet": "^8.1.0"
   },
   "overrides": {
     "@redocly/openapi-core": "1.34.20",
-    "multer": "2.3.0",
+    "multer": "2.5.0",
     "@nestjs/swagger": {
-      "js-yaml": "5.2.3"
+      "js-yaml": "5.2.3",
+      "typescript": "6.0.3"
     }
   }
 }
