@@ -8,7 +8,8 @@ import { formatTimestamp } from '../../utils/time';
 import { useTranslation } from 'react-i18next';
 import { Avatar } from '../shared/Avatar';
 import { FileAttachmentCard } from './FileAttachmentCard';
-import { FileShareDialog, type ManagedFileShare } from './FileShareDialog';
+import { FileShareDialog } from './FileShareDialog';
+import type { ManagedFileShare } from '../../lib/file-shares-api';
 import {
   getFileShare,
   revokeFileShare,

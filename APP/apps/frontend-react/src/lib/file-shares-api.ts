@@ -1,5 +1,21 @@
 import { apiBaseUrl, authHeaders, fetchApi, parseResponse } from './api-core';
-import type { ManagedFileShare } from '../components/workspace/FileShareDialog';
+export type FileShareStatus = 'ACTIVE' | 'EXPIRED' | 'REVOKED' | 'CHANNEL_ARCHIVED' | 'DRAFT';
+
+export type ManagedFileShare = {
+  exists: boolean;
+  url: string;
+  password: string;
+  expiresAt: string;
+  status: FileShareStatus;
+  downloadCount: number;
+  lastDownloadedAt: string | null;
+  activatedBy: {
+    id: string;
+    email: string;
+    displayName: string | null;
+    avatarUrl: string | null;
+  } | null;
+};
 
 function endpoint(groupId: string, fileId: string): string {
   return `${apiBaseUrl}/groups/${encodeURIComponent(groupId)}/files/${encodeURIComponent(fileId)}/share`;

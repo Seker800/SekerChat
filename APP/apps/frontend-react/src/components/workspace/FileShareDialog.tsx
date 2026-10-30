@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { IconCheck, IconCopy, IconLink, IconRefresh, IconX } from '@tabler/icons-react';
+import type { FileShareStatus, ManagedFileShare } from '../../lib/file-shares-api';
 import { userDisplayName } from '../../lib/users-api';
 import { Avatar } from '../shared/Avatar';
 import styles from './FileShareDialog.module.css';
@@ -9,24 +10,6 @@ const LEGACY_PASSWORD_PATTERN = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)[A-Za-z\d]{4}$/;
 const GENERATED_PASSWORD_LENGTH = 16;
 const PASSWORD_CHARACTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 const DEFAULT_SHARE_DURATION_MS = 3 * 24 * 60 * 60 * 1_000;
-
-export type FileShareStatus = 'ACTIVE' | 'EXPIRED' | 'REVOKED' | 'CHANNEL_ARCHIVED' | 'DRAFT';
-
-export type ManagedFileShare = {
-  exists: boolean;
-  url: string;
-  password: string;
-  expiresAt: string;
-  status: FileShareStatus;
-  downloadCount: number;
-  lastDownloadedAt: string | null;
-  activatedBy: {
-    id: string;
-    email: string;
-    displayName: string | null;
-    avatarUrl: string | null;
-  } | null;
-};
 
 type FileShareDialogProps = {
   filename: string;

@@ -1,7 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { chatAttachmentMbToBytes, DEFAULT_CHAT_ATTACHMENT_MAX_MB } from '@sekerchat/shared';
-import { createStore } from 'zustand/vanilla';
+import {
+  confirmTimelineMessage,
+  receiveCreatedMessage,
+  type MessageTimeline,
+} from '../../lib/message-timeline';
+import { createStore, type StoreApi } from 'zustand/vanilla';
 import { useWorkspaceStore } from '../../store/workspace-store';
 import {
   createMessage,
@@ -63,12 +68,22 @@ export function useComposer({
   chatAttachmentMaxMB,
 }: UseComposerOptions) {
   const queryClient = useQueryClient();
-  const [draftStore] = useState(() => createStore<{ text: string }>(() => ({ text: '' })));
+  const [drafts] = useState(() => new Map<string, StoreApi<{ text: string }>>());
+  const draftStore = useMemo(() => {
+    const existing = drafts.get(selectedGroupId);
+    if (existing) return existing;
+    const store = createStore<{ text: string }>(() => ({ text: '' }));
+    drafts.set(selectedGroupId, store);
+    return store;
+  }, [drafts, selectedGroupId]);
   const setDraft = useCallback((value: string | ((current: string) => string)) => {
-    draftStore.setState(({ text }) => ({ text: typeof value === 'function' ? value(text) : value }));
+    draftStore.setState(({ text }) => ({ text: typeof value === 'function' ? value(text) : value}));
   }, [draftStore]);
   const [pendingUploadsByGroupId, setPendingUploadsByGroupId] = useState<Record<string, PendingUpload[]>>({});
-  const { composerSeedText, replyToMessageId, setComposerSeedText, setReplyToMessageId } = useWorkspaceStore();
+  const composerSeedText = useWorkspaceStore((state) => state.composerSeedText);
+  const replyToMessageId = useWorkspaceStore((state) => state.replyToMessageId);
+  const setComposerSeedText = useWorkspaceStore((state) => state.setComposerSeedText);
+  const setReplyToMessageId = useWorkspaceStore((state) => state.setReplyToMessageId);
   const mounted = useRef(true);
   const activeUploads = useRef(new Map<string, AbortController>());
   useEffect(() => {
@@ -89,9 +104,8 @@ export function useComposer({
     replyToMessageId,
     onMessage: (message, groupId) => {
       trackLocallySentMessage(message.id);
-      queryClient.setQueryData<{ groupId: string; items: MessageResponse[] }>(
-        ['messages', groupId],
-        (current) => ({ groupId, items: [...(current?.items ?? []).filter((item) => item.id !== message.id), message] }),
+      queryClient.setQueryData<MessageTimeline>(['messages', groupId], current =>
+        receiveCreatedMessage(current, groupId, message),
       );
       void queryClient.invalidateQueries({ queryKey: ['messages', groupId] });
     },
@@ -144,29 +158,8 @@ export function useComposer({
       trackSendingEnd(variables.targetGroupId);
       if (result?.message?.id) trackLocallySentMessage(result.message.id);
       if (result?.message) {
-        queryClient.setQueryData<{ groupId: string; items: MessageResponse[] }>(
-          ['messages', variables.targetGroupId],
-          (current) => {
-            if (!current) {
-              return { groupId: variables.targetGroupId, items: [result.message] };
-            }
-
-            const optimisticIndex = current.items.findIndex((item) => item.id === variables.localId);
-            if (optimisticIndex >= 0) {
-              const items = current.items.filter((item) => item.id !== result.message.id);
-              items[optimisticIndex] = { ...result.message, clientKey: variables.localId };
-              return { ...current, items };
-            }
-
-            const confirmedIndex = current.items.findIndex((item) => item.id === result.message.id);
-            if (confirmedIndex >= 0) {
-              const items = [...current.items];
-              items[confirmedIndex] = result.message;
-              return { ...current, items };
-            }
-
-            return { ...current, items: [...current.items, result.message] };
-          },
+        queryClient.setQueryData<MessageTimeline>(['messages', variables.targetGroupId], current =>
+          confirmTimelineMessage(current, variables.targetGroupId, variables.localId, result.message),
         );
       } else {
         refetchMessages();
@@ -244,7 +237,7 @@ export function useComposer({
       ['messages', selectedGroupId],
       (current) => {
         if (!current) {
-          return { groupId: selectedGroupId, items: [optimisticMessage] };
+          return { groupId: selectedGroupId, items: [optimisticMessage], isPartial: true };
         }
         return {
           ...current,
@@ -279,23 +272,28 @@ export function useComposer({
       }
       controller.signal.throwIfAborted();
       update({ status: 'creating-message' });
-      await createMessage(accessToken, targetGroupId, {
+      const message = await createMessage(accessToken, targetGroupId, {
         type: uploaded.kindLabel === 'image' ? 'image' : 'file', clientMessageId: entry.localId,
         attachment: { fileId: uploaded.id }, replyToMessageId: entry.replyToMessageId || undefined,
       });
+      trackLocallySentMessage(message.id);
+      queryClient.setQueryData<MessageTimeline>(['messages', targetGroupId], current =>
+        confirmTimelineMessage(current, targetGroupId, entry.localId, message),
+      );
       updatePendingUploadsForGroup(targetGroupId, (current) => current.filter((item) => item.localId !== entry.localId));
     } catch (error) {
       update({ status: 'error', error: controller.signal.aborted ? '已取消' : error instanceof Error ? error.message : '上传失败' });
     } finally {
       activeUploads.current.delete(entry.localId);
     }
-  }, [accessToken, updatePendingUploadsForGroup]);
+  }, [accessToken, queryClient, updatePendingUploadsForGroup]);
 
   const uploadFiles = useCallback(
     async (files: File[]) => {
       if (!selectedGroupId || !files.length) return;
       const targetGroupId = selectedGroupId;
       const savedReplyToId = replyToMessageId;
+      setReplyToMessageId('');
 
       const entries: PendingUpload[] = files.map((file) => ({
         localId: createClientMessageId(),
@@ -313,7 +311,6 @@ export function useComposer({
         await Promise.all(batch);
       }
 
-      setReplyToMessageId('');
       refetchMessages();
     },
     [refetchMessages, replyToMessageId, runUploadEntry, selectedGroupId, setReplyToMessageId, updatePendingUploadsForGroup],

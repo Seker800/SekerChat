@@ -57,6 +57,23 @@ The backend creates a multipart session, receives parts through the same-origin 
 
 WebSocket is a delivery optimization, not the fact source. Realtime events use versioned shared contracts. A dropped or duplicated event must be recoverable by reading PostgreSQL-backed HTTP APIs.
 
+### Client state and message consistency
+
+The React Query cache owns the loaded message timeline. `lib/message-timeline.ts`
+centralizes latest-page refresh, older-page merge, realtime insertion, loaded-message
+patching, and local-send confirmation. Refresh preserves loaded history, the oldest
+pagination cursor, failed/pending sends and stable render keys. Offline gaps are
+read through HTTP until the last HTTP-covered message is reached; live events do
+not advance that boundary. A realtime event alone is never a complete initial page.
+Events racing the initial HTTP read are buffered as explicitly partial data.
+
+Commands carry the group ID captured when submitted; completion handlers update
+that group's cache even after navigation. Text drafts belong to individual
+conversations for the lifetime of the workspace. Settings forms store edited fields
+separately from server snapshots, so background updates cannot overwrite dirty
+input, and earlier saves cannot clear newer edits. Drafts are not persisted across
+page reloads or logout.
+
 ### Authentication
 
 Browser sessions use secure HttpOnly cookies. CLI and device clients use explicit token contracts. Long-lived credentials must not appear in URLs or logs.

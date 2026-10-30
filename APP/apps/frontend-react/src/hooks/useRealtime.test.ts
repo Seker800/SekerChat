@@ -3,7 +3,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MessageResponse } from '../lib/messages-files-api';
-import { useRealtime, upsertMessageInCache } from './useRealtime';
+import { useRealtime } from './useRealtime';
+import { receiveCreatedMessage } from '../lib/message-timeline';
 
 const realtimeUrlMocks = vi.hoisted(() => ({
   createRealtimeUrl: vi.fn(() => 'ws://localhost/realtime'),
@@ -32,9 +33,9 @@ const message: MessageResponse = {
   },
 };
 
-describe('upsertMessageInCache', () => {
+describe('receiveCreatedMessage', () => {
   it('preserves stable optimistic render keys when realtime updates an existing message', () => {
-    const result = upsertMessageInCache(
+    const result = receiveCreatedMessage(
       {
         groupId: 'group-1',
         items: [{ ...message, clientKey: 'text-local-1', text: 'hello local' }],
@@ -43,7 +44,7 @@ describe('upsertMessageInCache', () => {
       { ...message, text: 'hello server' },
     );
 
-    expect(result.items[0]).toMatchObject({
+    expect(result?.items[0]).toMatchObject({
       id: 'message-1',
       clientKey: 'text-local-1',
       text: 'hello server',

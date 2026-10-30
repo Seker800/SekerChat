@@ -69,3 +69,21 @@ test('module wiring and narrow realtime adapter implementations remain allowed',
   ]);
   assert.deepEqual(findModuleBoundaryViolations(graph, moduleBoundaryRules), []);
 });
+
+test('frontend data and cache modules cannot depend on UI or workspace state', () => {
+  const graph = new Map([['apps/frontend-react/src/lib/message-timeline.ts', new Set([
+    'apps/frontend-react/src/components/workspace/useComposer.ts',
+    'apps/frontend-react/src/store/workspace-store.ts',
+    'apps/frontend-react/src/auth/AuthContext.tsx',
+    'apps/frontend-react/src/hooks/useRealtime.ts',
+  ])]]);
+  assert.equal(findModuleBoundaryViolations(graph, moduleBoundaryRules).length, 4);
+});
+
+test('frontend components may consume data modules and data modules may share contracts', () => {
+  const graph = new Map([
+    ['apps/frontend-react/src/components/workspace/useMessageList.ts', new Set(['apps/frontend-react/src/lib/message-timeline.ts'])],
+    ['apps/frontend-react/src/lib/message-timeline.ts', new Set(['apps/frontend-react/src/lib/messages-files-api.ts','packages/contracts/src/generated/openapi.ts'])],
+  ]);
+  assert.deepEqual(findModuleBoundaryViolations(graph, moduleBoundaryRules), []);
+});

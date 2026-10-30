@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useComposer } from './useComposer';
+import { useWorkspaceStore } from '../../store/workspace-store';
 import type { MessageResponse } from '../../lib/messages-files-api';
 
 const createMessageMock = vi.fn();
@@ -697,4 +698,24 @@ describe('useComposer text sending', () => {
     const secondInput = createMessageMock.mock.calls[1]?.[2] as { clientMessageId: string };
     expect(secondInput.clientMessageId).toBe(firstInput.clientMessageId);
   });
+});
+
+it('applies an upload result to its original conversation without clearing a newer reply', async () => {
+  const queryClient = new QueryClient({defaultOptions:{queries:{retry:false}}});
+  queryClient.setQueryData(['messages','a'],{groupId:'a',items:[]});
+  queryClient.setQueryData(['messages','b'],{groupId:'b',items:[]});
+  uploadFileViaMultipartMock.mockResolvedValue({finalized:{kind:'CHAT_ATTACHMENT',file:{id:'file',kindLabel:'file'}}});
+  let resolve:(value:unknown)=>void=()=>{};
+  createMessageMock.mockReturnValue(new Promise(r=>{resolve=r;}));
+  const {result,rerender}=renderHook(({id})=>useComposer({accessToken:'token',selectedGroupId:id,messages:[],channelName:id,currentUser:{id:'user',email:'user@example.com',displayName:'User',avatarUrl:null},onError:vi.fn(),refetchMessages:vi.fn()}),{wrapper:createWrapper(queryClient),initialProps:{id:'a'}});
+  act(()=>useWorkspaceStore.getState().setReplyToMessageId('reply-a'));
+  act(()=>result.current.composer.onPickAttachments([new File(['data'],'file.txt')]));
+  await waitFor(()=>expect(createMessageMock).toHaveBeenCalledWith('token','a',expect.objectContaining({replyToMessageId:'reply-a'})));
+  rerender({id:'b'});
+  act(()=>useWorkspaceStore.getState().setReplyToMessageId('reply-b'));
+  await act(async()=>resolve({id:'uploaded',groupId:'a',senderId:'user',type:'file',text:null,createdAt:'2026-10-30T01:00:00Z'}));
+  await waitFor(()=>expect(queryClient.getQueryData<{items:MessageResponse[]}>(['messages','a'])?.items[0]?.id).toBe('uploaded'));
+  expect(queryClient.getQueryData<{items:MessageResponse[]}>(['messages','b'])?.items).toEqual([]);
+  expect(useWorkspaceStore.getState().replyToMessageId).toBe('reply-b');
+  useWorkspaceStore.getState().reset();
 });

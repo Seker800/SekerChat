@@ -8,6 +8,13 @@ import {
 import { advanceReadCursor } from '../../lib/groups-api';
 import type { GroupResponse } from '../../lib/groups-api';
 import { hasPendingSends } from '../../hooks/localMessageTracker';
+import {
+  mergeLatestMessagePage,
+  mergeOlderMessagePage,
+  patchTimelineMessage,
+  refreshMessageTimeline,
+  type MessageTimeline,
+} from '../../lib/message-timeline';
 import { ReadCursorCoordinator } from './readCursorCoordinator';
 
 interface UseMessageListInput {
@@ -54,10 +61,20 @@ export function useMessageList({
 
   const messagesQuery = useQuery({
     queryKey: ['messages', selectedGroupId],
-    queryFn: () => listMessages(accessToken, selectedGroupId, { limit: 50 }),
+    queryFn: ({ signal }) => refreshMessageTimeline(
+      async (cursor) => {
+        signal.throwIfAborted();
+        const page = await listMessages(accessToken, selectedGroupId, { cursor, limit: 50 });
+        signal.throwIfAborted();
+        return page;
+      },
+      () => queryClient.getQueryData<MessageTimeline>(['messages', selectedGroupId]),
+    ),
     enabled: Boolean(selectedGroupId),
-    staleTime: 10 * 1000,
-    initialData: initialMessages?.groupId === selectedGroupId ? initialMessages : undefined,
+    staleTime: (query) => (query.state.data as MessageTimeline | undefined)?.isPartial ? 0 : 10 * 1000,
+    initialData: initialMessages?.groupId === selectedGroupId
+      ? mergeLatestMessagePage(undefined, initialMessages)
+      : undefined,
     initialDataUpdatedAt:
       initialMessages?.groupId === selectedGroupId ? initialMessagesUpdatedAt : undefined,
   });
@@ -97,17 +114,11 @@ export function useMessageList({
 
   const patchLoadedMessage = useCallback(
     (updatedMessage: MessageResponse) => {
-      queryClient.setQueryData<MessageListResponse>(['messages', selectedGroupId], (current) => {
-        if (!current) return current;
-        return {
-          ...current,
-          items: current.items.map((item) =>
-            item.id === updatedMessage.id ? { ...updatedMessage, clientKey: item.clientKey } : item,
-          ),
-        };
-      });
+      queryClient.setQueryData<MessageTimeline>(['messages', updatedMessage.groupId], (current) =>
+        patchTimelineMessage(current, updatedMessage.groupId, updatedMessage),
+      );
     },
-    [queryClient, selectedGroupId],
+    [queryClient],
   );
 
   const loadOlderMessages = useCallback(async () => {
@@ -120,17 +131,9 @@ export function useMessageList({
         limit: 50,
       });
 
-      queryClient.setQueryData<MessageListResponse>(['messages', selectedGroupId], (current) => {
-        if (!current) return olderPage;
-
-        const existingIds = new Set(current.items.map((item) => item.id));
-        const mergedOlderItems = olderPage.items.filter((item) => !existingIds.has(item.id));
-        return {
-          ...current,
-          items: [...mergedOlderItems, ...current.items],
-          nextCursor: olderPage.nextCursor ?? null,
-        };
-      });
+      queryClient.setQueryData<MessageTimeline>(['messages', selectedGroupId], (current) =>
+        mergeOlderMessagePage(current, olderPage),
+      );
     } catch (error) {
       console.error('loadOlderMessages failed:', error);
       onError(error instanceof Error ? error.message : '加载更早消息失败。');

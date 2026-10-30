@@ -4,6 +4,11 @@ import { parseRealtimeEvent } from '@sekerchat/contracts';
 import { createRealtimeUrl } from '../lib/api-core';
 import type { GroupResponse, GroupMessagePreview } from '../lib/groups-api';
 import type { MessageListResponse, MessageResponse } from '../lib/messages-files-api';
+import {
+  receiveCreatedMessage,
+  patchTimelineMessage,
+  type MessageTimeline,
+} from '../lib/message-timeline';
 import { hasPendingSends } from './localMessageTracker';
 
 const REALTIME_UNAUTHORIZED_CLOSE_CODE = 4401;
@@ -15,37 +20,6 @@ export interface MessageCreatedEvent {
   senderId: string;
   messageType: string;
   mentionedUserIds: string[];
-}
-
-export function upsertMessageInCache(
-  current: MessageListResponse | undefined,
-  groupId: string,
-  message: MessageResponse,
-): MessageListResponse {
-  if (!current) {
-    return {
-      groupId,
-      items: [message],
-    };
-  }
-
-  const existingIndex = current.items.findIndex((item) => item.id === message.id);
-  if (existingIndex >= 0) {
-    const items = [...current.items];
-    items[existingIndex] = {
-      ...message,
-      clientKey: current.items[existingIndex]?.clientKey,
-    };
-    return {
-      ...current,
-      items,
-    };
-  }
-
-  return {
-    ...current,
-    items: [...current.items, message],
-  };
 }
 
 function patchGroupList(
@@ -67,14 +41,6 @@ function buildLatestMessage(payload: MessageResponse | undefined): GroupMessageP
     senderId: payload.senderId,
     type: payload.type === 'text' ? 'TEXT' : payload.type === 'image' ? 'IMAGE' : 'FILE',
   };
-}
-
-function patchMessageInPages(
-  current: MessageListResponse | undefined,
-  groupId: string,
-  message: MessageResponse,
-): MessageListResponse {
-  return upsertMessageInCache(current, groupId, message);
 }
 
 function patchPresenceInGroup(
@@ -229,9 +195,15 @@ export function useRealtime(
             queryClient.setQueryData<GroupResponse>(['group', data.groupId], (current) =>
               current ? nextGroupPatch(current) : current,
             );
-            queryClient.setQueryData<MessageListResponse>(['messages', data.groupId], (current) =>
-              upsertMessageInCache(current, data.groupId, messagePayload),
-            );
+            const messageKey = ['messages', data.groupId];
+            const isInitialReadInFlight = queryClient.getQueryState(messageKey)?.fetchStatus === 'fetching';
+            queryClient.setQueryData<MessageTimeline>(messageKey, (current) => {
+              // Preserve events racing the first HTTP read, without treating them as a full page.
+              const timeline = current ?? (isInitialReadInFlight
+                ? { groupId: data.groupId, items: [], isPartial: true as const }
+                : undefined);
+              return receiveCreatedMessage(timeline, data.groupId, messagePayload);
+            });
             if (messagePayload.type === 'system') {
               queryClient.invalidateQueries({ queryKey: ['artifacts', data.groupId] });
             }
@@ -245,7 +217,7 @@ export function useRealtime(
           }
           if (data.type === 'message.updated.v1') {
             queryClient.setQueryData<MessageListResponse>(['messages', data.groupId], (current) =>
-              patchMessageInPages(
+              patchTimelineMessage(
                 current,
                 data.groupId,
                 data.payload as unknown as MessageResponse,

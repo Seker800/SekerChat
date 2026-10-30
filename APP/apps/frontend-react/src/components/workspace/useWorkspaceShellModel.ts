@@ -52,11 +52,9 @@ export function useWorkspaceShellModel({
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isAuxSidebarOpen, setIsAuxSidebarOpen] = useState(false);
   const [hasRequestedInvitableUsers, setHasRequestedInvitableUsers] = useState(false);
-  const {
-    setReplyToMessageId,
-    setWorkspaceMode,
-    unhideDm: unhideDmFromStore,
-  } = useWorkspaceStore();
+  const setReplyToMessageId = useWorkspaceStore((state) => state.setReplyToMessageId);
+  const setWorkspaceMode = useWorkspaceStore((state) => state.setWorkspaceMode);
+  const unhideDmFromStore = useWorkspaceStore((state) => state.unhideDm);
   const dialogs = useWorkspaceDialogs({
     currentUser,
   });
@@ -212,12 +210,6 @@ export function useWorkspaceShellModel({
     workStateData: workStateQuery.data ?? null,
     onError: (message) => dialogs.pushNotice('error', message),
     onSuccess: (message) => dialogs.pushNotice('success', message),
-    refetchGroup: () => void selectedGroupQuery.refetch(),
-    refetchGroups: () => void channelsQuery.refetch(),
-    refetchWorkState: () => void workStateQuery.refetch(),
-    refetchUsers: () => {
-      void allUsersQuery.refetch();
-    },
     serverOptions,
   });
 

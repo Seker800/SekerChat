@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   archiveGroup,
   inviteGroupMember,
   removeGroupMember,
   updateGroup,
+  type GroupResponse,
 } from '../../lib/groups-api';
 import { setGroupWorkState, type GroupWorkStateResponse } from '../../lib/ops-api';
-import type { GroupResponse } from '../../lib/groups-api';
 
 interface UseManagePanelOptions {
   accessToken: string;
@@ -17,11 +17,15 @@ interface UseManagePanelOptions {
   workStateData: GroupWorkStateResponse | null;
   onError: (message: string) => void;
   onSuccess: (message: string) => void;
-  refetchGroup: () => void;
-  refetchGroups: () => void;
-  refetchWorkState: () => void;
-  refetchUsers?: () => void;
   serverOptions: Array<{ id: string; name: string }>;
+}
+
+interface SettingsDraft {
+  groupId: string;
+  name?: string;
+  serverId?: string;
+  status?: string;
+  reason?: string;
 }
 
 export function useManagePanel({
@@ -32,135 +36,133 @@ export function useManagePanel({
   workStateData,
   onError,
   onSuccess,
-  refetchGroup,
-  refetchGroups,
-  refetchWorkState,
-  refetchUsers,
   serverOptions,
 }: UseManagePanelOptions) {
   const queryClient = useQueryClient();
-  const [manageName, setManageName] = useState('');
-  const [manageServerId, setManageServerId] = useState('');
-  const [manageStatus, setManageStatus] = useState<string>('初始');
-  const [manageReason, setManageReason] = useState('');
-  useEffect(() => {
-    if (!selectedGroup) {
-      return;
-    }
+  // Only edited fields are local state. Untouched fields follow the server snapshot.
+  const [draft, setDraft] = useState<SettingsDraft>({ groupId: selectedGroupId });
+  const currentDraft = draft.groupId === selectedGroupId ? draft : { groupId: selectedGroupId };
+  const manageName = currentDraft.name ?? selectedGroup?.name ?? '';
+  const manageServerId = currentDraft.serverId ?? selectedGroup?.serverId ?? '';
+  const serverStatus = workStateData?.status || selectedGroup?.workState?.status || '初始';
+  const serverReason = workStateData?.reason ?? '';
+  const manageStatus = currentDraft.status ?? serverStatus;
+  const manageReason = currentDraft.reason ?? serverReason;
 
-    setManageName(selectedGroup.name);
-    setManageServerId(selectedGroup.serverId ?? '');
-  }, [selectedGroup]);
+  function editDraft(patch: Partial<Omit<SettingsDraft, 'groupId'>>) {
+    setDraft((current) => ({
+      ...(current.groupId === selectedGroupId ? current : {}),
+      groupId: selectedGroupId,
+      ...patch,
+    }));
+  }
 
-  useEffect(() => {
-    if (!workStateData && !selectedGroup?.workState) {
-      return;
-    }
+  function acknowledgeSavedFields(groupId: string, saved: Partial<Omit<SettingsDraft, 'groupId'>>) {
+    setDraft((current) => {
+      if (current.groupId !== groupId) return current;
+      const next = { ...current };
+      for (const field of ['name', 'serverId', 'status', 'reason'] as const) {
+        // An earlier save must not clear text typed while it was in flight.
+        if (saved[field] !== undefined && current[field] === saved[field]) delete next[field];
+      }
+      return next;
+    });
+  }
 
-    setManageStatus(workStateData?.status || selectedGroup?.workState?.status || '初始');
-    setManageReason(workStateData?.reason || '');
-  }, [selectedGroup?.workState, workStateData]);
+  function refreshMembership(groupId: string) {
+    void queryClient.invalidateQueries({ queryKey: ['groups'] });
+    void queryClient.invalidateQueries({ queryKey: ['group', groupId] });
+    void queryClient.invalidateQueries({ queryKey: ['users', 'invitable', groupId] });
+  }
 
   const updateGroupMutation = useMutation({
-    mutationFn: async (input: { name?: string; serverId?: string }) => {
-      const updated = await updateGroup(accessToken, selectedGroupId, {
-        name: input.name?.trim() || undefined,
-        serverId: input.serverId || undefined,
-      });
-      return updated;
-    },
-    onSuccess: (updated) => {
-      queryClient.setQueryData(['group', selectedGroupId], updated);
-      queryClient.setQueryData<GroupResponse[]>(['groups'], (current = []) =>
-        current.map((g) => (g.id === updated.id ? { ...g, ...updated } : g)),
+    mutationFn: ({
+      groupId,
+      name,
+      serverId,
+    }: {
+      groupId: string;
+      name?: string;
+      serverId?: string;
+    }) =>
+      updateGroup(accessToken, groupId, {
+        name: name?.trim() || undefined,
+        serverId: serverId || undefined,
+      }),
+    onSuccess: (updated, submitted) => {
+      queryClient.setQueryData(['group', updated.id], updated);
+      queryClient.setQueryData<GroupResponse[]>(['groups'], (current) =>
+        current?.map((group) => (group.id === updated.id ? { ...group, ...updated } : group)),
       );
-      refetchGroups();
-      refetchGroup();
+      acknowledgeSavedFields(submitted.groupId, submitted);
+      void queryClient.invalidateQueries({ queryKey: ['workspace-bootstrap'] });
       onSuccess('频道设置已保存。');
     },
-    onError(error) {
-      onError(error instanceof Error ? error.message : '保存频道设置失败。');
-    },
+    onError: (error) => onError(error instanceof Error ? error.message : '保存频道设置失败。'),
   });
 
   const updateWorkStateMutation = useMutation({
-    mutationFn: async (input: { status: string; reason?: string }) => {
-      return setGroupWorkState(accessToken, selectedGroupId, {
-        status: input.status,
-        reason: input.reason?.trim() || undefined,
+    mutationFn: ({
+      groupId,
+      status,
+      reason,
+    }: {
+      groupId: string;
+      status: string;
+      reason: string;
+    }) => setGroupWorkState(accessToken, groupId, { status, reason: reason.trim() || undefined }),
+    onSuccess: (updated, submitted) => {
+      queryClient.setQueryData(['work-state', submitted.groupId], updated);
+      const patchGroup = (group: GroupResponse): GroupResponse => ({
+        ...group,
+        workState: updated.updatedAt
+          ? { status: updated.status, updatedAt: updated.updatedAt }
+          : group.workState,
       });
-    },
-    onSuccess: (updatedWorkState) => {
-      queryClient.setQueryData(['work-state', selectedGroupId], updatedWorkState);
-      queryClient.setQueryData<GroupResponse[]>(['groups'], (current = []) =>
-        current.map((g) =>
-          g.id === selectedGroupId
-            ? {
-                ...g,
-                workState: updatedWorkState.updatedAt
-                  ? { status: updatedWorkState.status, updatedAt: updatedWorkState.updatedAt }
-                  : g.workState,
-              }
-            : g,
-        ),
+      queryClient.setQueryData<GroupResponse[]>(['groups'], (current) =>
+        current?.map((group) => (group.id === submitted.groupId ? patchGroup(group) : group)),
       );
-      refetchWorkState();
+      queryClient.setQueryData<GroupResponse>(['group', submitted.groupId], (current) =>
+        current ? patchGroup(current) : current,
+      );
+      acknowledgeSavedFields(submitted.groupId, submitted);
+      void queryClient.invalidateQueries({ queryKey: ['workspace-bootstrap'] });
       onSuccess('工作状态已保存。');
     },
-    onError(error) {
-      onError(error instanceof Error ? error.message : '保存工作状态失败。');
-    },
+    onError: (error) => onError(error instanceof Error ? error.message : '保存工作状态失败。'),
   });
 
   const inviteMemberMutation = useMutation({
-    mutationFn: async (email: string) => {
-      await inviteGroupMember(accessToken, selectedGroupId, email.trim());
-    },
-    onSuccess: async () => {
-      refetchGroup();
-      refetchGroups();
-      refetchUsers?.();
+    mutationFn: ({ groupId, email }: { groupId: string; email: string }) =>
+      inviteGroupMember(accessToken, groupId, email.trim()),
+    onSuccess: (_result, { groupId }) => {
+      refreshMembership(groupId);
       onSuccess('成员已邀请。');
     },
-    onError(error) {
-      onError(error instanceof Error ? error.message : '邀请成员失败。');
-    },
+    onError: (error) => onError(error instanceof Error ? error.message : '邀请成员失败。'),
   });
-
   const removeMemberMutation = useMutation({
-    mutationFn: async (memberUserId: string) => {
-      if (!canManageGroup) {
-        return;
-      }
-
-      await removeGroupMember(accessToken, selectedGroupId, memberUserId);
-    },
-    onSuccess: async () => {
-      refetchGroup();
-      refetchGroups();
-      refetchUsers?.();
+    mutationFn: ({ groupId, memberUserId }: { groupId: string; memberUserId: string }) =>
+      removeGroupMember(accessToken, groupId, memberUserId),
+    onSuccess: (_result, { groupId }) => {
+      refreshMembership(groupId);
       onSuccess('成员已移出频道。');
     },
-    onError(error) {
-      onError(error instanceof Error ? error.message : '移出成员失败。');
-    },
+    onError: (error) => onError(error instanceof Error ? error.message : '移出成员失败。'),
+  });
+  const archiveMutation = useMutation({
+    mutationFn: ({ groupId, archive }: { groupId: string; archive: boolean }) =>
+      archiveGroup(accessToken, groupId, archive),
+    onSuccess: (_result, { groupId }) => refreshMembership(groupId),
+    onError: (error) => onError(error instanceof Error ? error.message : '更新归档状态失败。'),
   });
 
-  const groupNameDirty = useMemo(
-    () => manageName.trim() !== (selectedGroup?.name ?? ''),
-    [manageName, selectedGroup],
+  const groupNameDirty = manageName.trim() !== (selectedGroup?.name ?? '');
+  const groupCategoryDirty = Boolean(manageServerId) && manageServerId !== selectedGroup?.serverId;
+  const workStateDirty = useMemo(
+    () => manageStatus !== serverStatus || manageReason.trim() !== serverReason.trim(),
+    [manageStatus, manageReason, serverStatus, serverReason],
   );
-
-  const groupCategoryDirty = useMemo(
-    () => Boolean(manageServerId) && manageServerId !== selectedGroup?.serverId,
-    [manageServerId, selectedGroup?.serverId],
-  );
-
-  const workStateDirty = useMemo(() => {
-    const currentStatus = workStateData?.status || selectedGroup?.workState?.status || '初始';
-    const currentReason = (workStateData?.reason || '').trim();
-    return manageStatus !== currentStatus || manageReason.trim() !== currentReason;
-  }, [manageStatus, manageReason, selectedGroup, workStateData]);
 
   return {
     manage: {
@@ -176,38 +178,34 @@ export function useManagePanel({
       manageReason,
       manageStatus,
       workStateDirty,
-      onArchiveToggle: async () => {
-        if (!selectedGroup || !canManageGroup) {
-          return;
-        }
-
-        try {
-          await archiveGroup(accessToken, selectedGroupId, !selectedGroup.archivedAt);
-          refetchGroups();
-          refetchGroup();
-        } catch (error) {
-          onError(error instanceof Error ? error.message : '更新归档状态失败。');
-        }
+      onArchiveToggle: () => {
+        if (selectedGroup && canManageGroup)
+          archiveMutation.mutate({ groupId: selectedGroupId, archive: !selectedGroup.archivedAt });
       },
-      onInviteByEmail: (email: string) => void inviteMemberMutation.mutateAsync(email),
-      onManageServerChange: setManageServerId,
-      onManageNameChange: setManageName,
-      onManageReasonChange: setManageReason,
-      onManageStatusChange: setManageStatus,
-      onRemoveMember: (memberUserId: string) => void removeMemberMutation.mutateAsync(memberUserId),
+      onInviteByEmail: (email: string) =>
+        inviteMemberMutation.mutate({ groupId: selectedGroupId, email }),
+      onManageServerChange: (serverId: string) => editDraft({ serverId }),
+      onManageNameChange: (name: string) => editDraft({ name }),
+      onManageReasonChange: (reason: string) => editDraft({ reason }),
+      onManageStatusChange: (status: string) => editDraft({ status }),
+      onRemoveMember: (memberUserId: string) => {
+        if (canManageGroup) removeMemberMutation.mutate({ groupId: selectedGroupId, memberUserId });
+      },
       onSaveGroup: () => {
-        if (!canManageGroup) return;
-        void updateGroupMutation.mutateAsync({
-          name: groupNameDirty ? manageName.trim() : undefined,
-          serverId: groupCategoryDirty ? manageServerId : undefined,
-        });
+        if (canManageGroup)
+          updateGroupMutation.mutate({
+            groupId: selectedGroupId,
+            name: groupNameDirty ? manageName : undefined,
+            serverId: groupCategoryDirty ? manageServerId : undefined,
+          });
       },
       onSaveWorkState: () => {
-        if (!canManageGroup) return;
-        void updateWorkStateMutation.mutateAsync({
-          status: manageStatus,
-          reason: manageReason.trim() || undefined,
-        });
+        if (canManageGroup)
+          updateWorkStateMutation.mutate({
+            groupId: selectedGroupId,
+            status: manageStatus,
+            reason: manageReason,
+          });
       },
     },
   };
