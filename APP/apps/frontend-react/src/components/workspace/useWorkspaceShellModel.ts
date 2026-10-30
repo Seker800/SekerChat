@@ -330,7 +330,7 @@ export function useWorkspaceShellModel({
       dialogs.setConfirmDialog({
         title: isArchived ? '取消归档 Server' : '归档 Server',
         description: isArchived
-          ? `确认恢复 Server「${server.name}」？其下所有频道也将恢复为可协作状态。`
+          ? `确认恢复 Server「${server.name}」？工作状态配置为自动归档的频道将继续保留在归档列表中，其余频道恢复为可协作状态。`
           : `确认归档 Server「${server.name}」？其下所有频道将被设为只读。`,
         confirmLabel: isArchived ? '取消归档' : '确认归档',
         isDanger: !isArchived,

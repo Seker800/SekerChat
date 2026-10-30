@@ -15,6 +15,7 @@ import { ServerLifecycleOutboxHandler } from './server-lifecycle-outbox.handler'
 import { SubscriptionChangedOutboxHandler } from './subscription-changed-outbox.handler';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { OutboxRetentionService } from './outbox-retention.service';
+import { SystemConfigModule } from '../system-config/system-config.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { OutboxRetentionService } from './outbox-retention.service';
     OutboxCoreModule,
     GroupLifecycleModule,
     SubscriptionsModule,
+    SystemConfigModule,
   ],
   providers: [
     FileObjectsDeleteOutboxHandler,

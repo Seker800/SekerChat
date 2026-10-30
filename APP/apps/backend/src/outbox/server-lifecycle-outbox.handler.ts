@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { OutboxEvent, Prisma } from '@prisma/client';
 import { ArchiveGroupApplicationService } from '../group-lifecycle/archive-group-application.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { WorkStatusConfigService } from '../system-config/work-status-config.service';
 import { OUTBOX_EVENT_TYPES } from './outbox.types';
 
 type ServerLifecyclePayload = {
@@ -16,20 +17,29 @@ export class ServerLifecycleOutboxHandler {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly archiveGroupApplicationService: ArchiveGroupApplicationService,
+    private readonly workStatusConfigService: WorkStatusConfigService,
   ) {}
 
   async handle(event: OutboxEvent): Promise<void> {
     const payload = this.parsePayload(event.payload);
+    const archiveStatuses = new Set(
+      payload.archive
+        ? []
+        : (await this.workStatusConfigService.getDefinitions())
+            .filter((definition) => definition.isArchive)
+            .map((definition) => definition.name),
+    );
     const groups = await this.prismaService.group.findMany({
       where: { serverId: payload.serverId, isDM: false },
       orderBy: { id: 'asc' },
-      select: { id: true },
+      select: { id: true, workState: { select: { status: true } } },
     });
 
     for (const group of groups) {
       await this.archiveGroupApplicationService.execute({
         groupId: group.id,
-        archive: payload.archive,
+        // Restoring a Server must not reopen channels archived by their work status.
+        archive: payload.archive || archiveStatuses.has(group.workState?.status ?? ''),
         reason: 'server',
       });
     }
