@@ -83,6 +83,7 @@ export class ServersService {
     if (input.serverId) {
       const server = await client.server.findUnique({ where: { id: input.serverId } });
       if (!server) throw new NotFoundException('Server not found.');
+      this.assertActiveChannelTarget(server);
       if (input.category) {
         const categoryName = normalizeServerName(input.category);
         if (categoryName !== server.name) {
@@ -103,7 +104,15 @@ export class ServersService {
       return server;
     }
 
-    return this.ensureServerByName(input.category, client);
+    const server = await this.ensureServerByName(input.category, client);
+    this.assertActiveChannelTarget(server);
+    return server;
+  }
+
+  private assertActiveChannelTarget(server: Server) {
+    if (server.archivedAt) {
+      throw new BadRequestException('Server 已归档，请先恢复后再创建或移动频道。');
+    }
   }
 
   async listForUser(actor: AuthenticatedActor) {
@@ -210,9 +219,6 @@ export class ServersService {
     }
 
     const current = await this.requireServer(serverId);
-    if (current.name === DEFAULT_SERVER_NAME) {
-      throw new BadRequestException('默认 Server 不可归档。');
-    }
 
     const changedAt = new Date();
     return this.prismaService.$transaction(async (transaction) => {

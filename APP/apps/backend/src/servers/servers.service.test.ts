@@ -192,3 +192,36 @@ test('renaming to the current name returns the public response shape', async () 
   assert.equal(result.avatarUrl, null);
   assert.equal('avatarStorageKey' in result, false);
 });
+
+for (const archive of [true, false]) {
+  test(`default Server supports archive=${archive} using the durable lifecycle`, async () => {
+    const events: unknown[] = [];
+    const transaction = {
+      server: { updateMany: async () => ({ count: 1 }) },
+      group: { count: async () => 1 },
+    };
+    const service = new ServersService({
+      server: { findUnique: async () => buildServer({ name: '未分类', archivedAt: archive ? null : new Date() }) },
+      $transaction: async (callback: (tx: typeof transaction) => unknown) => callback(transaction),
+    } as never, {} as never, { enqueue: async (_tx: unknown, event: unknown) => events.push(event) } as never,
+      {} as never);
+    const result = await service.archive({ sub: 'super-1', role: 'SUPER_ADMIN' }, 'server-1', archive);
+    assert.equal(Boolean(result.archivedAt), archive);
+    assert.deepEqual((events[0] as { payload: unknown }).payload, { serverId: 'server-1', archive });
+    await assert.rejects(() => service.archive({ sub: 'admin-1', role: 'ADMIN' }, 'server-1', archive));
+  });
+}
+
+for (const input of [{ serverId: 'server-1' }, { category: '未分类' }, {}]) {
+  test(`resolveServer refuses archived channel targets: ${JSON.stringify(input)}`, async () => {
+    const server = buildServer({ name: '未分类', archivedAt: new Date() });
+    const transaction = {
+      server: { findUnique: async () => server },
+      serverNameClaim: { findUnique: async () => ({ server }) },
+      category: { upsert: async () => undefined },
+      $executeRaw: async () => 1,
+    };
+    const service = new ServersService({} as never, {} as never, {} as never, {} as never);
+    await assert.rejects(() => service.resolveServer(input, transaction as never), /已归档/);
+  });
+}

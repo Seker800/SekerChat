@@ -2,6 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup, createEvent, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Composer } from './Composer';
+import { createStore } from 'zustand/vanilla';
 import { appI18n } from '../../i18n/i18n';
 
 vi.mock('../../hooks/useMediaQuery', () => ({
@@ -233,5 +234,26 @@ describe('Composer attachment picker', () => {
         Reflect.deleteProperty(HTMLTextAreaElement.prototype, 'scrollHeight');
       }
     }
+  });
+});
+
+describe('Composer draft mention completion', () => {
+  afterEach(cleanup);
+  it('uses shared member completion without submitting the draft', () => {
+    const draftStore = createStore(() => ({ text: '' }));
+    const onSend = vi.fn();
+    render(<Composer draftStore={draftStore} groupMembers={[
+      { userId: 'member-1', displayName: '同事', email: 'colleague@example.test' },
+    ]} channelName="general" text="" isSending={false} isUploading={false} replyTarget={null}
+      onChange={(text) => draftStore.setState({ text })} onClearReply={() => undefined}
+      onPickAttachments={() => undefined} onSend={onSend} />);
+    const input = screen.getByTestId('message-composer');
+    fireEvent.change(input, { target: { value: '@同' } });
+    expect(screen.getByTestId('mention-dropdown')).toHaveTextContent('同事');
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(draftStore.getState().text).toBe('@同事 ');
+    expect(onSend).not.toHaveBeenCalled();
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onSend).toHaveBeenCalledTimes(1);
   });
 });

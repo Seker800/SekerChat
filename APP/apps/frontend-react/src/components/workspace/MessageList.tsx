@@ -1,3 +1,4 @@
+import type { MentionMember } from './useMentionCompletion';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { RetryNotice } from '../shared/RetryNotice';
 import {
@@ -38,6 +39,7 @@ interface MessageListProps {
   activeReceiptMessageId: string | null;
   currentUserId: string;
   currentUserMentionTargets?: string[];
+  groupMembers?: MentionMember[];
   canManageFileShare?: (attachment: NonNullable<MessageResponse['attachment']>) => boolean;
   artifactAction?: MessageArtifactAction;
   editText: string;
@@ -143,6 +145,7 @@ export function MessageList({
   activeReceiptMessageId,
   currentUserId,
   currentUserMentionTargets,
+  groupMembers,
   canManageFileShare,
   artifactAction,
   editText,
@@ -274,6 +277,7 @@ export function MessageList({
         accessToken={accessToken}
         activeReceiptMessageId={activeReceiptMessageId}
         currentUserId={currentUserId}
+        groupMembers={groupMembers}
         currentUserMentionTargets={currentUserMentionTargets}
         canManageFileShare={canManageFileShare}
         artifactAction={artifactAction}

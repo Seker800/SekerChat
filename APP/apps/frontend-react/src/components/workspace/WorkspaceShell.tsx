@@ -535,6 +535,7 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
               }}
               messages={model.messages}
               currentUserId={currentUser.id}
+              groupMembers={model.selectedGroup?.members}
               currentUserMentionTargets={currentUserMentionTargets}
               canManageFileShare={() => canManageAttachmentShare(model.selectedGroup)}
               isLoadingMessages={

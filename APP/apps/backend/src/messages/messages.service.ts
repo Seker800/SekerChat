@@ -238,7 +238,7 @@ export class MessagesService {
   }
 
   async editMessage(userId: string, groupId: string, messageId: string, text: string) {
-    await this.getWritableGroupOrThrow(groupId, userId);
+    const group = await this.getWritableGroupOrThrow(groupId, userId);
 
     const message = await this.prismaService.message.findFirst({
       where: { id: messageId, groupId },
@@ -275,7 +275,11 @@ export class MessagesService {
     const edit = async (tx: Prisma.TransactionClient) => {
       const updated = await tx.message.update({
         where: { id: messageId },
-        data: { text: trimmedText, editedAt: new Date() },
+        data: {
+          text: trimmedText,
+          mentionedUserIds: this.collectMentionedUserIds(trimmedText, group.members),
+          editedAt: new Date(),
+        },
         select: messageSelect,
       });
 
@@ -624,7 +628,7 @@ export class MessagesService {
     }>,
   ): string[] {
     const tokens = new Set<string>();
-    const matcher = /(^|[^@\w])@([^\s@]{1,100})/g;
+    const matcher = /(^|[^@\w])@([^\s@]{1,100}(?:@[^\s@]{1,255})?)/g;
     const normalizedText = text.trim();
 
     for (const match of normalizedText.matchAll(matcher)) {
@@ -641,7 +645,8 @@ export class MessagesService {
       const displayName = member.user.displayName?.trim().toLowerCase() ?? '';
       const candidates = [member.user.email.toLowerCase(), localPart, displayName].filter(Boolean);
 
-      if (candidates.some((candidate) => tokens.has(candidate))) {
+      if (candidates.some((candidate) => tokens.has(candidate) &&
+        (!candidate.includes('@') || candidate === member.user.email.toLowerCase()))) {
         mentionedUserIds.add(member.userId);
       }
     }

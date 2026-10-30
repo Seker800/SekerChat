@@ -1,3 +1,4 @@
+import type { MentionMember } from './useMentionCompletion';
 import { useCallback, useEffect, useRef, useState, type RefCallback } from 'react';
 import { useResolvedAccessToken } from '../../auth/AuthContext';
 import type { MessageResponse } from '../../lib/messages-files-api';
@@ -20,6 +21,7 @@ interface MessagePaneProps {
   messages: MessageResponse[];
   currentUserId: string;
   currentUserMentionTargets?: string[];
+  groupMembers?: MentionMember[];
   canManageFileShare?: (attachment: NonNullable<MessageResponse['attachment']>) => boolean;
   artifactAction?: MessageArtifactAction;
   isLoadingMessages?: boolean;
@@ -46,6 +48,7 @@ export function MessagePane({
   messages,
   currentUserId,
   currentUserMentionTargets,
+  groupMembers,
   canManageFileShare,
   artifactAction,
   isLoadingMessages,
@@ -307,6 +310,7 @@ export function MessagePane({
           accessToken={resolvedAccessToken}
           activeReceiptMessageId={activeReceiptMessageId}
           currentUserId={currentUserId}
+          groupMembers={groupMembers}
           currentUserMentionTargets={currentUserMentionTargets}
           canManageFileShare={canManageFileShare}
           artifactAction={artifactAction}

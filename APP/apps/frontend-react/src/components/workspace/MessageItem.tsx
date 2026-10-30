@@ -1,3 +1,5 @@
+import { MessageEditor } from './MessageEditor';
+import type { MentionMember } from './useMentionCompletion';
 import { memo, useMemo, useState, type Ref } from 'react';
 import { downloadFile, resolveApiResourceUrl } from '../../lib/api-core';
 import type { MessageResponse } from '../../lib/messages-files-api';
@@ -35,6 +37,7 @@ interface MessageItemProps {
   activeReceiptMessageId: string | null;
   currentUserId: string;
   currentUserMentionTargets?: string[];
+  groupMembers?: MentionMember[];
   canManageFileShare?: (attachment: NonNullable<MessageResponse['attachment']>) => boolean;
   artifactAction?: MessageArtifactAction;
   editText: string;
@@ -61,6 +64,7 @@ export const MessageItem = memo(function MessageItem({
   activeReceiptMessageId,
   currentUserId,
   currentUserMentionTargets,
+  groupMembers,
   canManageFileShare,
   artifactAction,
   editText,
@@ -385,30 +389,14 @@ export const MessageItem = memo(function MessageItem({
                 </div>
 
                 {editingMessageId === item.id ? (
-                  <div className={styles.editArea}>
-                    <textarea
-                      className={styles.editInput}
-                      value={editText}
-                      onChange={(event) => onSetEditText(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' && !event.shiftKey) {
-                          event.preventDefault();
-                          if (editText.trim()) {
-                            onEditMessage?.(item.id, editText.trim());
-                            onSetEditingMessageId(null);
-                            onSetEditText('');
-                          }
-                        }
-                        if (event.key === 'Escape') {
-                          onSetEditingMessageId(null);
-                          onSetEditText('');
-                        }
-                      }}
-                      autoFocus
-                      rows={3}
-                    />
-                    <div className={styles.editHint}>{t('messages.editHint')}</div>
-                  </div>
+                  <MessageEditor text={editText} members={groupMembers} onChange={onSetEditText}
+                    onSave={(text) => {
+                      onEditMessage?.(item.id, text);
+                      onSetEditingMessageId(null);
+                      onSetEditText('');
+                    }}
+                    onCancel={() => { onSetEditingMessageId(null); onSetEditText(''); }}
+                  />
                 ) : (
                   <>
                     {renderedText ? (

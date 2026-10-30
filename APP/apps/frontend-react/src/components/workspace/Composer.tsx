@@ -1,6 +1,8 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent as ReactClipboardEvent } from 'react';
+import { useLayoutEffect, useRef, type ClipboardEvent as ReactClipboardEvent } from 'react';
 import { useStore } from 'zustand';
 import type { StoreApi } from 'zustand/vanilla';
+import { MentionDropdown } from './MentionDropdown';
+import { useMentionCompletion } from './useMentionCompletion';
 import type { MentionSuggestion } from './useComposer';
 import { readClipboardContent, type ClipboardPart } from './clipboard-content';
 import type { PasteBatchStatus } from './useClipboardBatch';
@@ -82,49 +84,18 @@ function DraftComposer({
   ...props
 }: ComposerProps & { draftStore: StoreApi<{ text: string }> }) {
   const text = useStore(draftStore, (state) => state.text);
-  const [mentionActiveIndex, setMentionActiveIndex] = useState(0);
-  const mentionQuery = useMemo(() => {
-    const atIndex = text.lastIndexOf('@');
-    if (atIndex < 0 || (atIndex > 0 && ![' ', '\n'].includes(text[atIndex - 1]!))) return null;
-    const query = text.slice(atIndex + 1);
-    return /[ \n]/.test(query) ? null : { query, atIndex };
-  }, [text]);
-  const mentionSuggestions = useMemo(() => {
-    if (!mentionQuery) return [];
-    const query = mentionQuery.query.toLowerCase();
-    return (groupMembers ?? [])
-      .filter(
-        (member) =>
-          (member.displayName || member.email).toLowerCase().includes(query) ||
-          member.email.toLowerCase().includes(query),
-      )
-      .slice(0, 8)
-      .map((member) => ({ ...member, displayName: member.displayName || member.email }));
-  }, [groupMembers, mentionQuery]);
-  useEffect(() => setMentionActiveIndex(0), [mentionSuggestions]);
-  const replaceMention = (replacement: string) => {
-    if (!mentionQuery) return;
-    props.onChange(
-      text.slice(0, mentionQuery.atIndex) +
-        replacement +
-        text.slice(mentionQuery.atIndex + 1 + mentionQuery.query.length),
-    );
-  };
+  const mention = useMentionCompletion(text, groupMembers, props.onChange);
+  const mentionSuggestions = mention.suggestions;
   return (
     <ComposerView
       {...props}
       text={text}
       isMentionActive={mentionSuggestions.length > 0}
       mentionSuggestions={mentionSuggestions}
-      mentionActiveIndex={mentionActiveIndex}
-      onMentionNavigate={(direction) =>
-        setMentionActiveIndex((index) => {
-          const max = mentionSuggestions.length - 1;
-          return direction === 'up' ? (index <= 0 ? max : index - 1) : index >= max ? 0 : index + 1;
-        })
-      }
-      onMentionSelect={(suggestion) => replaceMention(`@${suggestion.displayName} `)}
-      onMentionDismiss={() => replaceMention('')}
+      mentionActiveIndex={mention.activeIndex}
+      onMentionNavigate={mention.navigate}
+      onMentionSelect={mention.select}
+      onMentionDismiss={() => mention.replace('')}
     />
   );
 }
@@ -328,22 +299,11 @@ function ComposerView({
               }}
             />
             {isMentionActive && mentionSuggestions && mentionSuggestions.length > 0 ? (
-              <div className={styles.mentionDropdown} data-testid="mention-dropdown">
-                {mentionSuggestions.map((suggestion, index) => (
-                  <button
-                    key={suggestion.userId}
-                    className={`${styles.mentionItem} ${index === (mentionActiveIndex ?? 0) ? styles.mentionItemActive : ''}`}
-                    type="button"
-                    onMouseDown={(event) => {
-                      event.preventDefault();
-                      onMentionSelect?.(suggestion);
-                    }}
-                  >
-                    <span className={styles.mentionName}>{suggestion.displayName}</span>
-                    <span className={styles.mentionEmail}>{suggestion.email}</span>
-                  </button>
-                ))}
-              </div>
+              <MentionDropdown
+                suggestions={mentionSuggestions}
+                activeIndex={mentionActiveIndex ?? 0}
+                onSelect={(suggestion) => onMentionSelect?.(suggestion)}
+              />
             ) : null}
           </div>
           <div className={styles.primaryActions} data-testid="workspace-primary-actions">

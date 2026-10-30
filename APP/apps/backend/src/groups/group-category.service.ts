@@ -207,7 +207,7 @@ export class GroupCategoryService {
         updatedGroupCount: 0,
       };
     }
-    const defaultServer = await this.serversService.ensureServerByName(DEFAULT_GROUP_CATEGORY);
+    const defaultServer = await this.serversService.resolveServer({ category: DEFAULT_GROUP_CATEGORY });
 
     const groupsToUpdate = await this.prismaService.group.findMany({
       where: {
