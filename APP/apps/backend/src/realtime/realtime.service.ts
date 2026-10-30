@@ -219,7 +219,7 @@ export class RealtimeService implements OnModuleDestroy {
 
   async emitSubscriptionChanged(payload: {
     postId: string;
-    reason: 'published' | 'updated' | 'withdrawn' | 'pinned' | 'deleted' | 'confirmed';
+    reason: 'published' | 'updated' | 'withdrawn' | 'pinned' | 'deleted' | 'confirmed' | 'viewed';
   }, durableEventId?: string): Promise<void> {
     this.eventPublisher.publishToAll({
       eventVersion: REALTIME_EVENT_VERSION,

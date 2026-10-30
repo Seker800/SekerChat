@@ -27,7 +27,6 @@ import {
   type WorkspaceMode,
 } from '../../store/workspace-store';
 import { getDmSpecialPage } from '../../store/dm-special-pages';
-import { getSubscriptionSummary } from '../../lib/subscriptions-api';
 import { getAlbumUpdateStatus } from '../../lib/album-api';
 import {
   getDefaultRolePermissions,
@@ -124,12 +123,6 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
     isSubscriptionAdmin &&
     hasSystemPermission(rolePermissions, currentUser.role, 'manage_subscription_posts');
   const canManageAlbum = hasSystemPermission(rolePermissions, currentUser.role, 'manage_album');
-  const subscriptionSummaryQuery = useQuery({
-    queryKey: ['subscription-summary'],
-    queryFn: () => getSubscriptionSummary(accessToken),
-    enabled: mode === 'dm',
-    staleTime: 15_000,
-  });
   const albumUpdateStatusQuery = useQuery({
     queryKey: ['album', 'update-status'],
     queryFn: () => getAlbumUpdateStatus(accessToken),
@@ -298,7 +291,6 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
         archivedGroups={model.archivedCategoryGroups}
         selectedGroupId={model.selectedGroupId}
         selectedSpecialPageId={model.isDmSpecialPage ? model.selectedGroupId : ''}
-        subscriptionUnreadCount={subscriptionSummaryQuery.data?.pendingConfirmationCount ?? 0}
         albumHasUpdates={albumUpdateStatusQuery.data?.hasUpdates ?? false}
         isMobileSidebarOpen={model.isMobileSidebarOpen}
         currentUser={currentUser}

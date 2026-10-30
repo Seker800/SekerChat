@@ -1642,6 +1642,36 @@
         ]
       }
     },
+    "/api/subscriptions/{postId}/view": {
+      "put": {
+        "operationId": "SubscriptionsController_view",
+        "parameters": [
+          {
+            "name": "postId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubscriptionViewsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "subscriptions"
+        ]
+      }
+    },
     "/api/subscriptions/{postId}/confirmations": {
       "get": {
         "operationId": "SubscriptionsController_confirmations",
@@ -6707,6 +6737,9 @@
           "isPinned": {
             "type": "boolean"
           },
+          "viewCount": {
+            "type": "number"
+          },
           "isConfirmed": {
             "type": "boolean"
           },
@@ -6754,6 +6787,7 @@
           "bodyPreview",
           "tags",
           "isPinned",
+          "viewCount",
           "isConfirmed",
           "isRecipient",
           "confirmedAt",
@@ -6832,6 +6866,35 @@
           "usage"
         ]
       },
+      "SubscriptionViewerResponseDto": {
+        "type": "object",
+        "properties": {
+          "userId": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "firstViewedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "displayName",
+          "email",
+          "avatarUrl",
+          "firstViewedAt"
+        ]
+      },
       "SubscriptionPostResponseDto": {
         "type": "object",
         "properties": {
@@ -6860,6 +6923,9 @@
           },
           "isPinned": {
             "type": "boolean"
+          },
+          "viewCount": {
+            "type": "number"
           },
           "isConfirmed": {
             "type": "boolean"
@@ -6899,6 +6965,12 @@
             "items": {
               "$ref": "#/components/schemas/SubscriptionAttachmentResponseDto"
             }
+          },
+          "viewers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionViewerResponseDto"
+            }
           }
         },
         "required": [
@@ -6908,6 +6980,7 @@
           "body",
           "tags",
           "isPinned",
+          "viewCount",
           "isConfirmed",
           "isRecipient",
           "confirmedAt",
@@ -6915,7 +6988,8 @@
           "publishedAt",
           "updatedAt",
           "author",
-          "attachments"
+          "attachments",
+          "viewers"
         ]
       },
       "SubscriptionManageListResponseDto": {
@@ -6950,6 +7024,28 @@
         },
         "required": [
           "pendingConfirmationCount"
+        ]
+      },
+      "SubscriptionViewsResponseDto": {
+        "type": "object",
+        "properties": {
+          "postId": {
+            "type": "string"
+          },
+          "viewCount": {
+            "type": "number"
+          },
+          "viewers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionViewerResponseDto"
+            }
+          }
+        },
+        "required": [
+          "postId",
+          "viewCount",
+          "viewers"
         ]
       },
       "SubscriptionConfirmationMemberResponseDto": {

@@ -78,6 +78,23 @@ page reloads or logout.
 
 Browser sessions use secure HttpOnly cookies. CLI and device clients use explicit token contracts. Long-lived credentials must not appear in URLs or logs.
 
+### Article views
+
+Articles have no acknowledgement requirement or read/unread workflow. Opening a
+published article records the authenticated viewer through `PUT /subscriptions/:postId/view`;
+GET requests and list previews do not record views. `SubscriptionPostView` owns one
+row per article/user, with an immutable first-view timestamp. The displayed view
+count is the number of distinct viewers; repeat opens do not increase it. The
+article footer lists viewers with their current avatar/name and first-view date.
+
+The database composite primary key handles concurrent retries. A shared article
+row lock coordinates recording with withdrawal/deletion. A newly recorded viewer
+and its `viewed` outbox event commit together; existing subscription query
+invalidation refreshes lists and details. Deprecated confirmation/read routes
+remain as compatibility adapters: actual opens map to views, mark-unread and
+mark-all-read cannot erase or manufacture viewer history. Old acknowledgement
+counters return zero and never drive navigation.
+
 ## Deployment rule
 
 Application release and database migration are separate operations. The target model is an app-only production compose for frontend and backend, with PostgreSQL and MinIO managed as persistent data services outside normal application replacement commands. Until the deployment migration is complete, `docs/synology-deployment.md` documents the actual production procedure.

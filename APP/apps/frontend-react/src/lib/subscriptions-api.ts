@@ -65,6 +65,20 @@ export async function getSubscriptionSummary(
   return parseResponse(response);
 }
 
+export async function recordSubscriptionView(
+  accessToken: string,
+  postId: string,
+): Promise<SubscriptionApiSchemas['SubscriptionViewsResponseDto']> {
+  const response = await fetchApi(
+    `${apiBaseUrl}/subscriptions/${encodeURIComponent(postId)}/view`,
+    {
+      method: 'PUT',
+      headers: authHeaders(accessToken),
+    },
+  );
+  return parseResponse(response);
+}
+
 export async function createSubscriptionDraft(
   accessToken: string,
   input: SubscriptionPostInput,

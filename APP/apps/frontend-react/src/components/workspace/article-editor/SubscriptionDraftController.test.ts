@@ -10,6 +10,8 @@ function post(input: SubscriptionPostInput, id = 'draft-1'): SubscriptionPost {
     status: 'DRAFT',
     ...input,
     isPinned: false,
+    viewCount: 0,
+    viewers: [],
     publishedAt: null,
     updatedAt: '2026-08-11T00:00:00.000Z',
     author: { id: 'manager-1', displayName: 'Manager', email: 'manager@example.com' },

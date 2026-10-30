@@ -40,6 +40,8 @@ function createService(overrides?: {
   const readUpserts: Array<{ postId: string; userId: string }> = [];
   const readDeletions: Array<{ postId: string; userId: string }> = [];
   let recipient = overrides?.recipient ?? null;
+  const viewRows: Array<{postId: string; userId: string; firstViewedAt: Date}> = overrides?.recipient?.confirmedAt
+    ? [{postId: 'post-1', userId: 'reader-1', firstViewedAt: overrides.recipient.confirmedAt as Date}] : [];
   const recipientCreates: Array<Record<string, unknown>> = [];
   const recipientUpdates: Array<Record<string, unknown>> = [];
   const eligibleUserQueries: Array<Record<string, unknown>> = [];
@@ -63,6 +65,13 @@ function createService(overrides?: {
         deletions.push(where.id);
         return post;
       },
+    },
+    subscriptionPostView: {
+      createMany: async ({data}: {data: Array<{postId: string; userId: string}>}) => {
+        if (viewRows.some(row => row.postId === data[0].postId && row.userId === data[0].userId)) return {count: 0};
+        viewRows.push({...data[0], firstViewedAt: new Date()}); return {count: 1};
+      },
+      findMany: async () => viewRows.map(row => ({...row, user: {displayName: 'Reader', email: 'reader@example.test', avatarStorageKey: null}})),
     },
     subscriptionReadState: {
       upsert: async ({ where }: { where: { postId_userId: { postId: string; userId: string } } }) => {
@@ -150,6 +159,7 @@ function createService(overrides?: {
     deletions,
     readUpserts,
     readDeletions,
+    viewRows,
     recipientCreates,
     recipientUpdates,
     eligibleUserQueries,
@@ -258,7 +268,7 @@ test('publish rejects drafts while an attachment upload is incomplete', async ()
   await assert.rejects(() => service.publish(manager as never, 'post-1'), BadRequestException);
 });
 
-test('publish snapshots every active human including the article author', async () => {
+test('publish does not assign confirmation recipients to ordinary articles', async () => {
   const { service, updates, recipientCreates, eligibleUserQueries, outboxEvents } = createService({
     attachments: [{ id: 'attachment-1', status: 'READY' }],
     eligibleUsers: [{ id: manager.sub }, { id: 'reader-1' }, { id: 'reader-2' }],
@@ -269,17 +279,13 @@ test('publish snapshots every active human including the article author', async 
   assert.equal(updates.length, 1);
   assert.equal(updates[0]?.status, 'PUBLISHED');
   assert.ok(updates[0]?.publishedAt instanceof Date);
-  assert.deepEqual(recipientCreates.map((recipient) => recipient.userId), [
-    manager.sub,
-    'reader-1',
-    'reader-2',
-  ]);
-  assert.deepEqual(eligibleUserQueries, [{ disabledAt: null, isBot: false }]);
+  assert.deepEqual(recipientCreates, []);
+  assert.deepEqual(eligibleUserQueries, []);
   assert.equal(outboxEvents.length, 1);
   assert.equal(outboxEvents[0]?.eventType, 'subscription.changed.v1');
 });
 
-test('confirm records the first confirmation for a snapshotted recipient and enqueues realtime intent', async () => {
+test('legacy confirmation records a view and enqueues one realtime intent', async () => {
   const { service, recipientUpdates, outboxEvents } = createService({
     post: {
       id: 'post-1',
@@ -296,23 +302,17 @@ test('confirm records the first confirmation for a snapshotted recipient and enq
 
   const result = await service.confirm('reader-1', 'post-1', 'confirmation-key-1');
 
-  assert.equal(recipientUpdates.length, 1);
+  assert.equal(recipientUpdates.length, 0);
   assert.equal(result.isConfirmed, true);
   assert.ok(result.confirmedAt instanceof Date);
   assert.equal(outboxEvents.length, 1);
   assert.equal(outboxEvents[0]?.eventType, 'subscription.changed.v1');
 });
 
-test('confirm rejects a user outside the publication recipient snapshot', async () => {
-  const { service } = createService({
-    post: { id: 'post-1', status: 'PUBLISHED', title: 'Published article' },
-    recipient: null,
-  });
-
-  await assert.rejects(
-    () => service.confirm('reader-1', 'post-1', 'confirmation-key-1'),
-    ForbiddenException,
-  );
+test('legacy confirmation accepts readers without an old recipient assignment', async () => {
+  const {service, viewRows} = createService({post: {id: 'post-1', status: 'PUBLISHED', title: 'Article'}});
+  await service.confirm('reader-1','post-1','legacy-key');
+  assert.equal(viewRows.length,1);
 });
 
 test('confirm preserves the first confirmation time and produces no duplicate event on retry', async () => {
@@ -442,7 +442,7 @@ test('ordinary members cannot preview images from article drafts', async () => {
   );
 });
 
-test('legacy markUnread removes only the legacy read row and leaves confirmation untouched', async () => {
+test('legacy markUnread cannot erase browsing history or legacy records', async () => {
   const { service, readDeletions } = createService({
     post: {
       id: 'post-1',
@@ -452,7 +452,7 @@ test('legacy markUnread removes only the legacy read row and leaves confirmation
 
   await service.markUnread('reader-1', 'post-1');
 
-  assert.deepEqual(readDeletions, [{ postId: 'post-1', userId: 'reader-1' }]);
+  assert.deepEqual(readDeletions, []);
 });
 
 test('publish reads the draft only after acquiring the same row lock as withdrawal', async () => {

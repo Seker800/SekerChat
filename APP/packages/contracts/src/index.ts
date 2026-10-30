@@ -64,7 +64,7 @@ export interface PresenceRealtimePayload extends RealtimeJsonObject {
 
 export interface SubscriptionRealtimePayload extends RealtimeJsonObject {
   postId: string;
-  reason: 'published' | 'updated' | 'withdrawn' | 'pinned' | 'deleted';
+  reason: 'published' | 'updated' | 'withdrawn' | 'pinned' | 'deleted' | 'confirmed' | 'viewed';
 }
 
 export type VersionedRealtimeEvent =
@@ -156,7 +156,9 @@ function isPayloadValid(type: RealtimeEventType, payload: RealtimeJsonObject): b
     case 'subscription.changed.v1':
       return (
         isNonEmptyString(payload.postId) &&
-        ['published', 'updated', 'withdrawn', 'pinned', 'deleted'].includes(String(payload.reason))
+        ['published', 'updated', 'withdrawn', 'pinned', 'deleted', 'confirmed', 'viewed'].includes(
+          String(payload.reason),
+        )
       );
   }
 }

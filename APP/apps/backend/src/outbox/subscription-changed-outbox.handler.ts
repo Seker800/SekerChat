@@ -5,7 +5,7 @@ import { OUTBOX_EVENT_TYPES } from './outbox.types';
 
 type SubscriptionChangedPayload = {
   postId: string;
-  reason: 'published' | 'confirmed';
+  reason: 'published' | 'confirmed' | 'viewed';
 };
 
 @Injectable()
@@ -25,7 +25,7 @@ export class SubscriptionChangedOutboxHandler {
       payload === null ||
       Array.isArray(payload) ||
       typeof payload.postId !== 'string' ||
-      (payload.reason !== 'published' && payload.reason !== 'confirmed')
+      (payload.reason !== 'published' && payload.reason !== 'confirmed' && payload.reason !== 'viewed')
     ) {
       throw new Error('Invalid subscription.changed.v1 outbox payload.');
     }

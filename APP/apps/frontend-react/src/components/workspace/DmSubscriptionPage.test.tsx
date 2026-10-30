@@ -9,7 +9,7 @@ import { DmSubscriptionPage } from './DmSubscriptionPage';
 const listSubscriptionPosts = vi.fn();
 const getSubscriptionPost = vi.fn();
 const listManageableSubscriptionPosts = vi.fn();
-const confirmSubscriptionPost = vi.fn();
+const recordSubscriptionView = vi.fn();
 const getSubscriptionConfirmations = vi.fn();
 const createSubscriptionDraft = vi.fn();
 const updateSubscriptionPost = vi.fn();
@@ -31,7 +31,7 @@ vi.mock('../../lib/subscriptions-api', () => ({
   listSubscriptionPosts: (...args: unknown[]) => listSubscriptionPosts(...args),
   getSubscriptionPost: (...args: unknown[]) => getSubscriptionPost(...args),
   listManageableSubscriptionPosts: (...args: unknown[]) => listManageableSubscriptionPosts(...args),
-  confirmSubscriptionPost: (...args: unknown[]) => confirmSubscriptionPost(...args),
+  recordSubscriptionView: (...args: unknown[]) => recordSubscriptionView(...args),
   getSubscriptionConfirmations: (...args: unknown[]) => getSubscriptionConfirmations(...args),
   createSubscriptionDraft: (...args: unknown[]) => createSubscriptionDraft(...args),
   updateSubscriptionPost: (...args: unknown[]) => updateSubscriptionPost(...args),
@@ -60,10 +60,12 @@ const summary = {
   author: { id: 'manager-1', displayName: 'Manager', email: 'manager@example.com' },
   attachmentCount: 1,
   hasAttachments: true,
+  viewCount: 0,
 };
 
 const detail = {
   ...summary,
+  viewers: [],
   body: '## 完整更新\n\n- 支持 Markdown\n- 修复若干问题',
   attachments: [
     {
@@ -107,11 +109,7 @@ describe('DmSubscriptionPage', () => {
     listSubscriptionPosts.mockResolvedValue({ items: [summary], pendingConfirmationCount: 1 });
     getSubscriptionPost.mockResolvedValue(detail);
     listManageableSubscriptionPosts.mockResolvedValue({ items: [] });
-    confirmSubscriptionPost.mockResolvedValue({
-      isConfirmed: true,
-      confirmedAt: '2026-07-25T01:00:00.000Z',
-      pendingConfirmationCount: 0,
-    });
+    recordSubscriptionView.mockResolvedValue({viewCount: 1, viewers: [{userId: 'reader-1', displayName: 'Reader', email: 'reader@example.com', avatarUrl: null, firstViewedAt: '2026-07-25T01:00:00.000Z'}]});
     getSubscriptionConfirmations.mockResolvedValue({
       postId: summary.id,
       confirmedCount: 0,
@@ -193,81 +191,35 @@ describe('DmSubscriptionPage', () => {
     expect(screen.queryByRole('button', { name: '全部已读' })).not.toBeInTheDocument();
   });
 
-  it('keeps unconfirmed content above confirmed content without a list confirmation control', async () => {
-    listSubscriptionPosts.mockResolvedValueOnce({
-      items: [
-        {
-          ...summary,
-          id: 'confirmed-1',
-          title: '历史文章',
-          isConfirmed: true,
-          confirmedAt: '2026-07-25T01:00:00.000Z',
-        },
-        summary,
-      ],
-      pendingConfirmationCount: 1,
-    });
+  it('orders normal articles by pin and publication date without read state', async () => {
+    listSubscriptionPosts.mockResolvedValueOnce({items:[{...summary,id:'old',title:'旧文章',isConfirmed:false,isPinned:false,publishedAt:'2026-01-01T00:00:00Z'}, {...summary,isConfirmed:true}],pendingConfirmationCount:1});
     renderPage();
-
-    const cards = await screen.findAllByTestId(/^subscription-card-(?!title-row-)/);
-    expect(cards.map((card) => within(card).getByRole('heading').textContent)).toEqual([
-      summary.title,
-      '历史文章',
-    ]);
-
-    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
-    expect(within(cards[0]).getByText('未确认')).toBeInTheDocument();
-    expect(within(cards[0]).getByText(summary.bodyPreview)).toBeInTheDocument();
-    expect(within(cards[1]).queryByText(/已读|已确认/)).not.toBeInTheDocument();
-    expect(within(cards[1]).getByText(summary.bodyPreview)).toBeInTheDocument();
-
-    const stylesheet = readFileSync(
-      join(process.cwd(), 'src/components/workspace/DmSubscriptionPage.module.css'),
-      'utf8',
-    );
-    expect(stylesheet).not.toMatch(/\.cardConfirmed\s*\{[^}]*opacity:/s);
+    const cards=await screen.findAllByTestId(/^subscription-card-(?!title-row-)/);
+    expect(cards.map(card=>within(card).getByRole('heading').textContent)).toEqual([summary.title,'旧文章']);
+    expect(screen.queryByText('未确认')).not.toBeInTheDocument();
   });
 
-  it('does not confirm an article merely because its detail was opened', async () => {
-    renderPage();
-
-    fireEvent.click(await screen.findByRole('button', { name: /打开.*SekerChat Desktop 1.0/ }));
-    await screen.findByRole('heading', { name: '完整更新' });
-
-    expect(confirmSubscriptionPost).not.toHaveBeenCalled();
+  it('automatically records an opened article and shows the viewer name and first date at the bottom', async () => {
+    renderPage(false,true);
+    expect(await screen.findByText(summary.title)).toBeInTheDocument();
+    expect(recordSubscriptionView).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button',{name:`打开文章 ${summary.title}`}));
+    const viewers=await screen.findByRole('region',{name:'浏览记录'});
+    await waitFor(()=>expect(within(viewers).getByText('Reader')).toBeInTheDocument());
+    expect(within(viewers).getByText('2026/07/25')).toBeInTheDocument();
+    expect(recordSubscriptionView).toHaveBeenCalledWith('token','post-1');
+    expect(screen.queryByRole('button',{name:'确认已读'})).not.toBeInTheDocument();
+    expect(screen.queryByText('未确认')).not.toBeInTheDocument();
   });
 
-  it('confirms an article only from the end of its detail view', async () => {
+  it('shows browse-record errors with a retry without blocking the article', async () => {
+    recordSubscriptionView.mockRejectedValueOnce(new Error('浏览记录暂不可用'));
     renderPage();
-
-    fireEvent.click(
-      await screen.findByRole('button', { name: /打开未确认文章 SekerChat Desktop 1.0/ }),
-    );
-    const confirmButton = await screen.findByRole('button', { name: '确认已读' });
-    fireEvent.click(confirmButton);
-
-    await waitFor(() => expect(confirmSubscriptionPost).toHaveBeenCalledWith('token', 'post-1'));
-    expect(await screen.findByText(/已于.*确认已读/)).toBeInTheDocument();
-  });
-
-  it('lets managers open the confirmation progress without opening the article', async () => {
-    listSubscriptionPosts.mockResolvedValueOnce({
-      items: [
-        {
-          ...summary,
-          isRecipient: false,
-          confirmationProgress: { confirmedCount: 1, recipientCount: 6 },
-        },
-      ],
-      pendingConfirmationCount: 0,
-    });
-    renderPage(true);
-
-    fireEvent.click(await screen.findByRole('button', { name: '1/6 已确认已读，查看名单' }));
-
-    expect(await screen.findByRole('dialog', { name: '确认已读名单' })).toBeInTheDocument();
-    expect(getSubscriptionConfirmations).toHaveBeenCalledWith('token', 'post-1');
-    expect(getSubscriptionPost).not.toHaveBeenCalled();
+    fireEvent.click(await screen.findByRole('button',{name:`打开文章 ${summary.title}`}));
+    expect(await screen.findByText('浏览记录暂不可用')).toBeInTheDocument();
+    expect(screen.getByRole('heading',{name:'完整更新'})).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button',{name:'重试记录浏览'}));
+    await waitFor(()=>expect(screen.getByText('Reader')).toBeInTheDocument());
   });
 
   it('renders details as a quiet reading view without list metadata badges', async () => {
@@ -460,7 +412,7 @@ describe('DmSubscriptionPage', () => {
     renderPage();
 
     fireEvent.click(await screen.findByRole('button', {
-      name: `打开未确认文章 ${summary.title}`,
+      name: `打开文章 ${summary.title}`,
     }));
 
     expect(await screen.findByRole('img', { name: '界面截图' })).toHaveAttribute(

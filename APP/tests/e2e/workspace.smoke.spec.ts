@@ -270,7 +270,7 @@ test.describe('review web smoke', () => {
     });
   });
 
-  test('shows compact article previews and confirms only from full details', async ({ page }) => {
+  test('shows normal article previews and automatically records viewers in full details', async ({ page }) => {
     await page.goto('/dm/__dm_subscription__');
 
     await expect(page.getByRole('button', { name: /出勤/ })).toBeVisible();
@@ -297,7 +297,7 @@ test.describe('review web smoke', () => {
     await expect(page.getByText('SekerChat Desktop 1.0')).toBeVisible();
     await expect(page.getByText('文章使用指南')).toBeVisible();
     await expect(page.getByText('七月维护通知')).toBeVisible();
-    await expect(articleNavButton.getByText('2', { exact: true })).toBeVisible();
+    await expect(articleNavButton.getByText('2', { exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: '发布' })).toBeVisible();
     await expect(page.getByText('#桌面端')).toHaveCount(0);
     await expect(page.getByText('#更新')).toHaveCount(0);
@@ -357,7 +357,7 @@ test.describe('review web smoke', () => {
     const pendingBackground = await page
       .getByTestId('subscription-card-subscription-post-1')
       .evaluate((card) => getComputedStyle(card).backgroundImage);
-    expect(pendingBackground).toContain('0.24');
+    expect(pendingBackground).toBe('none');
     expect(await confirmedCard.evaluate((card) => getComputedStyle(card).backgroundImage)).toBe(
       'none',
     );
@@ -373,18 +373,7 @@ test.describe('review web smoke', () => {
       fullPage: true,
     });
 
-    await page.getByRole('button', { name: '0/2 已确认已读，查看名单' }).first().click();
-    await expect(page.getByRole('dialog', { name: '确认已读名单' })).toBeVisible();
-    await page.screenshot({
-      path: 'test-results/article-confirmation-list.png',
-      animations: 'disabled',
-      caret: 'hide',
-      fullPage: true,
-    });
-    await page
-      .getByRole('dialog', { name: '确认已读名单' })
-      .getByRole('button', { name: '关闭' })
-      .click();
+    await expect(page.getByRole('button', { name: /已确认已读，查看名单/ })).toHaveCount(0);
 
     await page.screenshot({
       path: 'test-results/subscription-list.png',
@@ -406,7 +395,7 @@ test.describe('review web smoke', () => {
       fullPage: true,
     });
     await page.setViewportSize({ width: 1440, height: 1024 });
-    await page.getByRole('button', { name: '打开未确认文章 SekerChat Desktop 1.0' }).click();
+    await page.getByRole('button', { name: '打开文章 SekerChat Desktop 1.0' }).click();
     await expect(page.getByRole('heading', { name: 'Desktop 1.0 更新说明' })).toBeVisible();
     await expect(
       page.getByRole('button', { name: /下载 SekerChat-Desktop-1.0.zip/ }),
@@ -420,9 +409,9 @@ test.describe('review web smoke', () => {
     await expect(readingView.getByText('#桌面端')).toHaveCount(0);
     await expect(readingView.getByText('待确认')).toHaveCount(0);
     await expect(readingView.getByText('已确认')).toHaveCount(0);
-    await page.getByRole('button', { name: '确认已读' }).click();
-    await expect(readingView.getByText(/已于.*确认已读/)).toBeVisible();
-    await expect(articleNavButton.getByText('1', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: '确认已读' })).toHaveCount(0);
+    await expect(readingView.getByRole('region', { name: '浏览记录' }).getByText('管理员', { exact: true })).toBeVisible();
+    await expect(articleNavButton.getByText('1', { exact: true })).toHaveCount(0);
 
     const readingMetrics = await readingView.evaluate((detail) => {
       const detailStyle = getComputedStyle(detail);

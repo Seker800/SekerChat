@@ -88,15 +88,6 @@
   border-bottom: 0;
 }
 
-.cardPending {
-  background: linear-gradient(
-    90deg,
-    rgb(85 199 155 / 24%),
-    rgb(85 199 155 / 8%) 48%,
-    transparent 88%
-  );
-}
-
 .card h2 {
   margin: 0;
   font-size: 15px;
@@ -155,42 +146,10 @@
   flex-wrap: wrap;
 }
 
-.pendingLabel {
-  border: 0;
-  border-radius: 4px;
-  padding: 2px 5px;
-  color: #dcfff3;
-  background: rgb(85 199 155 / 16%);
-  box-shadow: inset 0 0 0 1px rgb(85 199 155 / 30%);
-  font-size: 10px;
-  font-weight: 600;
-}
-
 .cardMeta {
   display: flex;
   min-width: 96px;
   justify-content: flex-end;
-  padding-right: 112px;
-}
-
-.progressButton {
-  position: absolute;
-  z-index: 1;
-  top: 14px;
-  right: 16px;
-  border: 0;
-  border-radius: 4px;
-  padding: 2px 4px;
-  color: var(--text-dim, #949ba4);
-  background: transparent;
-  font-size: 10px;
-  cursor: pointer;
-}
-
-.progressButton:hover,
-.progressButton:focus-visible {
-  color: var(--text-strong, #f2f3f5);
-  background: rgb(255 255 255 / 5%);
 }
 
 .pinnedIcon {
@@ -309,72 +268,6 @@
   margin-top: 24px;
   padding-top: 16px;
   border-top: 1px solid var(--border-color, #30343b);
-}
-
-.confirmationSection {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-top: 28px;
-  padding-top: 18px;
-  border-top: 1px solid var(--border-color, #30343b);
-}
-
-.confirmationSection p {
-  margin: 0;
-  color: var(--text-secondary, #c3c8d1);
-  font-size: 13px;
-}
-
-.srStatus {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
-
-.confirmationDialog {
-  max-height: min(78vh, 680px);
-  overflow-y: auto;
-}
-
-.confirmationLists {
-  display: grid;
-  gap: 18px;
-}
-
-.confirmationLists > p,
-.confirmationLists h3 {
-  margin: 0;
-}
-
-.confirmationLists h3 {
-  margin-bottom: 8px;
-  color: var(--text-muted, #a9b1bf);
-  font-size: 12px;
-}
-
-.confirmationLists ul {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.confirmationLists li {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  color: var(--text-secondary, #c3c8d1);
-  font-size: 13px;
-}
-
-.confirmationLists time {
-  color: var(--text-muted, #a9b1bf);
-  white-space: nowrap;
 }
 
 .detailAdminActions {
@@ -906,11 +799,6 @@
     padding-right: 0;
   }
 
-  .progressButton {
-    position: static;
-    margin: 0 10px 10px;
-  }
-
   .manageRow {
     align-items: flex-start;
     flex-direction: column;
@@ -961,4 +849,51 @@
     grid-row: 1;
     grid-template-columns: 1fr 1fr;
   }
+}
+
+.viewers {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color, #30343b);
+}
+.viewers h2 {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.viewers p {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.viewerList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  list-style: none;
+  padding: 0;
+  margin: 16px 0 0;
+}
+.viewerList li {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr);
+  column-gap: 10px;
+  align-items: center;
+  min-width: 130px;
+  max-width: 100%;
+}
+.viewerList li > :first-child {
+  grid-row: 1 / 3;
+}
+.viewerList li > span {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.viewerList time {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.viewCount {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
 }

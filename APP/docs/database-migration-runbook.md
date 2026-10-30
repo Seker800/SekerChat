@@ -40,6 +40,31 @@ Prisma 的数据迁移应拆成 expand、数据回填、contract 三个可审查
 
 ## 生产发布
 
+### Article views migration
+
+`20261030050000_article_views` adds `SubscriptionPostView` and backfills old
+`SubscriptionPostRecipient.confirmedAt` and `SubscriptionReadState.readAt` values.
+For the same article/user pair, the earliest non-null stored timestamp wins;
+unconfirmed recipients do not become viewers. Earlier dates already overwritten
+or deleted by the old read workflow cannot be reconstructed. The backfill uses
+`LEAST` on conflict, so repeating it preserves the earliest known date. Old tables
+remain available for compatibility and rollback; schema removal is a separate change.
+
+Local integration verification creates a temporary isolated PostgreSQL database,
+applies preceding migrations, seeds legacy records, then runs the new migration.
+It checks history preservation, concurrent deduplication, outbox delivery intent,
+withdrawal and safe repeated backfill. Run only with loopback development settings:
+
+```sh
+cd apps/backend
+SEKERCHAT_ARTICLE_VIEWS_INTEGRATION=1 node --env-file=.env.development.local --require ts-node/register --test src/subscriptions/subscription-views.integration.test.ts
+```
+
+This local verification does not migrate production data. A later authorized
+production release must apply this migration before starting the new backend.
+
+### Release sequence
+
 `release.sh` 固定执行：compose 边界校验 → `backup.sh` → Prisma validate → `migrate deploy` →
 backend readiness → frontend。任何前置步骤失败都不会启动新应用。
 

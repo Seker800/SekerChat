@@ -44,6 +44,7 @@ import {
   SubscriptionListResponseDto,
   SubscriptionManageListResponseDto,
   SubscriptionPostResponseDto,
+  SubscriptionViewsResponseDto,
   SubscriptionConfirmationResponseDto,
   SubscriptionConfirmationsResponseDto,
   SubscriptionSummaryResponseDto,
@@ -81,6 +82,12 @@ export class SubscriptionsController {
   @ApiOkResponse({ type: SubscriptionPostResponseDto })
   detail(@CurrentUser() user: AuthenticatedUser, @Param('postId') postId: string) {
     return this.subscriptionsService.getPublishedPost(user, postId);
+  }
+
+  @Put(':postId/view')
+  @ApiOkResponse({ type: SubscriptionViewsResponseDto })
+  view(@CurrentUser() user: AuthenticatedUser, @Param('postId') postId: string) {
+    return this.subscriptionsService.recordView(user.sub, postId);
   }
 
   @Get(':postId/confirmations')

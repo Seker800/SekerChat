@@ -8,7 +8,6 @@ import { getSubscriptionSummary } from '../lib/subscriptions-api';
 import {
   DM_ALBUM_ROUTE,
   DM_ATTENDANCE_ROUTE,
-  DM_SUBSCRIPTION_ROUTE,
 } from '../store/workspace-store';
 import { AuthenticatedApp } from './AuthenticatedApp';
 import { AuthProvider } from './AuthContext';
@@ -81,7 +80,7 @@ describe('AuthenticatedApp routes', () => {
   }
 
   it.each(['/', '/dm'] as const)(
-    'opens articles from %s when confirmation is pending, ahead of album updates',
+    'ignores legacy article confirmation status when choosing the landing route from %s',
     async (path) => {
       vi.mocked(getSubscriptionSummary).mockResolvedValue({ pendingConfirmationCount: 2 });
       vi.mocked(getAlbumUpdateStatus).mockResolvedValue({ hasUpdates: true });
@@ -90,7 +89,7 @@ describe('AuthenticatedApp routes', () => {
 
       await screen.findByTestId('workspace-shell');
       await waitFor(() => {
-        expect(screen.getByTestId('location-probe')).toHaveTextContent(DM_SUBSCRIPTION_ROUTE);
+        expect(screen.getByTestId('location-probe')).toHaveTextContent(DM_ALBUM_ROUTE);
       });
     },
   );

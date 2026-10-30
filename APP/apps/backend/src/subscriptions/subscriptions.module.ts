@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AvatarsModule } from '../avatars/avatars.module';
 import { FilesModule } from '../files/files.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { RealtimeModule } from '../realtime/realtime.module';
@@ -10,7 +11,7 @@ import { SubscriptionsController } from './subscriptions.controller';
 import { SubscriptionsService } from './subscriptions.service';
 
 @Module({
-  imports: [PrismaModule, FilesModule, RealtimeModule, SystemConfigModule, OutboxCoreModule],
+  imports: [AvatarsModule, PrismaModule, FilesModule, RealtimeModule, SystemConfigModule, OutboxCoreModule],
   controllers: [SubscriptionsController],
   providers: [
     SubscriptionsService,

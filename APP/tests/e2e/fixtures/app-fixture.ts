@@ -465,6 +465,9 @@ export async function installAuthenticatedAppWithOptions(
   const confirmedSubscriptionPostIds = new Set(
     subscriptionPosts.filter((post) => post.isConfirmed).map((post) => post.id),
   );
+  const articleViewers = new Map<string, Array<{userId: string; displayName: string | null; email: string; avatarUrl: string | null; firstViewedAt: string}>>();
+  articleViewers.set('subscription-post-2', [{userId:'user-member',displayName:'值班同学',email:'member@local.invalid',avatarUrl:null,firstViewedAt:'2026-04-09T12:00:00.000Z'}]);
+
 
   await installRealtimeStub(page);
   await page.addInitScript(
@@ -568,6 +571,7 @@ export async function installAuthenticatedAppWithOptions(
       const items = subscriptionPosts
         .map((post) => ({
           ...post,
+          viewCount: articleViewers.get(post.id)?.length ?? 0,
           isConfirmed: confirmedSubscriptionPostIds.has(post.id),
           confirmedAt: confirmedSubscriptionPostIds.has(post.id) ? fixedNowIso : null,
         }))
@@ -586,6 +590,16 @@ export async function installAuthenticatedAppWithOptions(
         tags?: string[];
       };
       await json(route, { ...subscriptionDraft, ...input });
+      return;
+    }
+
+    const articleViewMatch = /^\/api\/subscriptions\/([^/]+)\/view$/.exec(pathname);
+    if (articleViewMatch && route.request().method() === 'PUT') {
+      const postId = articleViewMatch[1];
+      const viewers = articleViewers.get(postId) ?? [];
+      if (!viewers.some(viewer => viewer.userId === effectiveCurrentUser.id)) viewers.push({userId:effectiveCurrentUser.id,displayName:effectiveCurrentUser.displayName,email:effectiveCurrentUser.email,avatarUrl:null,firstViewedAt:fixedNowIso});
+      articleViewers.set(postId, viewers);
+      await json(route,{postId,viewCount:viewers.length,viewers});
       return;
     }
 
@@ -642,6 +656,8 @@ export async function installAuthenticatedAppWithOptions(
         detail
           ? {
               ...detail,
+              viewCount: articleViewers.get(subscriptionDetailMatch[1])?.length ?? 0,
+              viewers: articleViewers.get(subscriptionDetailMatch[1]) ?? [],
               isConfirmed: confirmedSubscriptionPostIds.has(subscriptionDetailMatch[1]),
               confirmedAt: confirmedSubscriptionPostIds.has(subscriptionDetailMatch[1])
                 ? fixedNowIso

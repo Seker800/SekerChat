@@ -151,7 +151,6 @@ interface ChannelSidebarProps {
   groups: GroupResponse[];
   archivedGroups: GroupResponse[];
   selectedSpecialPageId?: string;
-  subscriptionUnreadCount?: number;
   albumHasUpdates?: boolean;
   discoverableGroups?: { id: string; name: string; memberCount: number }[];
   isSuperAdmin?: boolean;
@@ -189,7 +188,6 @@ export function ChannelSidebar({
   groups,
   archivedGroups,
   selectedSpecialPageId = '',
-  subscriptionUnreadCount = 0,
   albumHasUpdates = false,
   discoverableGroups,
   isSuperAdmin = false,
@@ -694,11 +692,6 @@ export function ChannelSidebar({
                       {t(page.labelKey)}
                     </span>
                   </strong>
-                  {page.id === DM_SUBSCRIPTION_PAGE_ID && subscriptionUnreadCount > 0 ? (
-                    <span className={styles.unreadBadge}>
-                      {subscriptionUnreadCount > 99 ? '99+' : subscriptionUnreadCount}
-                    </span>
-                  ) : null}
                   {page.id === DM_ALBUM_PAGE_ID && albumHasUpdates ? (
                     <span className={styles.updateDot} aria-label={t('navigation.albumUpdated')} />
                   ) : null}

@@ -35,7 +35,7 @@ export const DM_SPECIAL_PAGES: readonly DmSpecialPageDefinition[] = [
     id: DM_SUBSCRIPTION_PAGE_ID,
     label: '文章',
     labelKey: 'navigation.special.subscription',
-    description: '文章发布与确认已读',
+    description: '团队文章与浏览记录',
     route: DM_SUBSCRIPTION_ROUTE,
   },
   {

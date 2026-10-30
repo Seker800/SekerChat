@@ -26,6 +26,7 @@ export class SubscriptionPostSummaryResponseDto {
   bodyPreview!: string;
   tags!: string[];
   isPinned!: boolean;
+  viewCount!: number;
   isConfirmed!: boolean;
   isRecipient!: boolean;
   confirmedAt!: string | null;
@@ -39,6 +40,20 @@ export class SubscriptionPostSummaryResponseDto {
   hasAttachments!: boolean;
 }
 
+export class SubscriptionViewerResponseDto {
+  userId!: string;
+  displayName!: string | null;
+  email!: string;
+  avatarUrl!: string | null;
+  firstViewedAt!: string;
+}
+
+export class SubscriptionViewsResponseDto {
+  postId!: string;
+  viewCount!: number;
+  viewers!: SubscriptionViewerResponseDto[];
+}
+
 export class SubscriptionPostResponseDto {
   id!: string;
   status!: 'DRAFT' | 'PUBLISHED' | 'WITHDRAWN';
@@ -46,6 +61,7 @@ export class SubscriptionPostResponseDto {
   body!: string;
   tags!: string[];
   isPinned!: boolean;
+  viewCount!: number;
   isConfirmed!: boolean;
   isRecipient!: boolean;
   confirmedAt!: string | null;
@@ -56,6 +72,7 @@ export class SubscriptionPostResponseDto {
   updatedAt!: string;
   author!: SubscriptionAuthorResponseDto;
   attachments!: SubscriptionAttachmentResponseDto[];
+  viewers!: SubscriptionViewerResponseDto[];
 }
 
 export class SubscriptionListResponseDto {

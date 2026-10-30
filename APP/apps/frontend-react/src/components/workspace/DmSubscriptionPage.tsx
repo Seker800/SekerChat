@@ -1,14 +1,19 @@
 import { useUploadSignal } from '../../hooks/useUploadSignal';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { IconPaperclip, IconPinFilled } from '@tabler/icons-react';
-import { useMutation, useQuery, useQueryClient, useInfiniteQuery, type InfiniteData } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useInfiniteQuery,
+  type InfiniteData,
+} from '@tanstack/react-query';
 import { downloadFile } from '../../lib/api-core';
 import { uploadFileViaMultipart } from '../../lib/multipart-upload';
 import {
   createSubscriptionDraft,
-  confirmSubscriptionPost,
+  recordSubscriptionView,
   deleteSubscriptionPost,
-  getSubscriptionConfirmations,
   getSubscriptionAttachmentViewUrl,
   getSubscriptionPost,
   listManageableSubscriptionPosts,
@@ -24,6 +29,8 @@ import {
   type SubscriptionPostSummary,
 } from '../../lib/subscriptions-api';
 import { SubscriptionMarkdown } from './SubscriptionMarkdown';
+import { Avatar } from '../shared/Avatar';
+import { userDisplayName } from '../../lib/users-api';
 import { FileAttachmentCard } from './FileAttachmentCard';
 import { parseSubscriptionTags } from './subscription-editor-utils';
 import { SubscriptionDraftController } from './article-editor/SubscriptionDraftController';
@@ -121,8 +128,6 @@ export function DmSubscriptionPage({
   attachmentMaxMB = DEFAULT_ATTACHMENT_MAX_MB,
 }: DmSubscriptionPageProps) {
   const queryClient = useQueryClient();
-  const progressDialogRef = useRef<HTMLElement>(null);
-  const progressTriggerRef = useRef<HTMLButtonElement | null>(null);
   const getUploadSignal = useUploadSignal();
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const editorRef = useRef<EditorState | null>(null);
@@ -130,8 +135,6 @@ export function DmSubscriptionPage({
   const lastSavedSnapshotRef = useRef('');
   const imageUploadReservationsRef = useRef(0);
   const [selectedPostId, setSelectedPostId] = useState('');
-  const [progressPostId, setProgressPostId] = useState('');
-  const [confirmationAnnouncement, setConfirmationAnnouncement] = useState('');
   const [editor, setEditor] = useState<EditorState | null>(null);
   const [showManage, setShowManage] = useState(false);
   const [isDownloadAttachmentDragActive, setIsDownloadAttachmentDragActive] = useState(false);
@@ -157,18 +160,6 @@ export function DmSubscriptionPage({
     enabled: canManage && showManage,
     staleTime: 5_000,
   });
-  const confirmationsQuery = useQuery({
-    queryKey: ['subscriptions', 'confirmations', progressPostId],
-    queryFn: () => getSubscriptionConfirmations(accessToken, progressPostId),
-    enabled: canManage && Boolean(progressPostId),
-    staleTime: 5_000,
-  });
-
-  useEffect(() => {
-    if (!progressPostId) return;
-    progressDialogRef.current?.querySelector<HTMLButtonElement>('button')?.focus();
-  }, [progressPostId]);
-
   const refresh = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['subscriptions'] }),
@@ -179,10 +170,6 @@ export function DmSubscriptionPage({
   const orderedPosts = useMemo(() => {
     const posts = [...(postsQuery.data?.pages.flatMap((page) => page.items) ?? [])];
     return posts.sort((left, right) => {
-      const confirmationOrder =
-        Number(left.isConfirmed || !left.isRecipient) -
-        Number(right.isConfirmed || !right.isRecipient);
-      if (confirmationOrder !== 0) return confirmationOrder;
       const pinnedOrder = Number(right.isPinned) - Number(left.isPinned);
       if (pinnedOrder !== 0) return pinnedOrder;
       const leftTime = new Date(left.publishedAt ?? left.updatedAt).getTime();
@@ -196,29 +183,34 @@ export function DmSubscriptionPage({
   const attachmentMaxBytes = attachmentMaxMB * 1024 * 1024;
   editorRef.current = editor;
 
-  const confirmationMutation = useMutation({
-    mutationFn: (postId: string) => confirmSubscriptionPost(accessToken, postId),
+  const viewMutation = useMutation({
+    mutationFn: (postId: string) => recordSubscriptionView(accessToken, postId),
     onSuccess: (result, postId) => {
       queryClient.setQueryData<SubscriptionPost>(['subscriptions', 'detail', postId], (current) =>
-        current
-          ? {
-              ...current,
-              isConfirmed: true,
-              confirmedAt: result.confirmedAt,
-            }
-          : current,
+        current ? { ...current, viewCount: result.viewCount, viewers: result.viewers } : current,
       );
-      queryClient.setQueryData<InfiniteData<Awaited<ReturnType<typeof listSubscriptionPosts>>>>(['subscriptions'], (current) =>
-        current ? { ...current, pages: current.pages.map((page) => ({ ...page,
-          pendingConfirmationCount: result.pendingConfirmationCount,
-          items: page.items.map((item) => item.id === postId ? { ...item, isConfirmed: true, confirmedAt: result.confirmedAt } : item),
-        })) } : current);
-      queryClient.setQueryData(['subscription-summary'], {
-        pendingConfirmationCount: result.pendingConfirmationCount,
-      });
-      setConfirmationAnnouncement('文章已确认已读。');
+      queryClient.setQueryData<InfiniteData<Awaited<ReturnType<typeof listSubscriptionPosts>>>>(
+        ['subscriptions'],
+        (current) =>
+          current
+            ? {
+                ...current,
+                pages: current.pages.map((page) => ({
+                  ...page,
+                  items: page.items.map((post) =>
+                    post.id === postId ? { ...post, viewCount: result.viewCount } : post,
+                  ),
+                })),
+              }
+            : current,
+      );
     },
   });
+  const recordView = viewMutation.mutate;
+  useEffect(() => {
+    if (selectedPostId && detailQuery.isSuccess) recordView(selectedPostId);
+  }, [selectedPostId, detailQuery.isSuccess, recordView]);
+
   const postActionMutation = useMutation({
     mutationFn: async (action: { kind: 'pin' | 'withdraw' | 'delete'; post: SubscriptionPost }) => {
       if (action.kind === 'pin') {
@@ -238,11 +230,6 @@ export function DmSubscriptionPage({
   const requestDelete = (post: SubscriptionPost) => {
     if (!window.confirm(`确定永久删除“${post.title}”吗？此操作无法撤销。`)) return;
     postActionMutation.mutate({ kind: 'delete', post });
-  };
-
-  const closeConfirmationProgress = () => {
-    setProgressPostId('');
-    queueMicrotask(() => progressTriggerRef.current?.focus());
   };
 
   const snapshotKey = (input: SubscriptionPostInput) => JSON.stringify(input);
@@ -557,34 +544,6 @@ export function DmSubscriptionPage({
                 </div>
               </section>
             ) : null}
-            {selectedPost.isRecipient ? (
-              <section className={styles.confirmationSection} aria-label="阅读确认">
-                {selectedPost.isConfirmed && selectedPost.confirmedAt ? (
-                  <p>已于 {formatDate(selectedPost.confirmedAt)} 确认已读</p>
-                ) : (
-                  <>
-                    <button
-                      type="button"
-                      className={styles.primaryButton}
-                      disabled={confirmationMutation.isPending}
-                      onClick={() => confirmationMutation.mutate(selectedPost.id)}
-                    >
-                      {confirmationMutation.isPending ? '正在确认…' : '确认已读'}
-                    </button>
-                    {confirmationMutation.error ? (
-                      <span className={styles.error}>
-                        {confirmationMutation.error instanceof Error
-                          ? confirmationMutation.error.message
-                          : '确认失败，请重试。'}
-                      </span>
-                    ) : null}
-                  </>
-                )}
-              </section>
-            ) : null}
-            <div className={styles.srStatus} aria-live="polite">
-              {confirmationAnnouncement}
-            </div>
             {canManage ? (
               <footer className={styles.detailAdminActions}>
                 <button type="button" onClick={() => openEditor(selectedPost)}>
@@ -608,6 +567,46 @@ export function DmSubscriptionPage({
                 </button>
               </footer>
             ) : null}
+            <section className={styles.viewers} aria-label="浏览记录">
+              <h2>浏览量 {selectedPost.viewCount ?? 0}</h2>
+              {viewMutation.isPending ? <p role="status">正在记录浏览…</p> : null}
+              {viewMutation.error && viewMutation.variables === selectedPost.id ? (
+                <div className={styles.errorPanel}>
+                  <span>
+                    {viewMutation.error instanceof Error
+                      ? viewMutation.error.message
+                      : '浏览记录暂不可用。'}
+                  </span>
+                  <button type="button" onClick={() => recordView(selectedPost.id)}>
+                    重试记录浏览
+                  </button>
+                </div>
+              ) : null}
+              <ul className={styles.viewerList}>
+                {(selectedPost.viewers ?? []).map((viewer) => (
+                  <li key={viewer.userId}>
+                    <Avatar
+                      avatarUrl={viewer.avatarUrl}
+                      name={userDisplayName(viewer)}
+                      size={36}
+                      accessToken={accessToken}
+                    />
+                    <span>{userDisplayName(viewer)}</span>
+                    <time dateTime={viewer.firstViewedAt} title="首次打开日期">
+                      {new Intl.DateTimeFormat('zh-CN', {
+                        timeZone: 'Asia/Shanghai',
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                      }).format(new Date(viewer.firstViewedAt))}
+                    </time>
+                  </li>
+                ))}
+              </ul>
+              {!selectedPost.viewers?.length && !viewMutation.isPending ? (
+                <p>暂无浏览记录</p>
+              ) : null}
+            </section>
           </article>
         ) : null}
       </section>
@@ -903,12 +902,12 @@ export function DmSubscriptionPage({
             <article
               key={post.id}
               data-testid={`subscription-card-${post.id}`}
-              className={`${styles.card} ${post.isConfirmed ? '' : styles.cardPending}`}
+              className={styles.card}
             >
               <button
                 type="button"
                 className={styles.cardOpen}
-                aria-label={`打开${post.isConfirmed ? '已确认' : post.isRecipient ? '未确认' : ''}文章 ${post.title}`}
+                aria-label={`打开文章 ${post.title}`}
                 onClick={() => setSelectedPostId(post.id)}
               >
                 <div
@@ -917,9 +916,6 @@ export function DmSubscriptionPage({
                 >
                   <div className={styles.cardTitle}>
                     <h2>{post.title}</h2>
-                    {post.isRecipient && !post.isConfirmed ? (
-                      <span className={styles.pendingLabel}>未确认</span>
-                    ) : null}
                     {post.isPinned ? (
                       <IconPinFilled className={styles.pinnedIcon} size={12} aria-label="置顶" />
                     ) : null}
@@ -936,23 +932,7 @@ export function DmSubscriptionPage({
                   </span>
                 ) : null}
               </button>
-              {post.confirmationProgress ? (
-                <button
-                  type="button"
-                  className={styles.progressButton}
-                  aria-label={`${post.confirmationProgress.confirmedCount}/${post.confirmationProgress.recipientCount} 已确认已读，查看名单`}
-                  ref={(element) => {
-                    if (progressPostId === post.id) progressTriggerRef.current = element;
-                  }}
-                  onClick={() => {
-                    progressTriggerRef.current = document.activeElement as HTMLButtonElement;
-                    setProgressPostId(post.id);
-                  }}
-                >
-                  {post.confirmationProgress.confirmedCount}/
-                  {post.confirmationProgress.recipientCount} 已确认已读
-                </button>
-              ) : null}
+              <span className={styles.viewCount}>浏览量 {post.viewCount ?? 0}</span>
             </article>
           ))}
           {!postsQuery.isLoading && !postsQuery.error && orderedPosts.length === 0 ? (
@@ -960,100 +940,26 @@ export function DmSubscriptionPage({
           ) : null}
         </div>
       )}
-      {showManage ? manageQuery.hasNextPage ? <button type="button" disabled={manageQuery.isFetchingNextPage} onClick={() => void manageQuery.fetchNextPage()}>加载更多管理文章</button> : null
-        : postsQuery.hasNextPage ? <button type="button" disabled={postsQuery.isFetchingNextPage} onClick={() => void postsQuery.fetchNextPage()}>加载更多文章</button> : null}
-      {editor ? renderEditor() : null}
-      {progressPostId ? (
-        <div className={styles.dialogBackdrop} role="presentation">
-          <section
-            ref={progressDialogRef}
-            className={`${styles.dialog} ${styles.confirmationDialog}`}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="confirmation-dialog-title"
-            onKeyDown={(event) => {
-              if (event.key === 'Escape') {
-                event.preventDefault();
-                closeConfirmationProgress();
-                return;
-              }
-              if (event.key !== 'Tab') return;
-              const focusable = Array.from(
-                event.currentTarget.querySelectorAll<HTMLElement>(
-                  'button, [href], [tabindex]:not([tabindex="-1"])',
-                ),
-              ).filter((element) => !element.hasAttribute('disabled'));
-              if (focusable.length === 0) return;
-              const first = focusable[0];
-              const last = focusable[focusable.length - 1];
-              if (event.shiftKey && document.activeElement === first) {
-                event.preventDefault();
-                last.focus();
-              } else if (!event.shiftKey && document.activeElement === last) {
-                event.preventDefault();
-                first.focus();
-              }
-            }}
+      {showManage ? (
+        manageQuery.hasNextPage ? (
+          <button
+            type="button"
+            disabled={manageQuery.isFetchingNextPage}
+            onClick={() => void manageQuery.fetchNextPage()}
           >
-            <header>
-              <h2 id="confirmation-dialog-title">确认已读名单</h2>
-              <button type="button" onClick={closeConfirmationProgress} aria-label="关闭">
-                ×
-              </button>
-            </header>
-            {confirmationsQuery.isLoading ? (
-              <div className={styles.empty}>正在加载确认名单…</div>
-            ) : null}
-            {confirmationsQuery.error ? (
-              <div className={styles.errorPanel}>
-                <span>
-                  {confirmationsQuery.error instanceof Error
-                    ? confirmationsQuery.error.message
-                    : '确认名单加载失败。'}
-                </span>
-                <button type="button" onClick={() => void confirmationsQuery.refetch()}>
-                  重试
-                </button>
-              </div>
-            ) : null}
-            {confirmationsQuery.data ? (
-              <div className={styles.confirmationLists}>
-                <p>
-                  {confirmationsQuery.data.confirmedCount}/{confirmationsQuery.data.recipientCount}{' '}
-                  已确认
-                </p>
-                <section>
-                  <h3>已确认</h3>
-                  {confirmationsQuery.data.confirmed.length === 0 ? (
-                    <span>暂无</span>
-                  ) : (
-                    <ul>
-                      {confirmationsQuery.data.confirmed.map((member) => (
-                        <li key={member.userId}>
-                          <span>{member.displayName || member.email}</span>
-                          <time>{member.confirmedAt ? formatDate(member.confirmedAt) : ''}</time>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
-                <section>
-                  <h3>未确认</h3>
-                  {confirmationsQuery.data.pending.length === 0 ? (
-                    <span>暂无</span>
-                  ) : (
-                    <ul>
-                      {confirmationsQuery.data.pending.map((member) => (
-                        <li key={member.userId}>{member.displayName || member.email}</li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
-              </div>
-            ) : null}
-          </section>
-        </div>
+            加载更多管理文章
+          </button>
+        ) : null
+      ) : postsQuery.hasNextPage ? (
+        <button
+          type="button"
+          disabled={postsQuery.isFetchingNextPage}
+          onClick={() => void postsQuery.fetchNextPage()}
+        >
+          加载更多文章
+        </button>
       ) : null}
+      {editor ? renderEditor() : null}
     </section>
   );
 }

@@ -2,6 +2,21 @@ import { describe, expect, it } from 'vitest';
 import { parseRealtimeEvent } from './index';
 
 describe('parseRealtimeEvent', () => {
+  it.each(['viewed', 'confirmed', 'published', 'updated', 'withdrawn', 'pinned', 'deleted'])(
+    'accepts subscription %s events, including legacy confirmations',
+    (reason) => {
+      expect(
+        parseRealtimeEvent({
+          eventVersion: 1,
+          eventId: '43',
+          type: 'subscription.changed.v1',
+          groupId: 'subscriptions',
+          occurredAt: '2026-10-30T05:00:00.000Z',
+          payload: { postId: 'post-1', reason },
+        }).success,
+      ).toBe(true);
+    },
+  );
   it('accepts a versioned message event', () => {
     const result = parseRealtimeEvent({
       eventVersion: 1,

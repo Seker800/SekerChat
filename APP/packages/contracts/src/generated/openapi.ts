@@ -676,6 +676,22 @@ export interface paths {
         patch: operations["SubscriptionsController_update"];
         trace?: never;
     };
+    "/api/subscriptions/{postId}/view": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put: operations["SubscriptionsController_view"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/subscriptions/{postId}/confirmations": {
         parameters: {
             query?: never;
@@ -2945,6 +2961,7 @@ export interface components {
             bodyPreview: string;
             tags: string[];
             isPinned: boolean;
+            viewCount: number;
             isConfirmed: boolean;
             isRecipient: boolean;
             confirmedAt: string | null;
@@ -2974,6 +2991,13 @@ export interface components {
             /** @enum {string} */
             usage: "INLINE_IMAGE" | "DOWNLOADABLE_FILE";
         };
+        SubscriptionViewerResponseDto: {
+            userId: string;
+            displayName: string | null;
+            email: string;
+            avatarUrl: string | null;
+            firstViewedAt: string;
+        };
         SubscriptionPostResponseDto: {
             id: string;
             /** @enum {string} */
@@ -2982,6 +3006,7 @@ export interface components {
             body: string;
             tags: string[];
             isPinned: boolean;
+            viewCount: number;
             isConfirmed: boolean;
             isRecipient: boolean;
             confirmedAt: string | null;
@@ -2992,6 +3017,7 @@ export interface components {
             updatedAt: string;
             author: components["schemas"]["SubscriptionAuthorResponseDto"];
             attachments: components["schemas"]["SubscriptionAttachmentResponseDto"][];
+            viewers: components["schemas"]["SubscriptionViewerResponseDto"][];
         };
         SubscriptionManageListResponseDto: {
             nextCursor: string | null;
@@ -3001,6 +3027,11 @@ export interface components {
             pendingConfirmationCount: number;
             /** @deprecated */
             unreadCount?: number;
+        };
+        SubscriptionViewsResponseDto: {
+            postId: string;
+            viewCount: number;
+            viewers: components["schemas"]["SubscriptionViewerResponseDto"][];
         };
         SubscriptionConfirmationMemberResponseDto: {
             userId: string;
@@ -4753,6 +4784,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SubscriptionPostResponseDto"];
+                };
+            };
+        };
+    };
+    SubscriptionsController_view: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                postId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubscriptionViewsResponseDto"];
                 };
             };
         };

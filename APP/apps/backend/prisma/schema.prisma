@@ -132,6 +132,7 @@ model User {
   monthlyAttendanceReports   AttendanceMonthlyReport[]
   subscriptionPosts          SubscriptionPost[]          @relation("SubscriptionPostAuthor")
   subscriptionAttachments    SubscriptionAttachment[]
+  subscriptionViews          SubscriptionPostView[]
   subscriptionReadStates     SubscriptionReadState[]
   subscriptionPostRecipients SubscriptionPostRecipient[]
   subscriptionAuditLogs      SubscriptionAuditLog[]
@@ -683,6 +684,7 @@ model SubscriptionPost {
   updatedAt   DateTime                    @updatedAt
   author      User                        @relation("SubscriptionPostAuthor", fields: [authorId], references: [id], onDelete: Restrict)
   attachments SubscriptionAttachment[]
+  views       SubscriptionPostView[]
   readStates  SubscriptionReadState[]
   recipients  SubscriptionPostRecipient[]
   auditLogs   SubscriptionAuditLog[]
@@ -712,6 +714,17 @@ model SubscriptionAttachment {
   @@index([postId, status, createdAt])
   @@index([postId, usage, status, createdAt])
   @@index([uploaderId, createdAt])
+}
+
+model SubscriptionPostView {
+  postId        String
+  userId        String
+  firstViewedAt DateTime @default(now())
+  post          SubscriptionPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user          User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+  @@index([postId, firstViewedAt, userId])
 }
 
 model SubscriptionReadState {
