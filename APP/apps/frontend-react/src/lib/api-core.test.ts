@@ -184,6 +184,17 @@ describe('downloadFile', () => {
     vi.restoreAllMocks();
   });
 
+  it('keeps cookie-session downloads on the observable content route with the requested filename', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(JSON.stringify({ url: 'https://storage.example.test/private-signed-url' }), {
+      headers: { 'Content-Type': 'application/json' },
+    }));
+    let anchor: { href: string; download: string } | undefined;
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function (this: HTMLAnchorElement) { anchor = { href: this.href, download: this.download }; });
+    await downloadFile('/api/groups/g/files/f/content', 'report.pdf', BROWSER_COOKIE_CREDENTIAL);
+    expect(anchor!.href).toBe(`${window.location.origin}/api/groups/g/files/f/content`);
+    expect(anchor!.download).toBe('report.pdf');
+  });
+
   it('falls back to the same-origin content route when the presigned host is not browser-reachable', async () => {
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
       new Response(JSON.stringify({ url: 'http://minio:9000/sekerchat/file.bin' }), {

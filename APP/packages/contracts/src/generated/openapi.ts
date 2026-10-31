@@ -2740,6 +2740,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/download-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["DownloadLogsController_record"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3672,6 +3688,24 @@ export interface components {
         UpdateAttendancePolicyDto: {
             /** @enum {string} */
             mode: "SCHEDULED" | "FLEXIBLE";
+        };
+        DownloadLogDto: {
+            /** Format: uuid */
+            downloadId: string;
+            /** @enum {string} */
+            resourceKind: "file" | "artifact" | "article_attachment" | "album_photo";
+            resourceId: string;
+            /** @enum {string} */
+            event: "started" | "progress" | "completed" | "failed" | "cancelled";
+            bytes: number;
+            expectedBytes: number | null;
+            elapsedMs: number;
+            firstByteMs: number | null;
+            maxGapMs: number;
+            /** @enum {string} */
+            cacheStatus: "unknown" | "browser_cache" | "network";
+            /** @enum {string|null} */
+            errorCode: "network" | "http" | "timeout" | "aborted" | null;
         };
     };
     responses: never;
@@ -7844,6 +7878,28 @@ export interface operations {
                         showWarning: boolean;
                     };
                 };
+            };
+        };
+    };
+    DownloadLogsController_record: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DownloadLogDto"];
+            };
+        };
+        responses: {
+            /** @description Accepted as untrusted client diagnostic data. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

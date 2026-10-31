@@ -78,6 +78,16 @@ page reloads or logout.
 
 Browser sessions use secure HttpOnly cookies. CLI and device clients use explicit token contracts. Long-lived credentials must not appear in URLs or logs.
 
+### Download diagnostics
+
+The independent `download-logs` module observes content response streams without business-module dependencies.
+Browser original previews report bounded, authenticated client measurements through a diagnostic endpoint;
+client measurements remain untrusted and separate from server stream observations. Cookie-session native
+downloads use existing content routes without buffering whole files in JavaScript. Diagnostic storage is a
+bounded, daily JSONL journal on a persistent application log mount, retained for 30 days. Storage failures
+must not change download results. This journal assumes one active backend writer and is not business or audit
+state. Manual inspection and measurement limitations are documented in [download diagnostics](./download-diagnostics.md).
+
 ### Article views
 
 Articles have no acknowledgement requirement or read/unread workflow. Opening a

@@ -216,13 +216,12 @@ export function resolveBrowserReachableUrl(rawUrl: string): string | null {
 /**
  * Download a file through a browser-reachable URL.
  *
- * Uses the presigned object-storage URL when the browser can reach it. If the
- * backend signed an internal-only endpoint, the same-origin content route
- * keeps downloads working across LAN and public entry points.
+ * Cookie sessions use the authenticated content route for observable, streamed
+ * downloads. Explicit bearer clients retain their presigned URL compatibility.
  */
 export async function downloadFile(
   url: string,
-  _filename: string,
+  filename: string,
   accessToken: string,
 ): Promise<void> {
   const presignUrl = url.replace(/\/content(\?.*)?$/, (_, qs) => `/download-url${qs ?? ''}`);
@@ -240,8 +239,9 @@ export async function downloadFile(
   }
 
   const { url: presignedUrl } = await parseResponse<{ url: string }>(presignResponse);
-  const browserDownloadUrl = resolveBrowserReachableUrl(presignedUrl)
-    ?? resolveApiResourceUrl(url);
+  const browserDownloadUrl = accessToken === BROWSER_COOKIE_CREDENTIAL
+    ? resolveApiResourceUrl(url)
+    : resolveBrowserReachableUrl(presignedUrl) ?? resolveApiResourceUrl(url);
 
   // Trigger native browser download via a hidden anchor element.
   // window.location.href would work for same-origin but is unreliable
@@ -249,6 +249,7 @@ export async function downloadFile(
   const anchor = document.createElement('a');
   anchor.style.display = 'none';
   anchor.href = browserDownloadUrl;
+  anchor.download = filename;
   document.body.appendChild(anchor);
   anchor.click();
   document.body.removeChild(anchor);

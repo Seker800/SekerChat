@@ -867,7 +867,9 @@ describe('MessagePane image preview', () => {
   });
 
   it('loads reply image thumbnails and previews through the browser API origin', async () => {
-    fetchMock.mockResolvedValueOnce(mockBlobResponse()).mockResolvedValueOnce(mockBlobResponse());
+    fetchMock.mockImplementation(async (url) => String(url).endsWith('/download-logs')
+      ? new Response(null, { status: 204 })
+      : mockBlobResponse());
 
     const replyImageMessage: MessageResponse = {
       ...replyMessage,
@@ -907,8 +909,7 @@ describe('MessagePane image preview', () => {
     fireEvent.click(thumbnail.closest('button')!);
 
     expect(await screen.findByRole('dialog', { name: 'reply-evidence.png' })).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      2,
+    expect(fetchMock).toHaveBeenCalledWith(
       `${window.location.origin}/api/groups/group-1/files/reply-file-1/content`,
       expect.anything(),
     );

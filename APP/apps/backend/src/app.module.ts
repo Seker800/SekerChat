@@ -36,6 +36,7 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { HealthReadinessService } from './health-readiness.service';
 import { AlbumModule } from './album/album.module';
 import { NetworkModule } from './network/network.module';
+import { DownloadLogsModule } from './download-logs/download-logs.module';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { NetworkModule } from './network/network.module';
     SubscriptionsModule,
     AlbumModule,
     NetworkModule,
+    DownloadLogsModule,
   ],
   controllers: [AppController, RealtimeController],
   providers: [

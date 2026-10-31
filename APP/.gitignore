@@ -22,3 +22,4 @@ blob-report
 .omx/
 deploy/base-images/
 memory-monitor-report/
+apps/backend/.local/download-logs/

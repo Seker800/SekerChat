@@ -42,6 +42,9 @@ services:
       HOST: 0.0.0.0
       PORT: 3100
       NODE_ENV: production
+      DOWNLOAD_LOG_DIR: /var/log/sekerchat/downloads
+    volumes:
+      - ./monitoring/downloads:/var/log/sekerchat/downloads
     # A 94 MP progressive JPEG needs ~550 MiB transient native decoder memory.
     # Include API/Prisma headroom; operation caching is disabled in the image policy.
     mem_limit: 1g

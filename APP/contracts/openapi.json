@@ -5825,6 +5825,30 @@
           "network"
         ]
       }
+    },
+    "/api/download-logs": {
+      "post": {
+        "operationId": "DownloadLogsController_record",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DownloadLogDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Accepted as untrusted client diagnostic data."
+          }
+        },
+        "tags": [
+          "download-logs"
+        ]
+      }
     }
   },
   "info": {
@@ -9552,6 +9576,96 @@
         },
         "required": [
           "mode"
+        ]
+      },
+      "DownloadLogDto": {
+        "type": "object",
+        "properties": {
+          "downloadId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "resourceKind": {
+            "type": "string",
+            "enum": [
+              "file",
+              "artifact",
+              "article_attachment",
+              "album_photo"
+            ]
+          },
+          "resourceId": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]{1,128}$"
+          },
+          "event": {
+            "type": "string",
+            "enum": [
+              "started",
+              "progress",
+              "completed",
+              "failed",
+              "cancelled"
+            ]
+          },
+          "bytes": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 5497558138880
+          },
+          "expectedBytes": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 5497558138880
+          },
+          "elapsedMs": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 86400000
+          },
+          "firstByteMs": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "maximum": 86400000
+          },
+          "maxGapMs": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 86400000
+          },
+          "cacheStatus": {
+            "type": "string",
+            "enum": [
+              "unknown",
+              "browser_cache",
+              "network"
+            ]
+          },
+          "errorCode": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "network",
+              "http",
+              "timeout",
+              "aborted"
+            ]
+          }
+        },
+        "required": [
+          "downloadId",
+          "resourceKind",
+          "resourceId",
+          "event",
+          "bytes",
+          "expectedBytes",
+          "elapsedMs",
+          "firstByteMs",
+          "maxGapMs",
+          "cacheStatus",
+          "errorCode"
         ]
       }
     }

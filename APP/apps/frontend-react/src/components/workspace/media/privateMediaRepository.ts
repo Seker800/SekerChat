@@ -5,6 +5,7 @@ import {
   parseResponse,
   resolveBrowserReachableUrl,
 } from '../../../lib/api-core';
+import { fetchLoggedDownload } from '../../../lib/download-telemetry';
 
 const DEFAULT_MAX_ENTRIES = 256;
 const DEFAULT_MAX_BYTES = 32 * 1024 * 1024;
@@ -293,7 +294,8 @@ export function createPrivateMediaRepository(options: RepositoryOptions = {}) {
       const controller = new AbortController();
       target.pendingController = controller;
       target.pending = (async () => {
-        const response = await fetcher(
+        const response = await fetchLoggedDownload(
+          fetcher,
           request.url,
           {
             headers: bearerHeader(request.accessToken),
@@ -302,6 +304,7 @@ export function createPrivateMediaRepository(options: RepositoryOptions = {}) {
             signal: controller.signal,
           },
           PREVIEW_REQUEST_TIMEOUT_MS,
+          { accessToken: request.accessToken },
         );
         if (!response.ok) throw new Error(`Preview request failed: ${response.status}`);
         const blob = await readPreviewBlob(response, (progress) => {
