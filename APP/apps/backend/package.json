@@ -1,6 +1,6 @@
 {
   "name": "@sekerchat/backend",
-  "version": "0.9.25",
+  "version": "0.9.26",
   "license": "AGPL-3.0-only",
   "private": true,
   "scripts": {
@@ -40,7 +40,7 @@
     "class-validator": "^0.15.1",
     "geolite2-country": "1.0.97",
     "ipaddr.js": "2.5.0",
-    "joi": "^18.2.9",
+    "joi": "^18.3.1",
     "jose": "^6.2.13",
     "mmdb-lib": "3.0.3",
     "multer": "^2.5.0",
