@@ -47,7 +47,7 @@ node scripts/analyze-download-logs.mjs apps/backend/.local/download-logs/downloa
 
 ```sh
 mkdir -p .local/download-diagnostics
-ssh nas 'tar -C /volume1/docker/sekerchat/monitoring/downloads -czf - .' > .local/download-diagnostics/logs.tar.gz
+ssh nas 'sudo -n /usr/local/bin/docker exec sekerchat-backend tar -C /var/log/sekerchat/downloads -czf - .' > .local/download-diagnostics/logs.tar.gz
 tar -xzf .local/download-diagnostics/logs.tar.gz -C .local/download-diagnostics
 node scripts/analyze-download-logs.mjs .local/download-diagnostics/downloads-*.jsonl
 ```
@@ -64,4 +64,4 @@ node scripts/analyze-download-logs.mjs .local/download-diagnostics/downloads-*.j
 - workspace 类型检查、前后端构建、OpenAPI 合约、架构与部署边界检查、手动汇总脚本测试通过。
 - 默认 `npm run lint` 会扫描本机历史 `.deploy-artifacts/source-*` 副本，导致多个配置根目录冲突；排除该产物目录的 `npx eslint . --ignore-pattern '.deploy-artifacts/**'` 通过。未为此修改项目 lint 配置。
 
-本轮没有推送 Git、部署生产或创建定期检查任务；生产启用仍需正式应用发布。
+以上是实现阶段的本地验证。生产启用情况见 [v0.9.27 发布记录](./production-release-v0.9.27.md)；下载日志仍按需手动检查，不创建定期任务。

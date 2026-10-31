@@ -4,6 +4,9 @@
 [`environment-model.md`](./environment-model.md) 为准，数据库迁移安全规则以
 [`database-migration-runbook.md`](./database-migration-runbook.md) 为准。
 
+最近一次生产发布为 2026-10-31 的 `v0.9.27`，来源、迁移、下载日志及验收证据见
+[`production-release-v0.9.27.md`](./production-release-v0.9.27.md)。
+
 ## 固定拓扑
 
 - NAS：通过维护者本机 SSH 别名 `nas` 访问，真实地址不写入版本库
