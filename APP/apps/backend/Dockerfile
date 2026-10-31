@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim@sha256:83f487e0a63425e5b4d146fb5e5be574bcbe1b7b843d3ebafdd95eaf7767a7e5 AS builder
+FROM node:22.23.4-bookworm-slim@sha256:4b150b48b4116e2a22f2c39cc27025fbf4f153e2078fd3b14d159fdb5c7279da AS builder
 
 WORKDIR /app
 ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
@@ -25,7 +25,7 @@ RUN npm run prisma:generate --workspace @sekerchat/backend
 RUN npm run build --workspace @sekerchat/backend
 RUN npm prune --omit=dev
 
-FROM node:22-bookworm-slim@sha256:83f487e0a63425e5b4d146fb5e5be574bcbe1b7b843d3ebafdd95eaf7767a7e5 AS runner
+FROM node:22.23.4-bookworm-slim@sha256:4b150b48b4116e2a22f2c39cc27025fbf4f153e2078fd3b14d159fdb5c7279da AS runner
 
 WORKDIR /app
 ENV NODE_ENV=production
