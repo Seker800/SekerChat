@@ -15,6 +15,7 @@ export interface WorkspaceBootstrapOptions {
   groupId?: string;
   dmId?: string;
   messageLimit?: number;
+  includeMessages?: boolean;
 }
 
 @Injectable()
@@ -41,7 +42,7 @@ export class WorkspaceBootstrapService {
     const selectedGroupId = this.resolveSelectedGroupId(channels, requestedGroupId);
     const selectedGroup = channels.find((group) => group.id === selectedGroupId) ?? null;
 
-    const messages = selectedGroupId
+    const messages = options.includeMessages !== false && selectedGroupId
       ? await this.messagesService.listMessages(user.sub, selectedGroupId, { limit: messageLimit }, user.role)
       : null;
 

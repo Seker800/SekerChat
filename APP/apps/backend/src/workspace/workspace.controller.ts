@@ -17,9 +17,14 @@ export class WorkspaceController {
     @Query('groupId') groupId?: string,
     @Query('dmId') dmId?: string,
     @Query('messageLimit') messageLimit?: string,
+    @Query('includeMessages') includeMessages?: string,
   ) {
+    if (includeMessages !== undefined && !['true', 'false'].includes(includeMessages)) {
+      throw new BadRequestException('includeMessages must be true or false.');
+    }
     return this.workspaceBootstrapService.getBootstrap(user, {
       mode: this.parseMode(mode),
+      includeMessages: includeMessages !== 'false',
       groupId,
       dmId,
       messageLimit: this.parseMessageLimit(messageLimit),

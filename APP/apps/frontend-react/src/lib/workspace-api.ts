@@ -21,10 +21,12 @@ export async function fetchWorkspaceBootstrap(
     groupId?: string;
     dmId?: string;
     messageLimit?: number;
+    includeMessages?: boolean;
   },
 ): Promise<WorkspaceBootstrapResponse> {
   const url = new URL(`${apiBaseUrl}/workspace/bootstrap`);
   url.searchParams.set('mode', options.mode);
+  if (options.includeMessages === false) url.searchParams.set('includeMessages', 'false');
   if (options.groupId) url.searchParams.set('groupId', options.groupId);
   if (options.dmId) url.searchParams.set('dmId', options.dmId);
   if (options.messageLimit !== undefined) {

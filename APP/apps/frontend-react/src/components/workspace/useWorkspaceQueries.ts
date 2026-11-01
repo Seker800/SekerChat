@@ -55,6 +55,7 @@ export function useWorkspaceQueries({
     queryFn: () =>
       fetchWorkspaceBootstrap(accessToken, {
         mode,
+        ...(isDmSpecialPage ? { includeMessages: false } : {}),
         groupId: mode === 'server' ? requestedRouteGroupId || undefined : undefined,
         dmId: mode === 'dm' && !isDmSpecialPage ? requestedRouteGroupId || undefined : undefined,
         messageLimit: DEFAULT_WORKSPACE_BOOTSTRAP_MESSAGE_LIMIT,

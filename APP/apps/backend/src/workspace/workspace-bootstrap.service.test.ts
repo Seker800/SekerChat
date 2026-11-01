@@ -128,3 +128,11 @@ test('getBootstrap rejects unsafe message limits', async () => {
     BadRequestException,
   );
 });
+
+
+test('special pages can load navigation without reading an unrelated conversation', async () => {
+  const { service, calls } = createService();
+  const result = await service.getBootstrap(user, { mode: 'dm', includeMessages: false } as never);
+  assert.equal(result.messages, null);
+  assert.equal(calls.some((call) => call.startsWith('messages:')), false);
+});
