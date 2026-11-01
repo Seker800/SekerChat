@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { type QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   checkIn,
@@ -6,6 +6,8 @@ import {
   fetchOwnCheckInToday,
   type CheckInTodayResponse,
 } from '../../lib/attendance-api';
+
+import { LIVE_ATTENDANCE_QUERY_POLICY } from './liveAttendanceQuery';
 
 type CheckInStatus = CheckInTodayResponse['status'];
 
@@ -40,8 +42,27 @@ export function useOwnCheckInController(
   const todayQuery = useQuery({
     queryKey: ['attendance', 'me', 'checkin', 'today'],
     queryFn: () => fetchOwnCheckInToday(accessToken),
-    staleTime: 30 * 1000,
+    ...LIVE_ATTENDANCE_QUERY_POLICY,
   });
+
+  // A day transition invalidates history once; minute ticks update only today's snapshot.
+  useEffect(() => {
+    const day = todayQuery.data?.workDate;
+    if (!day) return;
+    const dayKey = ['attendance', 'me', 'current-day'];
+    const previous = queryClient.getQueryData<string>(dayKey);
+    queryClient.setQueryData(dayKey, day);
+    void queryClient.invalidateQueries({
+      queryKey: ['attendance', 'me'],
+      predicate: (query) => {
+        if (query.state.isInvalidated) return false;
+        const key = query.queryKey[2];
+        if (key !== 'panel' && key !== 'checkin-panel' && key !== 'monthly-list') return false;
+        const range = (query.state.data as { range?: { endDate: string } } | undefined)?.range;
+        return Boolean(previous && previous !== day) || Boolean(range && range.endDate !== day);
+      },
+    });
+  }, [queryClient, todayQuery.data?.workDate]);
 
   const handleMutationSuccess = useCallback(async () => {
     await invalidateOwnAttendanceQueries(queryClient);

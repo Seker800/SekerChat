@@ -39,6 +39,11 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     timeZone: 'Asia/Shanghai',
     waitForCompletion: true,
   })
+  async pollPendingEvents(): Promise<void> {
+    if (this.drainPromise || !(await this.outboxService.hasDueEvents())) return;
+    await this.processPendingEvents();
+  }
+
   async processPendingEvents(): Promise<void> {
     this.drainRequested = true;
     if (this.drainPromise) return this.drainPromise;

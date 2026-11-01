@@ -115,6 +115,7 @@ describe('useRealtime', () => {
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['messages', 'group-1'] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['groups'] });
     expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['dms'] });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: ['tasks', 'group-1'] });
   });
 
   it('does not reconnect after an unauthorized close', () => {
@@ -343,4 +344,21 @@ describe('useRealtime', () => {
     expect(cached.items[0].readReceipt).toMatchObject({ readCount: 1, unreadCount: 0 });
     expect(cached.items[0].readReceipt.readBy[0].userId).toBe('user-2');
   });
+});
+
+it('does not invalidate all subscription pages when only one article view changes', () => {
+  const original = globalThis.WebSocket;
+  globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket;
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const spy = vi.spyOn(client, 'invalidateQueries');
+  const wrapper = ({ children }: { children: ReactNode }) => createElement(QueryClientProvider, { client }, children);
+  const hook = renderHook(() => useRealtime('token', 'group-1', 'user-1'), { wrapper });
+  act(() => MockWebSocket.instances.at(-1)?.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({
+    eventVersion: 1, eventId: 'article-view', type: 'subscription.changed.v1', groupId: 'subscriptions',
+    occurredAt: new Date().toISOString(), payload: { postId: 'post-1', reason: 'viewed' },
+  }) })));
+  expect(spy).not.toHaveBeenCalledWith({ queryKey: ['subscriptions'] });
+  hook.unmount();
+  client.clear();
+  globalThis.WebSocket = original;
 });

@@ -1,3 +1,4 @@
+import { WorkQueuesModule } from '../work-queues/work-queues.module';
 import { FilePreviewJobService } from './file-preview-job.service';
 import { FilePreviewWorkerService } from './file-preview-worker.service';
 import { FileRetirementService } from './file-retirement.service';
@@ -13,7 +14,7 @@ import { ImageMetadataService } from './image-metadata.service';
 import { MediaVideoService } from './media-video.service';
 
 @Module({
-  imports: [PrismaModule, SystemConfigModule],
+  imports: [WorkQueuesModule, PrismaModule, SystemConfigModule],
   controllers: [FilesController],
   providers: [
     FilePreviewJobService,

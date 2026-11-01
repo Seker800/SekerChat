@@ -1,3 +1,4 @@
+import { WorkQueuesModule } from '../work-queues/work-queues.module';
 import { Module } from '@nestjs/common';
 import { FilesModule } from '../files/files.module';
 import { PrismaModule } from '../prisma/prisma.module';
@@ -10,7 +11,7 @@ import { AlbumService } from './album.service';
 import { AlbumStorageService } from './album-storage.service';
 import { AlbumVideoService } from './album-video.service';
 @Module({
-  imports: [PrismaModule, FilesModule, SystemConfigModule],
+  imports: [WorkQueuesModule, PrismaModule, FilesModule, SystemConfigModule],
   controllers: [AlbumController],
   providers: [
     AlbumService,

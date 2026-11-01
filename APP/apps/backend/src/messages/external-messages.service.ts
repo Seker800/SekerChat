@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { WorkQueueSignals } from '../work-queues/work-queue-signals.service';
+import { BadRequestException, Injectable, Optional } from '@nestjs/common';
 import { Prisma, MessageType } from '@prisma/client';
 import { createHash } from 'node:crypto';
 import { OUTBOX_EVENT_TYPES } from '../outbox/outbox.types';
@@ -14,6 +15,7 @@ export class ExternalMessagesService {
   constructor(
     private readonly files: FilesService,
     private readonly prisma: PrismaService,
+    @Optional() private readonly workSignals?: WorkQueueSignals,
   ) {}
 
   async stageImage(groupId: string, buffer: Buffer) {
@@ -54,6 +56,7 @@ export class ExternalMessagesService {
       });
     });
     await this.files.uploadBufferToS3(storageKey, buffer, `image/${format}`);
+    this.workSignals?.notify('file-preview');
     return file;
   }
   async stageFile(groupId: string, buffer: Buffer, originalName: string) {

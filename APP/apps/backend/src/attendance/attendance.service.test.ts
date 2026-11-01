@@ -744,3 +744,16 @@ async function withMockedNow<T>(isoString: string, callback: () => Promise<T>): 
     globalThis.Date = RealDate;
   }
 }
+
+test('today refresh reads one day of presence and never rebuilds annual projections', async () => {
+  const service = createAttendanceService();
+  const ranges: Array<[string, string]> = [];
+  const load = (service as any).loadDailyPresenceProjections.bind(service);
+  (service as any).loadDailyPresenceProjections = async (userId: string, start: string, end: string, timezone: string) => {
+    ranges.push([start, end]); return load(userId, start, end, timezone);
+  };
+  const result = await withMockedNow('2026-11-01T12:00:00Z', () => service.getOwnCheckInToday({ sub: 'user-1' } as never));
+  assert.deepEqual(ranges, [['2026-11-01', '2026-11-01']]);
+  assert.ok(Array.isArray(result.todaySegments));
+  assert.equal('checkInSeries' in result, false);
+});

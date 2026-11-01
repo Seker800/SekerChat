@@ -50,6 +50,7 @@ function createService(canManage = true) {
       deleteMany: async () => ({}),
       createMany: async () => ({}),
     },
+    albumState: { upsert: async () => ({ revision: 1n }) },
     albumMediaJob: {
       upsert: async () => ({}),
       createMany: async () => ({}),
@@ -125,7 +126,7 @@ test('album update status initializes users at the current revision without hist
     seenRevision: null,
   });
 
-  assert.deepEqual(await service.getUpdateStatus(actor), { hasUpdates: false });
+  assert.deepEqual(await service.getUpdateStatus(actor), { hasUpdates: false, revision: '12' });
   assert.deepEqual(readStateUpserts, [
     {
       where: { userId: actor.sub },
@@ -143,7 +144,7 @@ test('a new account still sees uploads completed after the account was created',
     unseenUploaderId: 'user-2',
   });
 
-  assert.deepEqual(await service.getUpdateStatus(actor), { hasUpdates: true });
+  assert.deepEqual(await service.getUpdateStatus(actor), { hasUpdates: true, revision: '14' });
   assert.equal(
     (readStateUpserts[0] as { create: { seenRevision: bigint } }).create.seenRevision,
     12n,
@@ -156,14 +157,14 @@ test('album update status ignores own uploads and reports another user\'s active
     seenRevision: 7n,
     unseenUploaderId: actor.sub,
   });
-  assert.deepEqual(await ownUpload.service.getUpdateStatus(actor), { hasUpdates: false });
+  assert.deepEqual(await ownUpload.service.getUpdateStatus(actor), { hasUpdates: false, revision: '8' });
 
   const otherUpload = createUpdateStatusService({
     currentRevision: 9n,
     seenRevision: 7n,
     unseenUploaderId: 'user-2',
   });
-  assert.deepEqual(await otherUpload.service.getUpdateStatus(actor), { hasUpdates: true });
+  assert.deepEqual(await otherUpload.service.getUpdateStatus(actor), { hasUpdates: true, revision: '9' });
 });
 
 test('markViewed atomically advances the user read position', async () => {
@@ -221,6 +222,7 @@ test('softDelete requires manage_album and is idempotent', async () => {
 test('softDelete schedules durable object cleanup inside the same transaction', async () => {
   const createdJobs: any[] = [];
   const prisma = {
+    albumState: { upsert: async () => ({ revision: 1n }) },
     albumPhoto: { updateMany: async () => ({ count: 1 }) },
     albumPhotoTag: { groupBy: async () => [] },
     albumMediaJob: { upsert: async (args: unknown) => createdJobs.push(args) },

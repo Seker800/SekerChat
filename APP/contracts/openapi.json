@@ -5780,6 +5780,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "includeMessages",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -9284,6 +9292,9 @@
         "properties": {
           "hasUpdates": {
             "type": "boolean"
+          },
+          "revision": {
+            "type": "string"
           }
         },
         "required": [

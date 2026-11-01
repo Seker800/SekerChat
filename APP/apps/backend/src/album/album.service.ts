@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService } from '../system-config/permission.service';
 import { decodeAlbumCursor, encodeAlbumCursor } from './album-cursor';
 import { normalizeAlbumTag, normalizeAlbumTags } from './album-policy';
+import { advanceAlbumRevision } from './album-revision';
 import { AlbumStorageService } from './album-storage.service';
 
 @Injectable()
@@ -18,19 +19,17 @@ export class AlbumService {
 
   async getUpdateStatus(actor: AuthenticatedUser) {
     return this.prisma.$transaction(async (transaction) => {
-      const [state, readState, user] = await Promise.all([
+      const [state, readState] = await Promise.all([
         transaction.albumState.findUnique({ where: { id: 1 }, select: { revision: true } }),
         transaction.albumReadState.findUnique({
           where: { userId: actor.sub },
           select: { seenRevision: true },
         }),
-        transaction.user.findUniqueOrThrow({
-          where: { id: actor.sub },
-          select: { createdAt: true },
-        }),
       ]);
       const currentRevision = state?.revision ?? 0n;
+      const revision = currentRevision.toString();
       if (!readState) {
+        const user = await transaction.user.findUniqueOrThrow({ where: { id: actor.sub }, select: { createdAt: true } });
         const accountBaseline = await transaction.albumPhoto.findFirst({
           where: { createdAt: { lte: user.createdAt } },
           orderBy: { revision: 'desc' },
@@ -42,7 +41,7 @@ export class AlbumService {
           create: { userId: actor.sub, seenRevision },
           update: {},
         });
-        if (seenRevision >= currentRevision) return { hasUpdates: false };
+        if (seenRevision >= currentRevision) return { hasUpdates: false, revision };
         const unseenPhoto = await transaction.albumPhoto.findFirst({
           where: {
             deletedAt: null,
@@ -51,9 +50,9 @@ export class AlbumService {
           },
           select: { id: true },
         });
-        return { hasUpdates: Boolean(unseenPhoto) };
+        return { hasUpdates: Boolean(unseenPhoto), revision };
       }
-      if (readState.seenRevision >= currentRevision) return { hasUpdates: false };
+      if (readState.seenRevision >= currentRevision) return { hasUpdates: false, revision };
       const unseenPhoto = await transaction.albumPhoto.findFirst({
         where: {
           deletedAt: null,
@@ -62,7 +61,7 @@ export class AlbumService {
         },
         select: { id: true },
       });
-      return { hasUpdates: Boolean(unseenPhoto) };
+      return { hasUpdates: Boolean(unseenPhoto), revision };
     });
   }
 
@@ -169,6 +168,7 @@ export class AlbumService {
         await tx.albumPhotoTag.createMany({
           data: tags.map((tag) => ({ photoId, tagId: tag.id })),
         });
+      await advanceAlbumRevision(tx);
       return { photoId, tags };
     });
   }
@@ -196,6 +196,7 @@ export class AlbumService {
       });
       if (update.count > 0) {
         await this.schedulePhotoPurge(transaction, photoId, deletedAt);
+        await advanceAlbumRevision(transaction);
       }
       return update;
     });
@@ -217,6 +218,7 @@ export class AlbumService {
         where: { id: { in: activeIds }, deletedAt: null },
         data: { deletedAt, deletedById: actor.sub },
       });
+      if (update.count > 0) await advanceAlbumRevision(transaction);
       await transaction.albumMediaJob.createMany({
         data: activeIds.map((id) => ({
           photoId: id,

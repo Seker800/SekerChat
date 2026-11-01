@@ -1,8 +1,10 @@
+import { WorkQueueSignals } from '../work-queues/work-queue-signals.service';
 import {
   BadRequestException,
   ForbiddenException,
   Injectable,
   Logger,
+  Optional,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
@@ -35,6 +37,7 @@ export class FilesService {
     private readonly fileAccess: FileAccessService,
     private readonly imageMetadata: ImageMetadataService,
     private readonly fileUrls: FileUrlService,
+    @Optional() private readonly workSignals?: WorkQueueSignals,
   ) {}
 
   async uploadFile(userId: string, groupId: string, file: Express.Multer.File) {
@@ -91,6 +94,7 @@ export class FilesService {
       }),
     );
 
+    if (previewJobForImage(created.mimeType)) this.workSignals?.notify('file-preview');
     return this.serializeFileObject(created);
   }
 
@@ -106,6 +110,7 @@ export class FilesService {
       where: { fileId, status: 'FAILED' },
       data: { status: 'PENDING', attempts: 0, availableAt: new Date(), lockedAt: null },
     });
+    this.workSignals?.notify('file-preview');
     return this.getFileMetadata(userId, groupId, fileId);
   }
 

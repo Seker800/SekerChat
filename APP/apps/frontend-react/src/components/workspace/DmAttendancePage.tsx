@@ -8,7 +8,7 @@ import {
   type CheckInPanelResponse,
 } from '../../lib/attendance-api';
 import { getCheckInStatusText, useOwnCheckInController } from './useOwnCheckInController';
-import { LIVE_ATTENDANCE_QUERY_POLICY } from './liveAttendanceQuery';
+import { mergeLiveAttendance } from './attendance-live';
 import styles from './WorkspaceShell.module.css';
 
 type RangeKey = 7 | 30 | 90;
@@ -417,16 +417,19 @@ export function DmAttendancePage({ accessToken }: { accessToken: string }) {
   const onlinePanelQuery = useQuery({
     queryKey: ['attendance', 'me', 'panel', 30],
     queryFn: () => fetchOwnAttendancePanel(accessToken, 30),
-    ...LIVE_ATTENDANCE_QUERY_POLICY,
+    staleTime: Infinity,
   });
   const checkInPanelQuery = useQuery({
     queryKey: ['attendance', 'me', 'checkin-panel', 365],
     queryFn: () => fetchOwnCheckInPanel(accessToken, 365),
-    ...LIVE_ATTENDANCE_QUERY_POLICY,
+    staleTime: Infinity,
   });
 
-  const onlinePanel = onlinePanelQuery.data;
-  const checkInPanel = checkInPanelQuery.data;
+  const { online: onlinePanel, checkIn: checkInPanel } = mergeLiveAttendance(
+    onlinePanelQuery.data, checkInPanelQuery.data,
+    (checkInController.todayQuery?.dataUpdatedAt ?? 0) >= Math.max(onlinePanelQuery.dataUpdatedAt, checkInPanelQuery.dataUpdatedAt)
+      ? checkInController.today : undefined,
+  );
   const today = checkInPanel?.today;
 
   const actionLabel = checkInController.actionLabel;

@@ -164,3 +164,15 @@ test('an immediate wakeup failure is contained so the cron fallback can retry la
   assert.equal(claimCalls, 1);
   worker.onModuleDestroy();
 });
+
+test('idle fallback checks readiness without opening a claim transaction', async () => {
+  let claims = 0;
+  let probes = 0;
+  const worker = new OutboxWorkerService({
+    hasDueEvents: async () => { probes++; return false; },
+    claimNext: async () => { claims++; return null; },
+  } as never, {} as never, new OutboxWakeupService());
+  await worker.pollPendingEvents();
+  assert.equal(probes, 1);
+  assert.equal(claims, 0);
+});

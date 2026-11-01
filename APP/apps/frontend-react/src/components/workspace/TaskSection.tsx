@@ -15,6 +15,7 @@ interface TaskSectionProps {
   group: GroupResponse;
   accessToken?: string;
   currentUserId: string;
+  isActive?: boolean;
 }
 
 function displayName(task: TaskResponse, field: 'createdBy' | 'completedBy'): string {
@@ -23,7 +24,7 @@ function displayName(task: TaskResponse, field: 'createdBy' | 'completedBy'): st
   return user.displayName || user.email;
 }
 
-export function TaskSection({ group, accessToken, currentUserId }: TaskSectionProps) {
+export function TaskSection({ group, accessToken, currentUserId, isActive = true }: TaskSectionProps) {
   const resolvedAccessToken = useResolvedAccessToken(accessToken);
   const queryClient = useQueryClient();
   const [newContent, setNewContent] = useState('');
@@ -39,7 +40,7 @@ export function TaskSection({ group, accessToken, currentUserId }: TaskSectionPr
   const tasksQuery = useQuery({
     queryKey: ['tasks', group.id],
     queryFn: () => listTasks(resolvedAccessToken, group.id),
-    enabled: !group.archivedAt,
+    enabled: isActive && !group.archivedAt,
   });
 
   const createMutation = useMutation({

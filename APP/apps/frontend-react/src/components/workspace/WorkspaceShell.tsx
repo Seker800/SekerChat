@@ -27,7 +27,7 @@ import {
   type WorkspaceMode,
 } from '../../store/workspace-store';
 import { getDmSpecialPage } from '../../store/dm-special-pages';
-import { getAlbumUpdateStatus } from '../../lib/album-api';
+import { useAlbumUpdateStatus } from '../../hooks/useAlbumUpdateStatus';
 import {
   getDefaultRolePermissions,
   hasSystemPermission,
@@ -123,13 +123,7 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
     isSubscriptionAdmin &&
     hasSystemPermission(rolePermissions, currentUser.role, 'manage_subscription_posts');
   const canManageAlbum = hasSystemPermission(rolePermissions, currentUser.role, 'manage_album');
-  const albumUpdateStatusQuery = useQuery({
-    queryKey: ['album', 'update-status'],
-    queryFn: () => getAlbumUpdateStatus(accessToken),
-    enabled: mode === 'dm',
-    staleTime: 15_000,
-    refetchInterval: 30_000,
-  });
+  const albumUpdateStatusQuery = useAlbumUpdateStatus(accessToken, mode === 'dm');
   const [userAvatarFile, setUserAvatarFile] = useState<File | null>(null);
   const [attendanceReminderRequest, setAttendanceReminderRequest] =
     useState<AttendanceReminderRequest | null>(null);

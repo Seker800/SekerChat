@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { WorkQueueSignals } from '../work-queues/work-queue-signals.service';
 import { AlbumMediaWorkerService } from './album-media-worker.service';
 
 test('worker serializes concurrent drains and completes thumbnail work', async () => {
@@ -61,4 +62,19 @@ test('worker backfills legacy album hashes through the durable media queue', asy
 
   assert.deepEqual(hashed, ['photo-3']);
   assert.deepEqual(completed, ['job-3']);
+});
+
+test('idle cron checks back off while post-commit hints still wake the worker immediately', async (context) => {
+  let now = 0;
+  let claims = 0;
+  context.mock.method(Date, 'now', () => now);
+  const signals = new WorkQueueSignals();
+  const worker = new AlbumMediaWorkerService({ claimNext: async () => { claims++; return null; } } as never, {} as never, signals);
+  worker.onModuleInit();
+  for (now = 0; now < 600_000; now += 10_000) await worker.pollPendingJobs();
+  assert.equal(claims, 12);
+  signals.notify('album-media');
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  assert.equal(claims, 13);
+  worker.onModuleDestroy();
 });

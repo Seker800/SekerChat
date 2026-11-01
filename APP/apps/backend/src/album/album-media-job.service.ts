@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { AlbumMediaJobStatus, Prisma } from '@prisma/client';
+import { advanceAlbumRevision } from './album-revision';
 import { PrismaService } from '../prisma/prisma.service';
 
 export interface ClaimedAlbumMediaJob {
@@ -48,8 +49,10 @@ export class AlbumMediaJobService {
   }
 
   markCompleted(jobId: string) {
-    return this.prisma.albumMediaJob.delete({
-      where: { id: jobId },
+    return this.prisma.$transaction(async (transaction) => {
+      const job = await transaction.albumMediaJob.delete({ where: { id: jobId } });
+      if (job.kind === 'GENERATE_THUMBNAIL') await advanceAlbumRevision(transaction);
+      return job;
     });
   }
 

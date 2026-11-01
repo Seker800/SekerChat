@@ -9,6 +9,7 @@ const uploadAlbumPhoto = vi.fn();
 const deleteAlbumPhotos = vi.fn();
 const markAlbumViewed = vi.fn();
 vi.mock('../../../lib/album-api', () => ({
+  getAlbumUpdateStatus: vi.fn().mockResolvedValue({ hasUpdates: false, revision: '0' }),
   listAlbumPhotos: (...args: unknown[]) => listAlbumPhotos(...args),
   listAlbumTags: (...args: unknown[]) => listAlbumTags(...args),
   uploadAlbumPhoto: (...args: unknown[]) => uploadAlbumPhoto(...args),

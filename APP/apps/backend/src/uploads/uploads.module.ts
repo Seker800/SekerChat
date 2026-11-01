@@ -1,3 +1,4 @@
+import { WorkQueuesModule } from '../work-queues/work-queues.module';
 import { UploadResourceInterceptor } from './upload-resource.interceptor';
 import { DynamicModule, InjectionToken, Module, ModuleMetadata } from '@nestjs/common';
 import { ArtifactsModule } from '../artifacts/artifacts.module';
@@ -15,6 +16,7 @@ import { UploadTargetRegistry } from './upload-target-registry';
 
 @Module({
   imports: [
+    WorkQueuesModule,
     PrismaModule,
     FilesModule,
     ArtifactsModule,

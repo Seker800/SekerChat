@@ -11,6 +11,19 @@ export class OutboxService {
     return transaction.outboxEvent.create({ data: event });
   }
 
+  async hasDueEvents(): Promise<boolean> {
+    const event = await this.prismaService.outboxEvent.findFirst({
+      where: {
+        OR: [
+          { status: OutboxEventStatus.PENDING, availableAt: { lte: new Date() } },
+          { status: OutboxEventStatus.PROCESSING, lockedAt: { lt: new Date(Date.now() - 5 * 60_000) } },
+        ],
+      },
+      select: { id: true },
+    });
+    return event !== null;
+  }
+
   async claimNext(): Promise<ClaimedOutboxEvent | null> {
     return this.prismaService.$transaction(async (transaction) => {
       const [candidate] = await transaction.$queryRaw<ClaimedOutboxEvent[]>(Prisma.sql`

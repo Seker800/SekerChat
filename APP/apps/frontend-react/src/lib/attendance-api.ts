@@ -80,7 +80,14 @@ export interface AttendancePanelResponse {
   };
 }
 
+export interface AttendanceAverages {
+  monthAverageMinutes: number;
+  totalAverageMinutes: number;
+  basis?: { monthWorkedMinutes: number; yearWorkedMinutes: number; monthWorkDays: number; yearWorkDays: number };
+}
+
 export interface CheckInTodayResponse {
+  todaySegments?: AttendancePanelSegment[];
   workDate: string;
   status: 'NOT_CHECKED_IN' | 'CHECKED_IN' | 'CHECKED_OUT';
   checkInAt: string | null;
@@ -110,14 +117,8 @@ export interface CheckInPanelResponse {
     consecutiveCheckInDays: number;
     onlineTodayMinutes: number;
     averages: {
-      online: {
-        monthAverageMinutes: number;
-        totalAverageMinutes: number;
-      };
-      checkIn: {
-        monthAverageMinutes: number;
-        totalAverageMinutes: number;
-      };
+      online: AttendanceAverages;
+      checkIn: AttendanceAverages;
     };
   };
   statusSeries: CheckInPanelSeriesItem[];

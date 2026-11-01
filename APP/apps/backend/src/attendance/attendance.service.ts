@@ -8,7 +8,6 @@ import type { AuthenticatedUser } from '../auth/types/authenticated-user.type';
 import type {
   AttendanceConfig,
   AttendanceDailySummary,
-  OnlineDurationSummary,
 } from './attendance.types';
 import { isCalendarWorkday } from './workday-calendar';
 import {
@@ -867,7 +866,7 @@ export class AttendanceService {
     anchorDate: string,
     timeZone: string,
     workDays: number[],
-  ): { monthAverageMinutes: number; totalAverageMinutes: number } {
+  ) {
     const monthRange = monthRangeForDateKey(anchorDate);
     const monthSeries = series.filter((item) => item.workDate >= monthRange.startDate && item.workDate <= anchorDate);
     const yearSeries = series.filter((item) => item.workDate >= `${anchorDate.slice(0, 4)}-01-01` && item.workDate <= anchorDate);
@@ -894,6 +893,7 @@ export class AttendanceService {
       : 0;
 
     return {
+      basis: { monthWorkedMinutes, yearWorkedMinutes, monthWorkDays, yearWorkDays },
       monthAverageMinutes: monthWorkDays > 0 ? Math.round(monthWorkedMinutes / monthWorkDays) : 0,
       totalAverageMinutes: yearWorkDays > 0 ? Math.round(yearWorkedMinutes / yearWorkDays) : 0,
     };
@@ -918,6 +918,7 @@ export class AttendanceService {
     return {
       ...summary,
       onlineMinutes: online.onlineWorkMinutes,
+      todaySegments: online.segments,
     };
   }
 
@@ -1068,7 +1069,7 @@ export class AttendanceService {
     userId: string,
     workDate: string,
     timezone: string,
-  ): Promise<OnlineDurationSummary> {
+  ) {
     const projections = await this.loadDailyPresenceProjections(
       userId,
       workDate,
@@ -1080,6 +1081,7 @@ export class AttendanceService {
       firstOnlineAt: projection.firstOnlineAt,
       lastOnlineAt: projection.lastOnlineAt,
       onlineWorkMinutes: projection.onlineWorkMinutes,
+      segments: projection.segments,
     };
   }
 

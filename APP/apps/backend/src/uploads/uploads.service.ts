@@ -1,8 +1,10 @@
+import { WorkQueueSignals } from '../work-queues/work-queue-signals.service';
 import {
   BadRequestException,
   ForbiddenException,
   Injectable,
   Logger,
+  Optional,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
@@ -80,6 +82,7 @@ export class UploadsService {
     private readonly albumStorageService?: AlbumStorageService,
     private readonly albumVideoService?: AlbumVideoService,
     private readonly uploadTargets?: UploadTargetRegistry,
+    @Optional() private readonly workSignals?: WorkQueueSignals,
   ) {}
 
   async initiateUpload(userId: string, dto: InitiateUploadDto) {
@@ -870,6 +873,9 @@ export class UploadsService {
       );
       throw error;
     }
+
+    if (txResult.kind === UploadKind.CHAT_ATTACHMENT && previewJobForImage(session.mimeType)) this.workSignals?.notify('file-preview');
+    if (txResult.kind === UploadKind.ALBUM_PHOTO) this.workSignals?.notify('album-media');
 
     if (txResult.kind === 'REGISTERED_TARGET') {
       await targetHandler!.afterCommit?.(session, txResult.finalized);

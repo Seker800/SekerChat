@@ -1,3 +1,4 @@
+import { useAlbumUpdateStatus } from '../../../hooks/useAlbumUpdateStatus';
 import { useUploadSignal } from '../../../hooks/useUploadSignal';
 import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -48,6 +49,8 @@ function isAlbumMediaFile(file: File): boolean {
 
 export function DmAlbumPage({ accessToken, canManage, viewerId }: DmAlbumPageProps) {
   const queryClient = useQueryClient();
+  const updateStatus = useAlbumUpdateStatus(accessToken, true);
+  const revisionRef = useRef<string | undefined>(undefined);
   const pageRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const dragDepthRef = useRef(0);
@@ -85,6 +88,17 @@ export function DmAlbumPage({ accessToken, canManage, viewerId }: DmAlbumPagePro
     initialPageParam: '',
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
   });
+  useEffect(() => {
+    const revision = updateStatus.data?.revision;
+    if (revision === undefined) return;
+    const previous = revisionRef.current;
+    revisionRef.current = revision;
+    if (previous !== undefined && previous !== revision) {
+      void queryClient.invalidateQueries({ queryKey: ['album', 'photos'] });
+      void queryClient.invalidateQueries({ queryKey: ['album', 'tags'] });
+    }
+  }, [queryClient, updateStatus.data?.revision]);
+
   const photos = useMemo(() => {
     const uniquePhotos = new Map<string, AlbumPhoto>();
     photosQuery.data?.pages.forEach((page) => {
@@ -96,7 +110,7 @@ export function DmAlbumPage({ accessToken, canManage, viewerId }: DmAlbumPagePro
   useEffect(() => {
     if (!photosQuery.isSuccess || hasReportedContentReadyRef.current) return;
     hasReportedContentReadyRef.current = true;
-    queryClient.setQueryData(['album', 'update-status'], { hasUpdates: false });
+    queryClient.setQueryData(['album', 'update-status'], (current: import('../../../lib/album-api').AlbumUpdateStatus | undefined) => ({ ...current, hasUpdates: false }));
     void markAlbumViewed(accessToken).catch(() => {
       void queryClient.invalidateQueries({ queryKey: ['album', 'update-status'] });
     });

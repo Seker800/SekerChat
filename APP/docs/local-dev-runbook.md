@@ -290,3 +290,27 @@ and reuse of an already opened original.
 2026-10-26 只读检查发现 NAS 的 v0.9.22 前端资源包含旧加载文案，却不包含
 `48d436b` 新增的图片解析阶段文案；当前运行资源未包含这次进度条修改。
 镜像标签本身不足以证明具体提交已上线。本地修复不构成生产部署授权。
+
+## Refresh efficiency regression
+
+Run from `APP/`:
+
+```bash
+npm run test --workspace @sekerchat/frontend-react -- src/components/workspace/refresh-efficiency.test.tsx src/lib/realtime-refresh-queue.test.ts src/components/workspace/attendance-live.test.ts
+npx playwright test tests/e2e/workspace-refresh-efficiency.spec.ts tests/e2e/workspace-data-consistency.spec.ts
+```
+
+The browser test advances a controlled clock through ten foreground minutes and
+ten hidden minutes, simulates a check-out on another device, counts history and
+today requests, and captures the resulting UI. It uses HTTP fixtures, not a real
+second device. Cache tests additionally cover twelve loaded article pages, slow
+reads, duplicate observers and trailing realtime refreshes. The backend worker
+suite verifies idle backoff, immediate hints, serialization and persisted failures.
+
+On 2026-11-01, direct service reads against the existing small local development
+fixture executed 11 SELECTs for the former pair of historical panel refreshes and
+6 SELECTs for the current-day snapshot, with no transaction or mutation statements
+in either measurement. This excludes HTTP authentication and is not a production
+latency or large-data benchmark. Do not extrapolate the local duration to Synology.
+The generic `smoke:groups` script also requires a working local login-code path;
+a missing returned verification code is an incomplete smoke, not a passed check.

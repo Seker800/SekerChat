@@ -218,6 +218,7 @@ export function RightSidebar({
         {!group.isDM ? (
           <>
             <TaskSection
+              isActive={!isOverlay || isOpen}
               group={group}
               accessToken={resolvedAccessToken}
               currentUserId={currentUserId}

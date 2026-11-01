@@ -19,6 +19,7 @@ export interface AlbumTag {
 }
 export interface AlbumUpdateStatus {
   hasUpdates: boolean;
+  revision?: string;
 }
 export async function getAlbumUpdateStatus(accessToken: string) {
   const response = await fetchApi(`${apiBaseUrl}/album/update-status`, {

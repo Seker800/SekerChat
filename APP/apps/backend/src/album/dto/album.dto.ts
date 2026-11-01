@@ -30,6 +30,7 @@ export class DeleteAlbumPhotosDto {
 
 export class AlbumUpdateStatusResponseDto {
   hasUpdates!: boolean;
+  revision?: string;
 }
 
 export class AlbumPhotoResponseDto {

@@ -9,6 +9,8 @@ import {
   patchTimelineMessage,
   type MessageTimeline,
 } from '../lib/message-timeline';
+import { RealtimeRefreshQueue } from '../lib/realtime-refresh-queue';
+import { SubscriptionViewRefresh } from '../lib/subscription-refresh';
 import { hasPendingSends } from './localMessageTracker';
 
 const REALTIME_UNAUTHORIZED_CLOSE_CODE = 4401;
@@ -110,6 +112,33 @@ export function useRealtime(
     let reconnectTimer: ReturnType<typeof setTimeout>;
     let stopped = false;
     let hasOpened = false;
+    let reconnectAttempt = 0;
+    const viewRefresh = new SubscriptionViewRefresh(queryClient, accessToken);
+    const pendingViewChanges = new Set<string>();
+    const refreshQueue = new RealtimeRefreshQueue(queryClient, () => document.visibilityState === 'visible');
+    const invalidate = (filters: Parameters<typeof queryClient.invalidateQueries>[0]) => refreshQueue.invalidate(filters ?? {});
+    const refreshViews = (postId: string) => {
+      if (document.visibilityState !== 'visible') {
+        pendingViewChanges.add(postId);
+        return;
+      }
+      void viewRefresh.refresh(postId).catch(() => {
+        // Keep the old snapshot and retry on the next visible reconciliation.
+        if (!stopped) pendingViewChanges.add(postId);
+      });
+    };
+    const reconcileVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      refreshQueue.flush();
+      for (const postId of pendingViewChanges) {
+        pendingViewChanges.delete(postId);
+        refreshViews(postId);
+      }
+    };
+    document.addEventListener('visibilitychange', reconcileVisible);
+    window.addEventListener('online', reconcileVisible);
+    const retryViewChanges = window.setInterval(reconcileVisible, 60_000);
+
     const loggedContractErrors = new Set<string>();
     const recentEventIds = new Set<string>();
 
@@ -129,15 +158,16 @@ export function useRealtime(
         console.error('[realtime] rejected event', { kind, reason });
       }
       if (selectedGroupRef.current) {
-        queryClient.invalidateQueries({ queryKey: ['messages', selectedGroupRef.current] });
-        queryClient.invalidateQueries({ queryKey: ['group', selectedGroupRef.current] });
-        queryClient.invalidateQueries({ queryKey: ['work-state', selectedGroupRef.current] });
-        queryClient.invalidateQueries({ queryKey: ['artifacts', selectedGroupRef.current] });
+        invalidate({ queryKey: ['messages', selectedGroupRef.current] });
+        invalidate({ queryKey: ['group', selectedGroupRef.current] });
+        invalidate({ queryKey: ['work-state', selectedGroupRef.current] });
+        invalidate({ queryKey: ['artifacts', selectedGroupRef.current] });
+        invalidate({ queryKey: ['tasks', selectedGroupRef.current] });
       }
-      queryClient.invalidateQueries({ queryKey: ['groups'] });
-      queryClient.invalidateQueries({ queryKey: ['dms'] });
-      queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
-      queryClient.invalidateQueries({ queryKey: ['subscription-summary'] });
+      invalidate({ queryKey: ['groups'] });
+      invalidate({ queryKey: ['dms'] });
+      invalidate({ queryKey: ['subscriptions'] });
+      invalidate({ queryKey: ['subscription-summary'] });
     }
 
     function connect() {
@@ -145,6 +175,8 @@ export function useRealtime(
       socket = new WebSocket(url);
 
       socket.addEventListener('open', () => {
+        if (stopped) return;
+        reconnectAttempt = 0;
         console.log('[realtime] connected');
         if (!hasOpened) {
           hasOpened = true;
@@ -153,19 +185,21 @@ export function useRealtime(
 
         // Backfill data missed during reconnects without duplicating initial page loads.
         if (selectedGroupRef.current) {
-          queryClient.invalidateQueries({ queryKey: ['messages', selectedGroupRef.current] });
-          queryClient.invalidateQueries({ queryKey: ['group', selectedGroupRef.current] });
-          queryClient.invalidateQueries({ queryKey: ['work-state', selectedGroupRef.current] });
-          queryClient.invalidateQueries({ queryKey: ['artifacts', selectedGroupRef.current] });
+          invalidate({ queryKey: ['messages', selectedGroupRef.current] });
+          invalidate({ queryKey: ['group', selectedGroupRef.current] });
+          invalidate({ queryKey: ['work-state', selectedGroupRef.current] });
+          invalidate({ queryKey: ['artifacts', selectedGroupRef.current] });
+          invalidate({ queryKey: ['tasks', selectedGroupRef.current] });
         }
-        queryClient.invalidateQueries({ queryKey: ['groups'] });
-        queryClient.invalidateQueries({ queryKey: ['dms'] });
-        queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
-        queryClient.invalidateQueries({ queryKey: ['subscription-summary'] });
+        invalidate({ queryKey: ['groups'] });
+        invalidate({ queryKey: ['dms'] });
+        invalidate({ queryKey: ['subscriptions'] });
+        invalidate({ queryKey: ['subscription-summary'] });
         recoveredRef.current?.();
       });
 
       socket.addEventListener('message', (event) => {
+        if (stopped) return;
         try {
           const parsed = parseRealtimeEvent(JSON.parse(event.data as string));
           if (!parsed.success) {
@@ -205,7 +239,7 @@ export function useRealtime(
               return receiveCreatedMessage(timeline, data.groupId, messagePayload);
             });
             if (messagePayload.type === 'system') {
-              queryClient.invalidateQueries({ queryKey: ['artifacts', data.groupId] });
+              invalidate({ queryKey: ['artifacts', data.groupId] });
             }
             callbackRef.current?.({
               groupId: data.groupId,
@@ -232,7 +266,7 @@ export function useRealtime(
           }
           if (data.type === 'group.updated.v1') {
             if (data.payload?.reason === 'file_share_updated') {
-              queryClient.invalidateQueries({ queryKey: ['messages', data.groupId] });
+              invalidate({ queryKey: ['messages', data.groupId] });
               return;
             }
             if (data.payload?.reason === 'read_receipt_updated') {
@@ -254,21 +288,22 @@ export function useRealtime(
                 );
               }
               if (!hasPendingSends(data.groupId)) {
-                queryClient.invalidateQueries({ queryKey: ['messages', data.groupId] });
+                invalidate({ queryKey: ['messages', data.groupId] });
               }
               return;
             }
-            queryClient.invalidateQueries({ queryKey: ['groups'] });
-            queryClient.invalidateQueries({ queryKey: ['dms'] });
-            queryClient.invalidateQueries({ queryKey: ['group', data.groupId] });
-            queryClient.invalidateQueries({ queryKey: ['artifacts', data.groupId] });
+            invalidate({ queryKey: ['groups'] });
+            invalidate({ queryKey: ['dms'] });
+            invalidate({ queryKey: ['group', data.groupId] });
+            invalidate({ queryKey: ['work-state', data.groupId] });
+            invalidate({ queryKey: ['artifacts', data.groupId] });
           }
           if (
             data.type === 'task.created.v1' ||
             data.type === 'task.updated.v1' ||
             data.type === 'task.deleted.v1'
           ) {
-            queryClient.invalidateQueries({ queryKey: ['tasks', data.groupId] });
+            invalidate({ queryKey: ['tasks', data.groupId] });
           }
           if (data.type === 'presence.changed.v1') {
             queryClient.setQueryData<GroupResponse[]>(['groups'], (current) =>
@@ -284,8 +319,12 @@ export function useRealtime(
             presenceRef.current?.(data.payload);
           }
           if (data.type === 'subscription.changed.v1') {
-            queryClient.invalidateQueries({ queryKey: ['subscriptions'] });
-            queryClient.invalidateQueries({ queryKey: ['subscription-summary'] });
+            if (data.payload.reason === 'viewed' || data.payload.reason === 'confirmed') {
+              refreshViews(data.payload.postId);
+              return;
+            }
+            invalidate({ queryKey: ['subscriptions'] });
+            invalidate({ queryKey: ['subscription-summary'] });
           }
         } catch {
           recoverFromContractError('invalid_json', 'event is not valid JSON');
@@ -299,8 +338,9 @@ export function useRealtime(
           return;
         }
 
-        console.log(`[realtime] disconnected (code ${event.code}), reconnecting in 3s`);
-        reconnectTimer = setTimeout(connect, 3000);
+        const delay = Math.min(30_000, 3_000 * 2 ** Math.min(reconnectAttempt++, 4));
+        console.log(`[realtime] disconnected (code ${event.code}), reconnecting in ${delay}ms`);
+        reconnectTimer = setTimeout(connect, delay);
       });
 
       socket.addEventListener('error', () => {
@@ -313,6 +353,11 @@ export function useRealtime(
 
     return () => {
       stopped = true;
+      refreshQueue.dispose();
+      viewRefresh.dispose();
+      document.removeEventListener('visibilitychange', reconcileVisible);
+      window.removeEventListener('online', reconcileVisible);
+      window.clearInterval(retryViewChanges);
       clearTimeout(reconnectTimer);
       socket?.close();
     };

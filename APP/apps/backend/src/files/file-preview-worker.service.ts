@@ -1,4 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { IdlePollSchedule } from '../work-queues/idle-poll-schedule';
+import { WorkQueueSignals } from '../work-queues/work-queue-signals.service';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { FilePreviewJobService } from './file-preview-job.service';
@@ -12,10 +14,26 @@ export class FilePreviewWorkerService {
   private readonly logger = new Logger(FilePreviewWorkerService.name);
   private drain: Promise<void> | null = null;
 
+  private readonly poll = new IdlePollSchedule();
+  private unsubscribeWakeup?: () => void;
+
+  onModuleInit(): void {
+    this.unsubscribeWakeup = this.signals?.subscribe('file-preview', () => {
+      this.poll.wake();
+      void this.processPendingJobs().catch(() => {
+        this.poll.idle();
+        this.logger.warn('immediate_queue_processing_failed');
+      });
+    });
+  }
+
+  onModuleDestroy(): void { this.unsubscribeWakeup?.(); }
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jobs: FilePreviewJobService,
     private readonly objects: ObjectStorageGateway,
+    @Optional() private readonly signals?: WorkQueueSignals,
   ) {}
 
   @Cron('*/10 * * * * *', {
@@ -23,6 +41,11 @@ export class FilePreviewWorkerService {
     waitForCompletion: true,
     timeZone: 'Asia/Shanghai',
   })
+  async pollPendingJobs(): Promise<void> {
+    if (!this.poll.ready()) return;
+    try { await this.processPendingJobs(); } catch (error) { this.poll.idle(); throw error; }
+  }
+
   processPendingJobs(): Promise<void> {
     if (!this.drain)
       this.drain = this.processBatch().finally(() => {
@@ -34,7 +57,8 @@ export class FilePreviewWorkerService {
   private async processBatch() {
     for (let i = 0; i < 5; i++) {
       const job = await this.jobs.claimNext();
-      if (!job) return;
+      if (!job) { this.poll.idle(); return; }
+      this.poll.wake();
       let heartbeatRunning = false;
       const heartbeat = setInterval(() => {
         if (heartbeatRunning) return;

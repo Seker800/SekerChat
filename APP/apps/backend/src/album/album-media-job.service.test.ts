@@ -51,3 +51,16 @@ test('markFailed retries with bounded exponential backoff before terminal failur
   assert.equal(updates[1].data.status, 'FAILED');
   assert.equal(updates[1].data.availableAt, undefined);
 });
+
+test('publishing a thumbnail advances the album revision in the completion transaction', async () => {
+  const changes: string[] = [];
+  const transaction = {
+    albumMediaJob: { delete: async () => { changes.push('complete'); return { kind: 'GENERATE_THUMBNAIL' }; } },
+    albumState: { upsert: async () => { changes.push('revision'); return { revision: 2n }; } },
+  };
+  const service = new AlbumMediaJobService({ $transaction: async (callback: (tx: unknown) => unknown) => {
+    changes.push('begin'); await callback(transaction); changes.push('commit');
+  } } as never);
+  await service.markCompleted('job-1');
+  assert.deepEqual(changes, ['begin', 'complete', 'revision', 'commit']);
+});

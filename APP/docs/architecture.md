@@ -120,3 +120,29 @@ Group mute is a core per-member preference, independent of external message sour
 QQ group synchronization is a built-in optional module. A separate connector subscribes directly to NapCat and calls scoped integration APIs; AstrBot is not its upstream. Core messages expose optional external-author snapshots without creating login accounts for QQ members. Outgoing delivery intent is recorded in the message transaction through a narrow registration port; provider calls happen only in the connector. Ambiguous provider results require reconciliation instead of automatic resend. The extension and all bindings start disabled. See [ADR 0006](./adr/0006-qq-bridge-extension.md) and [local verification](./qq-bridge.md). Released as v0.9.19 to Synology on 2026-10-18, with a separate persistent connector on the NapCat host and QQ-to-Chat only enabled. See [production verification](./qq-bridge-production-2026-10-18.md).
 
 Architectural decisions live in [`docs/adr`](./adr). Reversing an accepted decision requires a replacement ADR rather than silently changing this document.
+
+## Refresh ownership and cost
+
+React Query owns query deduplication and cached snapshots. Minute-scale attendance
+checks fetch only the current day; the 30/365-day panels are immutable snapshots
+until a local mutation or day transition invalidates them. The client projects the
+new day state over loaded history, using server-provided totals and workday counts
+for averages. Historical snapshots win over an older live response. Visibility
+restoration reconciles small current-state queries, while hidden realtime
+invalidations are retained and coalesced until the view returns. Changes arriving
+during a read schedule one trailing read instead of canceling and overlapping HTTP.
+
+Article view events refresh one article and patch its count in loaded list pages;
+they do not invalidate every subscription page. Structural article changes still
+reconcile the lists because ordering and membership may change. Album polling
+shares one minute-scale revision query between the sidebar and page. Uploads,
+deletions, tag edits and completed thumbnails advance the existing album revision
+inside their business transaction; unchanged polls add no revision writes.
+
+Media queue producers publish narrow post-commit in-process hints. Workers and
+Outbox retain serialized processing, durable retries and heartbeat/lease recovery.
+Empty media fallback polls back off from 10 to at most 60 seconds; new media work
+bypasses the delay through a coalesced hint. Outbox keeps its 10-second fallback,
+using a read-only readiness probe before opening a claim transaction. These hints assume the single active backend
+above, are not durable facts, and never replace the database recovery path. No
+PostgreSQL notification listener or per-poll database write is introduced.

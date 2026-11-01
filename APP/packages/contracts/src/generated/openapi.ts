@@ -3617,6 +3617,7 @@ export interface components {
         };
         AlbumUpdateStatusResponseDto: {
             hasUpdates: boolean;
+            revision?: string;
         };
         AlbumPhotoResponseDto: {
             id: string;
@@ -7845,6 +7846,7 @@ export interface operations {
                 groupId?: string;
                 dmId?: string;
                 messageLimit?: string;
+                includeMessages?: string;
             };
             header?: never;
             path?: never;

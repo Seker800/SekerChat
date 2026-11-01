@@ -1,3 +1,4 @@
+import { WorkQueuesModule } from '../work-queues/work-queues.module';
 import { ExternalMessagesService } from './external-messages.service';
 import { MessageDeliveryIntents } from './message-delivery-intents';
 import { Module } from '@nestjs/common';
@@ -17,7 +18,7 @@ import { SystemMessageService } from './system-message.service';
 import { OutboxCoreModule } from '../outbox/outbox-core.module';
 
 @Module({
-  imports: [PrismaModule, FilesModule, RealtimeModule, AvatarsModule, OutboxCoreModule],
+  imports: [WorkQueuesModule, PrismaModule, FilesModule, RealtimeModule, AvatarsModule, OutboxCoreModule],
   controllers: [MessagesController],
   providers: [
     MessageDeliveryIntents,
