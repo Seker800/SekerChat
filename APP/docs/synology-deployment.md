@@ -4,8 +4,8 @@
 [`environment-model.md`](./environment-model.md) 为准，数据库迁移安全规则以
 [`database-migration-runbook.md`](./database-migration-runbook.md) 为准。
 
-最近一次生产发布为 2026-10-31 的 `v0.9.27`，来源、迁移、下载日志及验收证据见
-[`production-release-v0.9.27.md`](./production-release-v0.9.27.md)。
+最近一次生产发布为 2026-11-01 的 `v0.9.28`，来源、刷新优化、回滚及验收证据见
+[`production-release-v0.9.28.md`](./production-release-v0.9.28.md)。
 
 ## 固定拓扑
 
