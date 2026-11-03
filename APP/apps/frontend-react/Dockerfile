@@ -22,7 +22,7 @@ RUN rm -rf apps/frontend-react/dist \
   && npm run build --workspace @sekerchat/frontend-react \
   && node ./scripts/precompress-frontend-assets.mjs apps/frontend-react/dist
 
-FROM nginx:1.31.0-alpine@sha256:2f07d83bf561b506400dc183b1b2003803e39efbd22451f848adaba14d28c7c7 AS runner
+FROM nginx:1.31.8-alpine@sha256:785835ea65db4bba6f021acc0f3be91b0fef76a53fe41f8588c6698d2aed0606 AS runner
 
 RUN apk upgrade --no-cache
 
