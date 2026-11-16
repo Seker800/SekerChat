@@ -1,7 +1,7 @@
 import { IconDownload, IconShare3 } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
 import { FileIcon } from './FileIcon';
-import styles from './MessagePane.module.css';
+import styles from './message-stream.module.css';
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

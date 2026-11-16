@@ -91,7 +91,7 @@ function renderSidebar(
       <MemoryRouter>
         <ChannelSidebar
           mode="dm"
-          categoryName="私聊"
+          serverName="私聊"
           serverOptions={[]}
           groups={[baseDmGroup]}
           archivedGroups={[]}
@@ -105,7 +105,7 @@ function renderSidebar(
           onOpenInviteMembers={() => undefined}
           onOpenStatusEditor={() => undefined}
           onSetWorkStatus={() => undefined}
-          onChangeCategory={() => undefined}
+          onMoveGroupToServer={() => undefined}
           onRequestArchiveGroup={() => undefined}
           onOpenUserSettings={() => undefined}
           currentUserIsDnd={false}
@@ -142,7 +142,7 @@ function renderSidebarTree(
       <MemoryRouter>
         <ChannelSidebar
           mode="dm"
-          categoryName="私聊"
+          serverName="私聊"
           serverOptions={[]}
           groups={[baseDmGroup]}
           archivedGroups={[]}
@@ -156,7 +156,7 @@ function renderSidebarTree(
           onOpenInviteMembers={() => undefined}
           onOpenStatusEditor={() => undefined}
           onSetWorkStatus={() => undefined}
-          onChangeCategory={() => undefined}
+          onMoveGroupToServer={() => undefined}
           onRequestArchiveGroup={() => undefined}
           onOpenUserSettings={() => undefined}
           currentUserIsDnd={false}

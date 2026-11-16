@@ -32,14 +32,12 @@ import { SubscriptionMarkdown } from './SubscriptionMarkdown';
 import { Avatar } from '../shared/Avatar';
 import { userDisplayName } from '../../lib/users-api';
 import { FileAttachmentCard } from './FileAttachmentCard';
-import { parseSubscriptionTags } from './subscription-editor-utils';
 import { SubscriptionDraftController } from './article-editor/SubscriptionDraftController';
 import styles from './DmSubscriptionPage.module.css';
 
 const SubscriptionArticleEditor = lazy(() => import('./article-editor/SubscriptionArticleEditor'));
 
 const DEFAULT_ATTACHMENT_MAX_MB = 5 * 1024;
-const ARTICLE_TAGS_ENABLED = false;
 let editorSessionSequence = 0;
 
 function formatBytes(value: number): string {
@@ -83,7 +81,6 @@ interface EditorState {
   attachments: SubscriptionAttachment[];
   uploadedFileKeys: Set<string>;
   progress: Record<string, number>;
-  tagDraft: string;
   isBusy: boolean;
   saveStatus: 'idle' | 'saving' | 'saved' | 'error';
   error: string;
@@ -101,7 +98,6 @@ function createEditorState(post?: SubscriptionPost | null): EditorState {
     attachments: [...(post?.attachments ?? [])],
     uploadedFileKeys: new Set(),
     progress: {},
-    tagDraft: '',
     isBusy: false,
     saveStatus: 'idle',
     error: '',
@@ -330,20 +326,6 @@ export function DmSubscriptionPage({
     }, 800);
     return () => window.clearTimeout(timeout);
   }, [editor?.input]);
-
-  const commitTagDraft = () => {
-    setEditor((current) => {
-      if (!current || !current.tagDraft.trim()) return current;
-      return {
-        ...current,
-        input: {
-          ...current.input,
-          tags: parseSubscriptionTags(current.tagDraft, current.input.tags),
-        },
-        tagDraft: '',
-      };
-    });
-  };
 
   const uploadEditorFile = async (
     targetId: string,
@@ -694,60 +676,6 @@ export function DmSubscriptionPage({
           </main>
 
           <aside className={styles.publishSettings} role="region" aria-label="发布设置">
-            {ARTICLE_TAGS_ENABLED ? (
-              <section>
-                <h3>标签</h3>
-                <div className={styles.tagEditor}>
-                  {editor.input.tags.map((tag) => (
-                    <span key={tag}>
-                      {tag}
-                      <button
-                        type="button"
-                        aria-label={`删除标签 ${tag}`}
-                        onClick={() =>
-                          setEditor({
-                            ...editor,
-                            input: {
-                              ...editor.input,
-                              tags: editor.input.tags.filter((item) => item !== tag),
-                            },
-                          })
-                        }
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                  <input
-                    aria-label="标签"
-                    value={editor.tagDraft}
-                    placeholder="输入标签后回车"
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      if (/[\s,，]/u.test(value)) {
-                        setEditor({
-                          ...editor,
-                          input: {
-                            ...editor.input,
-                            tags: parseSubscriptionTags(value, editor.input.tags),
-                          },
-                          tagDraft: '',
-                        });
-                      } else {
-                        setEditor({ ...editor, tagDraft: value });
-                      }
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ',' || event.key === '，') {
-                        event.preventDefault();
-                        commitTagDraft();
-                      }
-                    }}
-                    onBlur={commitTagDraft}
-                  />
-                </div>
-              </section>
-            ) : null}
             <section>
               <h3>下载附件</h3>
               <p>
@@ -778,7 +706,8 @@ export function DmSubscriptionPage({
                   event.preventDefault();
                   event.stopPropagation();
                   const nextTarget = event.relatedTarget;
-                  if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) return;
+                  if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget))
+                    return;
                   setIsDownloadAttachmentDragActive(false);
                 }}
                 onDrop={(event) => {

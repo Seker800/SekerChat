@@ -1,13 +1,3 @@
-const TAG_SEPARATOR = /[\s,，]+/u;
-
-export function parseSubscriptionTags(value: string, existing: string[] = []): string[] {
-  const next = value
-    .split(TAG_SEPARATOR)
-    .map((tag) => tag.trim())
-    .filter(Boolean);
-  return [...new Set([...existing, ...next])].slice(0, 10);
-}
-
 export function insertMarkdownAtSelection(
   value: string,
   selectionStart: number,
@@ -24,6 +14,10 @@ export function insertMarkdownAtSelection(
 }
 
 export function buildAttachmentImageMarkdown(originalName: string, attachmentId: string): string {
-  const alt = originalName.replace(/\.[^.]+$/u, '').replace(/[\[\]]/g, '').trim() || '图片';
+  const alt =
+    originalName
+      .replace(/\.[^.]+$/u, '')
+      .replace(/[\[\]]/g, '')
+      .trim() || '图片';
   return `![${alt}](attachment://${attachmentId})`;
 }

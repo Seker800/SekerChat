@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMentionCompletion, type MentionMember } from './useMentionCompletion';
 import { MentionDropdown } from './MentionDropdown';
-import styles from './MessagePane.module.css';
+import styles from './message-stream.module.css';
 
 export function MessageEditor({
   text,

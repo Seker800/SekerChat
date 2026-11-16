@@ -7,7 +7,7 @@ import {
   type CheckInTodayResponse,
 } from '../../lib/attendance-api';
 
-import { LIVE_ATTENDANCE_QUERY_POLICY } from './liveAttendanceQuery';
+import { LIVE_QUERY_POLICY } from '../../lib/live-query-policy';
 
 type CheckInStatus = CheckInTodayResponse['status'];
 
@@ -42,7 +42,7 @@ export function useOwnCheckInController(
   const todayQuery = useQuery({
     queryKey: ['attendance', 'me', 'checkin', 'today'],
     queryFn: () => fetchOwnCheckInToday(accessToken),
-    ...LIVE_ATTENDANCE_QUERY_POLICY,
+    ...LIVE_QUERY_POLICY,
   });
 
   // A day transition invalidates history once; minute ticks update only today's snapshot.
@@ -69,9 +69,12 @@ export function useOwnCheckInController(
     options?.onSuccess?.();
   }, [options, queryClient]);
 
-  const handleMutationError = useCallback((error: unknown) => {
-    options?.onError?.(error);
-  }, [options]);
+  const handleMutationError = useCallback(
+    (error: unknown) => {
+      options?.onError?.(error);
+    },
+    [options],
+  );
 
   const checkInMutation = useMutation({
     mutationFn: () => checkIn(accessToken),
@@ -88,7 +91,11 @@ export function useOwnCheckInController(
   const isMutating = checkInMutation.isPending || checkOutMutation.isPending;
   const today = todayQuery.data;
   const status = today?.status;
-  const actionLabel = status ? getPrimaryActionLabel(status) : todayQuery.isError ? '重试同步' : '同步中';
+  const actionLabel = status
+    ? getPrimaryActionLabel(status)
+    : todayQuery.isError
+      ? '重试同步'
+      : '同步中';
   const actionDisabled = isMutating || (!today && !todayQuery.isError);
 
   const performPrimaryAction = useCallback(() => {

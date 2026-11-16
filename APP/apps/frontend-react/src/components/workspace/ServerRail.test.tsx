@@ -2,7 +2,7 @@ import '@testing-library/jest-dom/vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ServerRail } from './ServerRail';
-import type { CategoryRailItem } from './useServerCategories';
+import type { ServerRailItem } from './useServerTree';
 
 afterEach(() => {
   cleanup();
@@ -11,7 +11,7 @@ afterEach(() => {
 function renderServerRail({
   canCreateServers = true,
   canManageServerSettings = true,
-  archivedCategories = [],
+  archivedServers = [],
   dmUnreadCount = 0,
   isDMMode = false,
   isOverlay = false,
@@ -23,17 +23,17 @@ function renderServerRail({
 }: {
   canCreateServers?: boolean;
   canManageServerSettings?: boolean;
-  archivedCategories?: CategoryRailItem[];
+  archivedServers?: ServerRailItem[];
   dmUnreadCount?: number;
   isDMMode?: boolean;
   isOverlay?: boolean;
   isOverlayOpen?: boolean;
-  onOpenCategorySettings?: (server: CategoryRailItem) => void;
+  onOpenCategorySettings?: (server: ServerRailItem) => void;
   onOpenCreateServer?: () => void;
   onOpenDM?: () => void;
   onSelect?: (serverId: string) => void;
 } = {}) {
-  const activeServer: CategoryRailItem = {
+  const activeServer: ServerRailItem = {
     id: 'server-1',
     name: '研发',
     avatarUrl: null,
@@ -44,8 +44,8 @@ function renderServerRail({
 
   render(
     <ServerRail
-      categories={[activeServer]}
-      archivedCategories={archivedCategories}
+      servers={[activeServer]}
+      archivedServers={archivedServers}
       selectedServerId="server-1"
       isDMMode={isDMMode}
       dmUnreadCount={dmUnreadCount}
@@ -91,7 +91,7 @@ describe('ServerRail', () => {
   it('keeps archived servers available in the expanded section', () => {
     const onSelect = vi.fn();
     renderServerRail({
-      archivedCategories: [
+      archivedServers: [
         {
           id: 'server-archived',
           name: '旧项目',
@@ -118,7 +118,7 @@ describe('ServerRail', () => {
       onOpenCategorySettings,
     });
 
-    fireEvent.contextMenu(screen.getByTestId('server-rail-category'));
+    fireEvent.contextMenu(screen.getByTestId('server-rail-item'));
 
     expect(screen.getByRole('menuitem', { name: '新建 server' })).toBeDisabled();
     fireEvent.click(screen.getByRole('menuitem', { name: '打开 server 设置' }));
@@ -131,7 +131,7 @@ describe('ServerRail', () => {
     renderServerRail({ onOpenDM, onSelect });
 
     fireEvent.click(screen.getByRole('button', { name: '私聊/收件箱' }));
-    const activeServerButton = screen.getByTestId('server-rail-category');
+    const activeServerButton = screen.getByTestId('server-rail-item');
     fireEvent.mouseDown(activeServerButton);
     fireEvent.click(activeServerButton);
 
@@ -142,7 +142,7 @@ describe('ServerRail', () => {
   it('opens archived Server settings with a secondary click without selecting it', () => {
     const onOpenCategorySettings = vi.fn();
     const onSelect = vi.fn();
-    const archivedServer: CategoryRailItem = {
+    const archivedServer: ServerRailItem = {
       id: 'server-archived',
       name: '旧项目',
       avatarUrl: null,
@@ -150,7 +150,7 @@ describe('ServerRail', () => {
       unreadCount: 0,
       isArchived: true,
     };
-    renderServerRail({ archivedCategories: [archivedServer], onOpenCategorySettings, onSelect });
+    renderServerRail({ archivedServers: [archivedServer], onOpenCategorySettings, onSelect });
 
     fireEvent.click(screen.getByRole('button', { name: '展开 Server 操作' }));
     const archivedButton = screen.getByTitle('旧项目 · 已归档');
@@ -172,7 +172,7 @@ describe('ServerRail', () => {
   it('disables settings separately when only Server creation is allowed', () => {
     renderServerRail({ canCreateServers: true, canManageServerSettings: false });
 
-    fireEvent.contextMenu(screen.getByTestId('server-rail-category'));
+    fireEvent.contextMenu(screen.getByTestId('server-rail-item'));
 
     expect(screen.getByRole('menuitem', { name: '新建 server' })).toBeEnabled();
     expect(screen.getByRole('menuitem', { name: '打开 server 设置' })).toBeDisabled();

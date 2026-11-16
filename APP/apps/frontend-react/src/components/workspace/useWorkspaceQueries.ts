@@ -26,12 +26,12 @@ interface UseWorkspaceQueriesOptions {
   routeGroupId?: string;
 }
 
-function resolveFallbackChannelId(channels: GroupResponse[], mode: WorkspaceMode): string {
+function resolveFallbackGroupId(groups: GroupResponse[], mode: WorkspaceMode): string {
   if (mode === 'server') {
-    return channels.find((group) => !group.archivedAt)?.id ?? channels[0]?.id ?? '';
+    return groups.find((group) => !group.archivedAt)?.id ?? groups[0]?.id ?? '';
   }
 
-  return channels[0]?.id ?? '';
+  return groups[0]?.id ?? '';
 }
 
 export function useWorkspaceQueries({
@@ -99,12 +99,12 @@ export function useWorkspaceQueries({
     [dms],
   );
 
-  const channels = mode === 'dm' ? dms : servers;
-  const channelsQuery = mode === 'dm' ? dmsQuery : serversQuery;
+  const groups = mode === 'dm' ? dms : servers;
+  const groupsQuery = mode === 'dm' ? dmsQuery : serversQuery;
   const requestedGroupId = requestedRouteGroupId;
-  const fallbackChannelId = useMemo(
-    () => resolveFallbackChannelId(channels, mode),
-    [channels, mode],
+  const fallbackGroupId = useMemo(
+    () => resolveFallbackGroupId(groups, mode),
+    [groups, mode],
   );
   const selectedGroupId = useMemo(() => {
     if (isDmSpecialPage) {
@@ -112,19 +112,19 @@ export function useWorkspaceQueries({
     }
 
     if (!requestedGroupId) {
-      return fallbackChannelId;
+      return fallbackGroupId;
     }
 
     // SUPER_ADMIN can view any group by ID regardless of membership
     if (isSuperAdmin) return requestedGroupId;
 
-    return channels.some((group) => group.id === requestedGroupId)
+    return groups.some((group) => group.id === requestedGroupId)
       ? requestedGroupId
-      : fallbackChannelId;
-  }, [channels, fallbackChannelId, isDmSpecialPage, isSuperAdmin, requestedGroupId]);
+      : fallbackGroupId;
+  }, [groups, fallbackGroupId, isDmSpecialPage, isSuperAdmin, requestedGroupId]);
   const fallbackSelectedGroup = useMemo(
-    () => channels.find((group) => group.id === selectedGroupId),
-    [channels, selectedGroupId],
+    () => groups.find((group) => group.id === selectedGroupId),
+    [groups, selectedGroupId],
   );
 
   const selectedGroupQuery = useQuery({
@@ -178,8 +178,8 @@ export function useWorkspaceQueries({
   return {
     allUsersQuery,
     artifactsQuery,
-    channels,
-    channelsQuery,
+    groups,
+    groupsQuery,
     dmCandidatesQuery,
     dms,
     dmsQuery,

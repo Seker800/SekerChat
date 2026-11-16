@@ -50,7 +50,7 @@ interface ServerDialogState {
   mode: 'create' | 'settings';
   isOpen: boolean;
   currentServerId: string;
-  currentCategoryName: string;
+  currentServerName: string;
   categoryStats: ManageableCategoryResponse | null;
   createServerName: string;
   createChannelName: string;
@@ -383,7 +383,7 @@ export function WorkspaceDialogs({
 
       {serverDialog.isOpen ? (
         <DialogFrame
-          title={serverDialog.mode === 'create' ? '新建 Server' : serverDialog.currentCategoryName}
+          title={serverDialog.mode === 'create' ? '新建 Server' : serverDialog.currentServerName}
           description={
             serverDialog.mode === 'create'
               ? undefined
@@ -449,7 +449,7 @@ export function WorkspaceDialogs({
                 >
                   <Avatar
                     avatarUrl={group?.serverAvatarUrl ?? null}
-                    name={serverDialog.currentCategoryName}
+                    name={serverDialog.currentServerName}
                     size={68}
                     accessToken={resolvedAccessToken}
                   />
@@ -474,7 +474,7 @@ export function WorkspaceDialogs({
                         event.preventDefault();
                         if (
                           serverDialog.renameServerName.trim() &&
-                          serverDialog.renameServerName !== serverDialog.currentCategoryName
+                          serverDialog.renameServerName !== serverDialog.currentServerName
                         ) {
                           serverDialog.onSubmitRename();
                         }
@@ -491,7 +491,7 @@ export function WorkspaceDialogs({
                         }
                         onKeyDown={(event) => {
                           if (event.key === 'Escape') {
-                            serverDialog.onRenameServerNameChange(serverDialog.currentCategoryName);
+                            serverDialog.onRenameServerNameChange(serverDialog.currentServerName);
                             setIsEditingServerName(false);
                           }
                         }}
@@ -509,12 +509,12 @@ export function WorkspaceDialogs({
                       className={styles.displayNameButton}
                       type="button"
                       onClick={() => {
-                        serverDialog.onRenameServerNameChange(serverDialog.currentCategoryName);
+                        serverDialog.onRenameServerNameChange(serverDialog.currentServerName);
                         setIsEditingServerName(true);
                       }}
                     >
                       <span className={styles.displayNameText}>
-                        {serverDialog.currentCategoryName}
+                        {serverDialog.currentServerName}
                       </span>
                     </button>
                   )}
@@ -955,7 +955,7 @@ export function WorkspaceDialogs({
 
       {isServerIconPickerOpen ? (
         <ServerIconPickerDialog
-          serverName={serverDialog.currentCategoryName}
+          serverName={serverDialog.currentServerName}
           isSaving={isSavingServerIcon}
           onCancel={() => setIsServerIconPickerOpen(false)}
           onSave={handleServerIconSave}

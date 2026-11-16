@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
-import styles from './MessagePane.module.css';
+import styles from './message-stream.module.css';
 import type { PreviewImage } from '../media/image-preview/useImagePreviewState';
 import { getMessageImageShellLayout } from './messageImageSizing';
 import { useMessageMediaScheduler } from './media/MessageMediaProvider';

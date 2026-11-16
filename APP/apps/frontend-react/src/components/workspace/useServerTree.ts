@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { GroupResponse } from '../../lib/groups-api';
 
-export const DEFAULT_CATEGORY = '未分类';
+const DEFAULT_CATEGORY = '未分类';
 
 export function getCategoryName(group: Pick<GroupResponse, 'category'>): string {
   return group.category?.trim() || DEFAULT_CATEGORY;
@@ -9,24 +9,6 @@ export function getCategoryName(group: Pick<GroupResponse, 'category'>): string 
 
 export function getServerId(group: Pick<GroupResponse, 'serverId' | 'category'>): string {
   return group.serverId ?? `legacy:${getCategoryName(group)}`;
-}
-
-export function buildCategoryStats(groups: GroupResponse[], categoryName: string) {
-  const matchedGroups = groups.filter((group) => getCategoryName(group) === categoryName);
-  const activeCount = matchedGroups.filter((group) => !group.archivedAt).length;
-  const archivedCount = matchedGroups.length - activeCount;
-  const latestUpdatedAt =
-    [...matchedGroups].sort(
-      (left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
-    )[0]?.updatedAt ?? null;
-
-  return {
-    name: categoryName,
-    groupCount: matchedGroups.length,
-    archivedGroupCount: archivedCount,
-    activeGroupCount: activeCount,
-    latestUpdatedAt,
-  };
 }
 
 export function buildServerStats(groups: GroupResponse[], serverId: string) {
@@ -52,13 +34,13 @@ export function buildServerStats(groups: GroupResponse[], serverId: string) {
   };
 }
 
-interface UseServerCategoriesOptions {
-  channels: GroupResponse[];
+interface UseServerTreeOptions {
+  groups: GroupResponse[];
   selectedGroup: GroupResponse | undefined;
   servers: GroupResponse[];
 }
 
-export interface CategoryRailItem {
+export interface ServerRailItem {
   id: string;
   name: string;
   activeCount: number;
@@ -67,25 +49,25 @@ export interface CategoryRailItem {
   isArchived: boolean;
 }
 
-export function useServerCategories({
-  channels,
+export function useServerTree({
+  groups,
   selectedGroup,
   servers,
-}: UseServerCategoriesOptions) {
-  const activeChannels = useMemo(() => channels.filter((item) => !item.archivedAt), [channels]);
+}: UseServerTreeOptions) {
+  const activeGroups = useMemo(() => groups.filter((item) => !item.archivedAt), [groups]);
   const selectedServerId = useMemo(
     () =>
       getServerId(
-        selectedGroup ?? activeChannels[0] ?? { serverId: null, category: DEFAULT_CATEGORY },
+        selectedGroup ?? activeGroups[0] ?? { serverId: null, category: DEFAULT_CATEGORY },
       ),
-    [activeChannels, selectedGroup],
+    [activeGroups, selectedGroup],
   );
-  const selectedCategoryName =
+  const selectedServerName =
     selectedGroup?.server?.name ??
-    getCategoryName(selectedGroup ?? activeChannels[0] ?? { category: DEFAULT_CATEGORY });
+    getCategoryName(selectedGroup ?? activeGroups[0] ?? { category: DEFAULT_CATEGORY });
 
   /** All categories the user has groups in, ordered by latest activity, split into active vs archived. */
-  const { categoryRailItems, archivedCategoryRailItems } = useMemo(() => {
+  const { serverRailItems, archivedServerRailItems } = useMemo(() => {
     const map = new Map<
       string,
       {
@@ -134,11 +116,11 @@ export function useServerCategories({
       map.set(serverId, entry);
     }
 
-    const all: CategoryRailItem[] = [];
-    const archived: CategoryRailItem[] = [];
+    const all: ServerRailItem[] = [];
+    const archived: ServerRailItem[] = [];
 
     for (const entry of map.values()) {
-      const item: CategoryRailItem = {
+      const item: ServerRailItem = {
         id: entry.id,
         name: entry.name,
         activeCount: entry.activeCount,
@@ -169,45 +151,39 @@ export function useServerCategories({
       return bTs - aTs;
     });
 
-    return { categoryRailItems: all, archivedCategoryRailItems: archived };
+    return { serverRailItems: all, archivedServerRailItems: archived };
   }, [servers]);
 
-  const categoryNames = useMemo(
-    () => categoryRailItems.map((item) => item.name),
-    [categoryRailItems],
+  const serverNames = useMemo(
+    () => serverRailItems.map((item) => item.name),
+    [serverRailItems],
   );
 
-  const categoryGroups = useMemo(() => {
-    const filtered = activeChannels.filter((group) => getServerId(group) === selectedServerId);
+  const serverGroups = useMemo(() => {
+    const filtered = activeGroups.filter((group) => getServerId(group) === selectedServerId);
     const withTs = filtered.map((g) => ({ g, ts: new Date(g.updatedAt).getTime() }));
     withTs.sort((a, b) => b.ts - a.ts);
     return withTs.map(({ g }) => g);
-  }, [activeChannels, selectedServerId]);
+  }, [activeGroups, selectedServerId]);
 
-  const archivedCategoryGroups = useMemo(() => {
-    const filtered = channels.filter(
+  const archivedServerGroups = useMemo(() => {
+    const filtered = groups.filter(
       (group) => Boolean(group.archivedAt) && getServerId(group) === selectedServerId,
     );
     const withTs = filtered.map((g) => ({ g, ts: new Date(g.updatedAt).getTime() }));
     withTs.sort((a, b) => b.ts - a.ts);
     return withTs.map(({ g }) => g).slice(0, 8);
-  }, [channels, selectedServerId]);
-
-  const selectedCategoryStats = useMemo(
-    () => buildServerStats(servers, selectedServerId),
-    [servers, selectedServerId],
-  );
+  }, [groups, selectedServerId]);
 
   return {
-    activeChannels,
-    archivedCategoryGroups,
-    archivedCategoryRailItems,
-    categoryGroups,
-    categoryNames: categoryRailItems.map((item) => item.name),
-    serverOptions: categoryRailItems.map((item) => ({ id: item.id, name: item.name })),
-    categoryRailItems,
-    selectedCategoryName,
+    activeGroups,
+    archivedServerGroups,
+    archivedServerRailItems,
+    serverGroups,
+    serverNames: serverRailItems.map((item) => item.name),
+    serverOptions: serverRailItems.map((item) => ({ id: item.id, name: item.name })),
+    serverRailItems,
+    selectedServerName,
     selectedServerId,
-    selectedCategoryStats,
   };
 }

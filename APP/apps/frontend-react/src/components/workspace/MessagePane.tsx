@@ -9,14 +9,13 @@ import { MessageList, type MessageListNavigation } from './MessageList';
 import { MessageMediaProvider } from './media/MessageMediaProvider';
 import { fallbackCopyText } from './messagePaneUtils';
 import type { MessageArtifactAction } from './messageArtifactAction';
-import styles from './MessagePane.module.css';
+import styles from './message-stream.module.css';
 import { useImagePreviewState } from '../media/image-preview/useImagePreviewState';
 import { useMessageScrollAnchor } from './useMessageScrollAnchor';
 import { useTranslation } from 'react-i18next';
 import type { VisibleMessageAnchor } from './messageViewportCoordinator';
 
 interface MessagePaneProps {
-  accessToken?: string;
   activeGroupId: string;
   messages: MessageResponse[];
   currentUserId: string;
@@ -43,7 +42,6 @@ interface MessagePaneProps {
 }
 
 export function MessagePane({
-  accessToken,
   activeGroupId,
   messages,
   currentUserId,
@@ -69,7 +67,7 @@ export function MessagePane({
   onRetryPendingMessage,
 }: MessagePaneProps) {
   const { t } = useTranslation();
-  const resolvedAccessToken = useResolvedAccessToken(accessToken);
+  const resolvedAccessToken = useResolvedAccessToken();
   const navigationRef = useRef<MessageListNavigation | null>(null);
   const messageRefs = useRef(new Map<string, HTMLElement>());
   const receiptContainerRefs = useRef(new Map<string, HTMLDivElement>());
@@ -84,7 +82,10 @@ export function MessagePane({
   const restoreVirtualAnchor = useCallback((anchor: VisibleMessageAnchor) => {
     return navigationRef.current?.restoreAnchor(anchor) ?? false;
   }, []);
-  const captureVirtualAnchor = useCallback(() => navigationRef.current?.captureAnchor() ?? null, []);
+  const captureVirtualAnchor = useCallback(
+    () => navigationRef.current?.captureAnchor() ?? null,
+    [],
+  );
   const { handleContentResized, handleScroll, streamRef } = useMessageScrollAnchor({
     activeGroupId,
     currentUserId,

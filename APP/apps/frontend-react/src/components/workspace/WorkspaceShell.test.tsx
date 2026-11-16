@@ -174,11 +174,11 @@ function createModel(overrides: Record<string, unknown> = {}) {
     isServerGroupsLoading: false,
     groups: [baseGroup],
     activeGroups: [baseGroup],
-    categoryGroups: [baseGroup],
-    archivedCategoryGroups: [],
-    categoryRailItems: [],
-    categoryNames: ['研发'],
-    selectedCategoryName: '研发',
+    serverGroups: [baseGroup],
+    archivedServerGroups: [],
+    serverRailItems: [],
+    serverNames: ['研发'],
+    selectedServerName: '研发',
     dmUnreadCount: 0,
     servers: [baseGroup],
     isNarrowViewport: false,
@@ -215,7 +215,7 @@ function createModel(overrides: Record<string, unknown> = {}) {
     openInviteMembers: vi.fn(),
     openStatusEditor: vi.fn(),
     onSetWorkStatus: vi.fn(),
-    onChangeCategory: vi.fn(),
+    onMoveGroupToServer: vi.fn(),
     requestArchiveGroup: vi.fn(),
     openUserSettings: vi.fn(),
     onStartNewDM: vi.fn(),
@@ -357,7 +357,7 @@ describe('WorkspaceShell missing server recovery', () => {
           name: 'Alice',
         },
       ],
-      categoryGroups: [
+      serverGroups: [
         {
           ...baseGroup,
           id: 'dm-1',
@@ -439,7 +439,7 @@ describe('WorkspaceShell missing server recovery', () => {
             updatedAt: '2026-05-03T00:00:00.000Z',
           },
         ],
-        categoryGroups: [
+        serverGroups: [
           {
             ...baseGroup,
             id: 'group-1',
@@ -448,7 +448,7 @@ describe('WorkspaceShell missing server recovery', () => {
             updatedAt: '2026-05-01T00:00:00.000Z',
           },
         ],
-        categoryRailItems: [
+        serverRailItems: [
           {
             id: 'server-1',
             name: '研发',

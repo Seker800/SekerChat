@@ -7,7 +7,8 @@ import { fetchSystemConfig } from '../../lib/system-config-api';
 import { uploadUserAvatar } from '../../lib/groups-api';
 import { resetOwnCheckInTodayForDev } from '../../lib/attendance-api';
 import { ServerRail } from './ServerRail';
-import { ChannelSidebar, type AttendanceReminderRequest } from './ChannelSidebar';
+import { ChannelSidebar } from './ChannelSidebar';
+import type { AttendanceReminderRequest } from './useAttendanceDock';
 import { MessagePane } from './MessagePane';
 import { GroupMuteButton } from './GroupMuteButton';
 import { canManageAttachmentShare } from './fileShareCapabilities';
@@ -51,13 +52,13 @@ function resolveCategoryLandingGroup(
   }>,
   serverId: string,
 ) {
-  const categoryGroups = groups
+  const serverGroups = groups
     .filter((group) => group.serverId === serverId)
     .sort(
       (left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
     );
 
-  return categoryGroups.find((group) => !group.archivedAt) ?? categoryGroups[0] ?? null;
+  return serverGroups.find((group) => !group.archivedAt) ?? serverGroups[0] ?? null;
 }
 
 export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
@@ -187,7 +188,7 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
   const recoveryGroup =
     mode !== 'server'
       ? null
-      : (model.categoryGroups[0] ?? model.activeGroups[0] ?? model.groups[0] ?? null);
+      : (model.serverGroups[0] ?? model.activeGroups[0] ?? model.groups[0] ?? null);
   const {
     isRecoveringRequestedSelection: shouldRecoverInvalidRequestedSelection,
     isRecoveringServerSelection: shouldRecoverMissingServerSelection,
@@ -245,8 +246,8 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
       data-testid="groups-workspace"
     >
       <ServerRail
-        categories={model.categoryRailItems}
-        archivedCategories={model.archivedCategoryRailItems}
+        servers={model.serverRailItems}
+        archivedServers={model.archivedServerRailItems}
         selectedServerId={model.selectedServerId}
         accessToken={accessToken}
         isDMMode={mode === 'dm'}
@@ -279,10 +280,10 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
       />
       <ChannelSidebar
         mode={model.mode}
-        categoryName={model.selectedCategoryName}
+        serverName={model.selectedServerName}
         serverOptions={model.serverOptions}
-        groups={model.categoryGroups}
-        archivedGroups={model.archivedCategoryGroups}
+        groups={model.serverGroups}
+        archivedGroups={model.archivedServerGroups}
         selectedGroupId={model.selectedGroupId}
         selectedSpecialPageId={model.isDmSpecialPage ? model.selectedGroupId : ''}
         albumHasUpdates={albumUpdateStatusQuery.data?.hasUpdates ?? false}
@@ -300,7 +301,7 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
         onOpenInviteMembers={model.openInviteMembers}
         onOpenStatusEditor={model.openStatusEditor}
         onSetWorkStatus={model.onSetWorkStatus}
-        onChangeCategory={model.onChangeCategory}
+        onMoveGroupToServer={model.onMoveGroupToServer}
         discoverableGroups={model.discoverableGroups}
         isSuperAdmin={model.isSuperAdmin}
         isJoiningGroup={model.isJoiningGroup}

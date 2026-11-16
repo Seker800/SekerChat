@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { GroupResponse } from '../../lib/groups-api';
-import { buildServerStats, getServerId } from './useServerCategories';
+import { buildServerStats, getServerId } from './useServerTree';
 
 function group(overrides: Partial<GroupResponse>): GroupResponse {
   return {

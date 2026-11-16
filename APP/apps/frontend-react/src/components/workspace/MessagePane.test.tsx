@@ -338,7 +338,6 @@ describe('MessagePane packaging artifact actions', () => {
     const onAdd = vi.fn();
     const { rerender } = render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[imageMessage, fileMessage]}
         currentUserId="user-1"
@@ -360,7 +359,6 @@ describe('MessagePane packaging artifact actions', () => {
 
     rerender(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[imageMessage, fileMessage]}
         currentUserId="user-1"
@@ -381,7 +379,6 @@ describe('MessagePane packaging artifact actions', () => {
   it('marks attachments already added to artifacts and prevents duplicate actions', () => {
     render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[imageMessage]}
         currentUserId="user-1"
@@ -565,7 +562,6 @@ describe('MessagePane image preview', () => {
   it('opens oversized previews fully visible, allows wheel zoom, then supports drag, and closes on the backdrop', async () => {
     render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[imageMessage]}
         currentUserId="user-1"
@@ -635,7 +631,6 @@ describe('MessagePane image preview', () => {
   it('restarts another oversized image from full-view zoom state after closing the previous preview', async () => {
     render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[imageMessage, secondImageMessage]}
         currentUserId="user-1"
@@ -695,7 +690,6 @@ describe('MessagePane image preview', () => {
 
     render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[smallImageMessage]}
         currentUserId="user-1"
@@ -758,7 +752,6 @@ describe('MessagePane image preview', () => {
 
     render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[thumbnailMessage]}
         currentUserId="user-1"
@@ -788,7 +781,6 @@ describe('MessagePane image preview', () => {
 
     render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[failingMessage]}
         currentUserId="user-1"
@@ -817,7 +809,6 @@ describe('MessagePane image preview', () => {
 
     render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[failingMessage]}
         currentUserId="user-1"
@@ -849,7 +840,6 @@ describe('MessagePane image preview', () => {
     };
     render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[noThumbnailMessage]}
         currentUserId="user-1"
@@ -867,9 +857,11 @@ describe('MessagePane image preview', () => {
   });
 
   it('loads reply image thumbnails and previews through the browser API origin', async () => {
-    fetchMock.mockImplementation(async (url) => String(url).endsWith('/download-logs')
-      ? new Response(null, { status: 204 })
-      : mockBlobResponse());
+    fetchMock.mockImplementation(async (url) =>
+      String(url).endsWith('/download-logs')
+        ? new Response(null, { status: 204 })
+        : mockBlobResponse(),
+    );
 
     const replyImageMessage: MessageResponse = {
       ...replyMessage,
@@ -891,7 +883,6 @@ describe('MessagePane image preview', () => {
 
     render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[replyImageMessage]}
         currentUserId="user-1"
@@ -930,7 +921,6 @@ describe('MessagePane image preview', () => {
 
     render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[gifMessage]}
         currentUserId="user-1"
@@ -954,7 +944,6 @@ describe('MessagePane image preview', () => {
 
     render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[fileMessage]}
         currentUserId="user-1"
@@ -988,7 +977,6 @@ describe('MessagePane image preview', () => {
 
     render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[replyFileMessage]}
         currentUserId="user-1"
@@ -1035,7 +1023,6 @@ describe('MessagePane copy message', () => {
 
     render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[copyTargetMessage]}
         currentUserId="user-1"
@@ -1065,7 +1052,6 @@ describe('MessagePane copy message', () => {
 
     render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[copyTargetMessage]}
         currentUserId="user-1"
@@ -1166,7 +1152,6 @@ describe('MessagePane message grouping', () => {
       try {
         render(
           <MessagePane
-            accessToken="token"
             activeGroupId="group-1"
             messages={[textMessageAfterSystem]}
             currentUserId="user-1"
@@ -1299,7 +1284,6 @@ describe('MessagePane message grouping', () => {
       try {
         const { getByTestId } = render(
           <MessagePane
-            accessToken="token"
             activeGroupId="group-1"
             messages={[textMessageAfterSystem]}
             currentUserId="user-1"
@@ -1435,7 +1419,6 @@ describe('MessagePane message grouping', () => {
 
       const { getByTestId, rerender } = render(
         <MessagePane
-          accessToken="token"
           activeGroupId="group-1"
           messages={[textMessageAfterSystem]}
           currentUserId="user-1"
@@ -1459,7 +1442,6 @@ describe('MessagePane message grouping', () => {
 
       rerender(
         <MessagePane
-          accessToken="token"
           activeGroupId="group-1"
           messages={[olderMessage, textMessageAfterSystem]}
           currentUserId="user-1"
@@ -1585,7 +1567,6 @@ describe('MessagePane message grouping', () => {
 
       const { getByTestId, rerender } = render(
         <MessagePane
-          accessToken="token"
           activeGroupId="group-1"
           messages={[textMessageAfterSystem]}
           currentUserId="user-1"
@@ -1609,7 +1590,6 @@ describe('MessagePane message grouping', () => {
 
       rerender(
         <MessagePane
-          accessToken="token"
           activeGroupId="group-1"
           messages={[olderMessage, textMessageAfterSystem]}
           currentUserId="user-1"
@@ -1745,7 +1725,6 @@ describe('MessagePane message grouping', () => {
 
       const { getByTestId, rerender } = render(
         <MessagePane
-          accessToken="token"
           activeGroupId="group-1"
           messages={[textMessageAfterSystem]}
           currentUserId="user-1"
@@ -1771,7 +1750,6 @@ describe('MessagePane message grouping', () => {
 
       rerender(
         <MessagePane
-          accessToken="token"
           activeGroupId="group-1"
           messages={[olderMessage, textMessageAfterSystem]}
           currentUserId="user-1"
@@ -1914,7 +1892,6 @@ describe('MessagePane message grouping', () => {
 
       const { getByRole, getByTestId, rerender } = render(
         <MessagePane
-          accessToken="token"
           activeGroupId="group-1"
           messages={[readyImageMessage]}
           currentUserId="user-1"
@@ -1942,7 +1919,6 @@ describe('MessagePane message grouping', () => {
 
       rerender(
         <MessagePane
-          accessToken="token"
           activeGroupId="group-1"
           messages={[olderMessage, readyImageMessage]}
           currentUserId="user-1"
@@ -1957,7 +1933,6 @@ describe('MessagePane message grouping', () => {
 
       rerender(
         <MessagePane
-          accessToken="token"
           activeGroupId="group-1"
           messages={[olderMessage, readyImageMessage]}
           currentUserId="user-1"
@@ -2095,7 +2070,6 @@ describe('MessagePane message grouping', () => {
 
       const { getByText, getByTestId, rerender } = render(
         <MessagePane
-          accessToken="token"
           activeGroupId="group-1"
           messages={[replyMessage]}
           currentUserId="user-1"
@@ -2123,7 +2097,6 @@ describe('MessagePane message grouping', () => {
 
       rerender(
         <MessagePane
-          accessToken="token"
           activeGroupId="group-1"
           messages={[olderMessage, replyMessage]}
           currentUserId="user-1"
@@ -2212,7 +2185,6 @@ describe('MessagePane message grouping', () => {
 
       const { getByTestId, rerender } = render(
         <MessagePane
-          accessToken="token"
           activeGroupId="group-1"
           messages={[textMessageAfterSystem]}
           currentUserId="user-1"
@@ -2244,7 +2216,6 @@ describe('MessagePane message grouping', () => {
 
       rerender(
         <MessagePane
-          accessToken="token"
           activeGroupId="group-1"
           messages={[textMessageAfterSystem, optimisticOwnMessage]}
           currentUserId="user-1"
@@ -2358,7 +2329,6 @@ describe('MessagePane message grouping', () => {
 
       const { getByTestId, rerender } = render(
         <MessagePane
-          accessToken="token"
           activeGroupId="group-1"
           messages={[textMessageAfterSystem]}
           currentUserId="user-1"
@@ -2381,7 +2351,6 @@ describe('MessagePane message grouping', () => {
 
       rerender(
         <MessagePane
-          accessToken="token"
           activeGroupId="group-1"
           messages={[olderMessage, textMessageAfterSystem]}
           currentUserId="user-1"
@@ -2513,7 +2482,6 @@ describe('MessagePane message grouping', () => {
 
       const { getByTestId, rerender } = render(
         <MessagePane
-          accessToken="token"
           activeGroupId="group-1"
           messages={[textMessageAfterSystem]}
           currentUserId="user-1"
@@ -2536,7 +2504,6 @@ describe('MessagePane message grouping', () => {
 
       rerender(
         <MessagePane
-          accessToken="token"
           activeGroupId="group-1"
           messages={[olderMessage, textMessageAfterSystem]}
           currentUserId="user-1"
@@ -2634,7 +2601,6 @@ describe('MessagePane message grouping', () => {
     try {
       const { getByTestId, rerender } = render(
         <MessagePane
-          accessToken="token"
           activeGroupId="group-1"
           messages={[textMessageAfterSystem]}
           currentUserId="user-1"
@@ -2661,7 +2627,6 @@ describe('MessagePane message grouping', () => {
 
       rerender(
         <MessagePane
-          accessToken="token"
           activeGroupId="group-1"
           messages={[textMessageAfterSystem, optimisticOwnMessage]}
           currentUserId="user-1"
@@ -2738,7 +2703,6 @@ describe('MessagePane message grouping', () => {
     try {
       const { getByTestId, rerender } = render(
         <MessagePane
-          accessToken="token"
           activeGroupId="group-1"
           messages={[textMessageAfterSystem]}
           currentUserId="user-1"
@@ -2763,7 +2727,6 @@ describe('MessagePane message grouping', () => {
 
       rerender(
         <MessagePane
-          accessToken="token"
           activeGroupId="group-1"
           messages={[textMessageAfterSystem, optimisticOwnMessage]}
           currentUserId="user-1"
@@ -2851,7 +2814,6 @@ describe('MessagePane message grouping', () => {
 
       const { rerender } = render(
         <MessagePane
-          accessToken="token"
           activeGroupId="group-1"
           messages={[textMessageAfterSystem, sendingMessage]}
           currentUserId="user-1"
@@ -2874,7 +2836,6 @@ describe('MessagePane message grouping', () => {
 
       rerender(
         <MessagePane
-          accessToken="token"
           activeGroupId="group-1"
           messages={[textMessageAfterSystem, confirmedMessage]}
           currentUserId="user-1"
@@ -2914,7 +2875,6 @@ describe('MessagePane message grouping', () => {
 
     const { rerender } = render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[textMessageAfterSystem, sendingMessage]}
         currentUserId="user-1"
@@ -2933,7 +2893,6 @@ describe('MessagePane message grouping', () => {
 
     rerender(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[textMessageAfterSystem, confirmedMessage]}
         currentUserId="user-1"
@@ -2954,7 +2913,6 @@ describe('MessagePane message grouping', () => {
 
     render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[recycledImageMessage]}
         currentUserId="user-2"
@@ -2970,7 +2928,6 @@ describe('MessagePane message grouping', () => {
   it('does not compact a user message that follows a system message from the same sender', () => {
     render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[systemMessage, textMessageAfterSystem]}
         currentUserId="user-2"
@@ -2995,7 +2952,6 @@ describe('MessagePane text rendering', () => {
   it('does not render raw HTML from message text', () => {
     const { container } = render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[htmlInjectionMessage]}
         currentUserId="user-1"
@@ -3011,7 +2967,6 @@ describe('MessagePane text rendering', () => {
   it('renders long markdown inline code inside the message content container', () => {
     const { container } = render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[markdownLongLineMessage]}
         currentUserId="user-1"
@@ -3030,7 +2985,6 @@ describe('MessagePane text rendering', () => {
   it('shows message-shaped skeleton rows while the initial message list is loading', () => {
     render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[]}
         currentUserId="user-1"
@@ -3046,7 +3000,6 @@ describe('MessagePane text rendering', () => {
     await appI18n.changeLanguage('en');
     const { rerender } = render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[{ ...textMessageAfterSystem, editedAt: '2026-04-28T08:02:00.000Z' }]}
         currentUserId="user-1"
@@ -3058,7 +3011,6 @@ describe('MessagePane text rendering', () => {
 
     rerender(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[]}
         currentUserId="user-1"
@@ -3072,7 +3024,6 @@ describe('MessagePane text rendering', () => {
   it('highlights only the self mention inside a text message', () => {
     const { container } = render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[selfMentionMessage]}
         currentUserId="user-1"
@@ -3090,7 +3041,6 @@ describe('MessagePane text rendering', () => {
   it('does not highlight mention-like text inside inline code', () => {
     const { container } = render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[mentionInsideCodeMessage]}
         currentUserId="user-1"
@@ -3111,7 +3061,6 @@ describe('MessagePane text rendering', () => {
 
     render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[]}
         currentUserId="user-1"
@@ -3190,7 +3139,6 @@ describe('MessagePane read receipts', () => {
 
     render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[messageWithReceipt]}
         currentUserId="user-1"
@@ -3259,7 +3207,6 @@ describe('MessagePane read receipts', () => {
 
     render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[fullyReadMessage]}
         currentUserId="user-1"
@@ -3275,7 +3222,6 @@ describe('MessagePane read receipts', () => {
   it('does not show read receipts for messages from other users', () => {
     render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[textMessageAfterSystem]}
         currentUserId="user-9"
@@ -3296,7 +3242,6 @@ describe('MessagePane read receipts', () => {
 
     render(
       <MessagePane
-        accessToken="token"
         activeGroupId="group-1"
         messages={[oldMessage]}
         currentUserId="user-1"

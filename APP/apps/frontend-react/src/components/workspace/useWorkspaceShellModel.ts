@@ -20,7 +20,7 @@ import { useComposer } from './useComposer';
 import { useDmActions } from './useDmActions';
 import { useManagePanel } from './useManagePanel';
 import { useMessageList } from './useMessageList';
-import { buildServerStats, DEFAULT_CATEGORY, useServerCategories } from './useServerCategories';
+import { buildServerStats, useServerTree } from './useServerTree';
 import { useWorkspaceDialogs } from './useWorkspaceDialogs';
 import { useWorkspaceMutations } from './useWorkspaceMutations';
 import { useWorkspaceNavigation } from './useWorkspaceNavigation';
@@ -34,8 +34,6 @@ interface WorkspaceShellModelProps {
   rolePermissions?: RolePermissions | null;
   chatAttachmentMaxMB?: number;
 }
-
-export { DEFAULT_CATEGORY };
 
 export function useWorkspaceShellModel({
   accessToken,
@@ -82,8 +80,8 @@ export function useWorkspaceShellModel({
   const {
     allUsersQuery,
     artifactsQuery,
-    channels,
-    channelsQuery,
+    groups,
+    groupsQuery,
     dmCandidatesQuery,
     dmsQuery,
     dmUnreadCount,
@@ -115,23 +113,23 @@ export function useWorkspaceShellModel({
         }
       : null;
 
-  const serverCategories = useServerCategories({
-    channels,
+  const serverTree = useServerTree({
+    groups,
     selectedGroup: selectedGroup ?? undefined,
     servers,
   });
 
   const {
-    activeChannels,
-    archivedCategoryGroups,
-    archivedCategoryRailItems,
-    categoryGroups,
-    categoryNames,
-    categoryRailItems,
-    selectedCategoryName,
+    activeGroups,
+    archivedServerGroups,
+    archivedServerRailItems,
+    serverGroups,
+    serverNames,
+    serverRailItems,
+    selectedServerName,
     selectedServerId,
     serverOptions,
-  } = serverCategories;
+  } = serverTree;
 
   const discoverableQuery = useQuery({
     queryKey: ['admin-discovery', 'former', selectedServerId],
@@ -146,7 +144,7 @@ export function useWorkspaceShellModel({
     onSuccess: async () => {
       dialogs.pushNotice('success', '已加入频道。');
       await discoverableQuery.refetch();
-      await channelsQuery.refetch();
+      await groupsQuery.refetch();
       await serversQuery.refetch();
     },
     onError: (error) => {
@@ -240,7 +238,7 @@ export function useWorkspaceShellModel({
 
   const mutations = useWorkspaceMutations({
     accessToken,
-    channelsQuery,
+    groupsQuery,
     createChannelInServerName: dialogs.createChannelInServerName,
     createChannelName: dialogs.createChannelName,
     createServerName: dialogs.createServerName,
@@ -286,7 +284,7 @@ export function useWorkspaceShellModel({
         return;
       }
 
-      const group = channels.find((item) => item.id === groupId);
+      const group = groups.find((item) => item.id === groupId);
       if (!group) {
         return;
       }
@@ -308,12 +306,12 @@ export function useWorkspaceShellModel({
         },
       });
     },
-    [channels, dialogs, mode, mutations.archiveGroupMutation, navigation, selectedGroupId],
+    [groups, dialogs, mode, mutations.archiveGroupMutation, navigation, selectedGroupId],
   );
 
   const requestArchiveServer = useCallback(
     (serverId: string) => {
-      const server = [...categoryRailItems, ...archivedCategoryRailItems].find(
+      const server = [...serverRailItems, ...archivedServerRailItems].find(
         (item) => item.id === serverId,
       );
       if (!server) return;
@@ -328,11 +326,11 @@ export function useWorkspaceShellModel({
         isDanger: !isArchived,
         onConfirm: () => {
           dialogs.setConfirmDialog(null);
-          void mutations.archiveCategoryMutation.mutateAsync({ serverId, archive: !isArchived });
+          void mutations.archiveServerMutation.mutateAsync({ serverId, archive: !isArchived });
         },
       });
     },
-    [archivedCategoryRailItems, categoryRailItems, dialogs, mutations.archiveCategoryMutation],
+    [archivedServerRailItems, serverRailItems, dialogs, mutations.archiveServerMutation],
   );
 
   const requestLeaveGroup = useCallback(() => {
@@ -348,13 +346,13 @@ export function useWorkspaceShellModel({
           await leaveGroup(accessToken, selectedGroupId);
           dialogs.pushNotice('success', '已退出频道。');
           await discoverableQuery.refetch();
-          await channelsQuery.refetch();
+          await groupsQuery.refetch();
           await serversQuery.refetch();
           // Navigate to next group in same server, fallback to any other
-          const sameServer = channels.find(
+          const sameServer = groups.find(
             (group) => group.id !== selectedGroupId && group.serverId === selectedServerId,
           );
-          const next = sameServer ?? channels.find((g) => g.id !== selectedGroupId);
+          const next = sameServer ?? groups.find((g) => g.id !== selectedGroupId);
           if (next) navigation.navigateToGroup(next.id);
         } catch (error) {
           dialogs.pushNotice('error', error instanceof Error ? error.message : '退出频道失败。');
@@ -363,8 +361,8 @@ export function useWorkspaceShellModel({
     });
   }, [
     accessToken,
-    channels,
-    channelsQuery,
+    groups,
+    groupsQuery,
     dialogs,
     discoverableQuery,
     navigation,
@@ -456,13 +454,13 @@ export function useWorkspaceShellModel({
   }, [allUsersQuery, hasRequestedInvitableUsers]);
 
   return {
-    activeGroups: activeChannels,
-    archivedCategoryGroups,
-    archivedCategoryRailItems,
+    activeGroups: activeGroups,
+    archivedServerGroups,
+    archivedServerRailItems,
     artifacts,
-    categoryGroups,
-    categoryNames,
-    categoryRailItems,
+    serverGroups,
+    serverNames,
+    serverRailItems,
     serverOptions,
     channelDialog: dialogs.channelDialog,
     discoverableGroups: discoverableQuery.data ?? [],
@@ -479,9 +477,9 @@ export function useWorkspaceShellModel({
     confirmDialog: dialogs.confirmDialogModel,
     dmUnreadCount,
     servers,
-    groups: channels,
+    groups,
     notificationGroups: [...servers, ...workspaceQueries.dms],
-    groupsQuery: channelsQuery,
+    groupsQuery,
     isLoading: workspaceBootstrapQuery.isPending || serversQuery.isLoading || (mode === 'dm' && workspaceQueries.dmsQuery.isLoading),
     loadError,
     retryLoadError: () => {
@@ -495,7 +493,7 @@ export function useWorkspaceShellModel({
     },
     isServerGroupsLoading: workspaceBootstrapQuery.isPending || serversQuery.isPending,
     refreshGroupList: () => {
-      void channelsQuery.refetch();
+      void groupsQuery.refetch();
     },
     refreshServerList: () => {
       void serversQuery.refetch();
@@ -506,7 +504,7 @@ export function useWorkspaceShellModel({
       channelMeta:
         mode === 'dm'
           ? (dmSpecialPage?.description ?? '收件箱')
-          : `${selectedCategoryName} · ${selectedGroup?.memberCount ?? selectedGroup?.members.length ?? 0} 人 · ${selectedGroup?.archivedAt ? '只读' : '可协作'}`,
+          : `${selectedServerName} · ${selectedGroup?.memberCount ?? selectedGroup?.members.length ?? 0} 人 · ${selectedGroup?.archivedAt ? '只读' : '可协作'}`,
       channelName: dmSpecialPage?.label ?? selectedGroup?.name ?? '',
       userLabel: currentUser.email,
     },
@@ -545,7 +543,7 @@ export function useWorkspaceShellModel({
     onJoinCurrentGroup: () => {
       if (selectedGroupId) void joinGroupMutation.mutateAsync(selectedGroupId);
     },
-    onChangeCategory: mutations.onChangeCategory,
+    onMoveGroupToServer: mutations.onMoveGroupToServer,
     onSetWorkStatus: mutations.onSetWorkStatus,
     openStatusEditor: openChannelSettingsForGroup,
     replyToMessageId,
@@ -554,7 +552,7 @@ export function useWorkspaceShellModel({
     requestLeaveGroup,
     requestRemoveMember,
     requestInvitableUsers,
-    selectedCategoryName,
+    selectedServerName,
     selectedServerId,
     selectedGroup,
     selectedGroupId,
@@ -572,7 +570,7 @@ export function useWorkspaceShellModel({
           : buildServerStats(servers, dialogs.serverDialogState.serverId),
       createChannelName: dialogs.createChannelName,
       createServerName: dialogs.createServerName,
-      currentCategoryName: dialogs.serverDialogState?.categoryName ?? selectedCategoryName,
+      currentServerName: dialogs.serverDialogState?.categoryName ?? selectedServerName,
       currentServerId: dialogs.serverDialogState?.serverId ?? selectedServerId,
       isOpen: Boolean(dialogs.serverDialogState),
       isSubmitting: mutations.serverDialogState.isSubmitting,
@@ -609,7 +607,7 @@ export function useWorkspaceShellModel({
     createChannelDialog: {
       isOpen: dialogs.isCreateChannelDialogOpen,
       channelName: dialogs.createChannelInServerName,
-      serverName: selectedCategoryName,
+      serverName: selectedServerName,
       isSubmitting: mutations.createChannelDialogState.isSubmitting,
       onClose: () => dialogs.setIsCreateChannelDialogOpen(false),
       onChannelNameChange: dialogs.setCreateChannelInServerName,

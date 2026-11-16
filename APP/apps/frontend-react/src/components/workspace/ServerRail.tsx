@@ -2,13 +2,13 @@ import { useCallback, useState } from 'react';
 import { Avatar } from '../shared/Avatar';
 import { ContextMenu, type ContextMenuItem } from './ContextMenu';
 import { useSecondaryClickGuard } from './useSecondaryClickGuard';
-import type { CategoryRailItem } from './useServerCategories';
+import type { ServerRailItem } from './useServerTree';
 import styles from './ServerRail.module.css';
 import { useTranslation } from 'react-i18next';
 
 interface ServerRailProps {
-  categories: CategoryRailItem[];
-  archivedCategories: CategoryRailItem[];
+  servers: ServerRailItem[];
+  archivedServers: ServerRailItem[];
   selectedServerId: string;
   accessToken?: string;
   isOverlay?: boolean;
@@ -20,12 +20,12 @@ interface ServerRailProps {
   onOpenDM: () => void;
   onSelect: (serverId: string) => void;
   onOpenCreateServer: () => void;
-  onOpenCategorySettings: (server: CategoryRailItem) => void;
+  onOpenCategorySettings: (server: ServerRailItem) => void;
 }
 
 export function ServerRail({
-  categories,
-  archivedCategories,
+  servers,
+  archivedServers,
   selectedServerId,
   accessToken,
   isOverlay,
@@ -41,7 +41,7 @@ export function ServerRail({
 }: ServerRailProps) {
   const { t } = useTranslation();
   const [menuState, setMenuState] = useState<{
-    server: CategoryRailItem;
+    server: ServerRailItem;
     x: number;
     y: number;
   } | null>(null);
@@ -96,11 +96,11 @@ export function ServerRail({
             <span className={styles.badge}>{dmUnreadCount > 99 ? '99+' : dmUnreadCount}</span>
           ) : null}
         </button>
-        {categories.map((category) => (
+        {servers.map((server) => (
           <button
-            key={category.id}
-            className={`${styles.button} ${category.id === selectedServerId ? styles.buttonActive : ''}`}
-            data-testid="server-rail-category"
+            key={server.id}
+            className={`${styles.button} ${server.id === selectedServerId ? styles.buttonActive : ''}`}
+            data-testid="server-rail-item"
             onMouseDown={(event) => {
               if (!event.ctrlKey || event.button !== 0) {
                 return;
@@ -108,7 +108,7 @@ export function ServerRail({
 
               event.preventDefault();
               markSecondaryClick();
-              setMenuState({ server: category, x: event.clientX, y: event.clientY });
+              setMenuState({ server, x: event.clientX, y: event.clientY });
             }}
             onClick={(event) => {
               if (shouldSuppressClick()) {
@@ -117,23 +117,23 @@ export function ServerRail({
                 return;
               }
 
-              onSelect(category.id);
+              onSelect(server.id);
             }}
             onContextMenu={(event) => {
               event.preventDefault();
               markSecondaryClick();
-              setMenuState({ server: category, x: event.clientX, y: event.clientY });
+              setMenuState({ server, x: event.clientX, y: event.clientY });
             }}
-            title={`${category.name} · ${t('serverRail.activeChannels', { count: category.activeCount })}`}
+            title={`${server.name} · ${t('serverRail.activeChannels', { count: server.activeCount })}`}
           >
             <Avatar
-              avatarUrl={category.avatarUrl}
-              name={category.name}
+              avatarUrl={server.avatarUrl}
+              name={server.name}
               size={48}
               accessToken={accessToken}
             />
-            {category.unreadCount > 0 ? (
-              <span className={styles.badge}>{category.unreadCount}</span>
+            {server.unreadCount > 0 ? (
+              <span className={styles.badge}>{server.unreadCount}</span>
             ) : null}
           </button>
         ))}
@@ -191,15 +191,15 @@ export function ServerRail({
                 <path d="M12 5v14M5 12h14" />
               </svg>
             </button>
-            {archivedCategories.map((category) => (
+            {archivedServers.map((server) => (
               <button
-                key={category.id}
-                className={`${styles.button} ${styles.buttonArchived} ${category.id === selectedServerId ? styles.buttonActive : ''}`}
+                key={server.id}
+                className={`${styles.button} ${styles.buttonArchived} ${server.id === selectedServerId ? styles.buttonActive : ''}`}
                 onMouseDown={(event) => {
                   if (!event.ctrlKey || event.button !== 0) return;
                   event.preventDefault();
                   markSecondaryClick();
-                  setMenuState({ server: category, x: event.clientX, y: event.clientY });
+                  setMenuState({ server, x: event.clientX, y: event.clientY });
                 }}
                 onClick={(event) => {
                   if (shouldSuppressClick()) {
@@ -207,18 +207,18 @@ export function ServerRail({
                     event.stopPropagation();
                     return;
                   }
-                  onSelect(category.id);
+                  onSelect(server.id);
                 }}
                 onContextMenu={(event) => {
                   event.preventDefault();
                   markSecondaryClick();
-                  setMenuState({ server: category, x: event.clientX, y: event.clientY });
+                  setMenuState({ server, x: event.clientX, y: event.clientY });
                 }}
-                title={`${category.name} · ${t('serverRail.archived')}`}
+                title={`${server.name} · ${t('serverRail.archived')}`}
               >
                 <Avatar
-                  avatarUrl={category.avatarUrl}
-                  name={category.name}
+                  avatarUrl={server.avatarUrl}
+                  name={server.name}
                   size={40}
                   accessToken={accessToken}
                 />

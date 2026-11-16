@@ -80,17 +80,15 @@ vi.mock('./useWorkspaceQueries', () => ({
   useWorkspaceQueries: (...args: unknown[]) => mockUseWorkspaceQueries(...args),
 }));
 
-vi.mock('./useServerCategories', () => ({
-  DEFAULT_CATEGORY: '未分类',
-  buildCategoryStats: () => null,
-  useServerCategories: () => ({
-    activeChannels: [],
-    archivedCategoryGroups: [],
-    archivedCategoryRailItems: [],
-    categoryGroups: [],
-    categoryNames: [],
-    categoryRailItems: [],
-    selectedCategoryName: '未分类',
+vi.mock('./useServerTree', () => ({
+  useServerTree: () => ({
+    activeGroups: [],
+    archivedServerGroups: [],
+    archivedServerRailItems: [],
+    serverGroups: [],
+    serverNames: [],
+    serverRailItems: [],
+    selectedServerName: '未分类',
   }),
 }));
 
@@ -154,7 +152,7 @@ vi.mock('./useWorkspaceMutations', () => ({
     archiveGroupMutation: { mutateAsync: vi.fn() },
     onEditMessage: vi.fn(),
     onRevokeMessage: vi.fn(),
-    onChangeCategory: vi.fn(),
+    onMoveGroupToServer: vi.fn(),
     onSetWorkStatus: vi.fn(),
     serverDialogState: {
       isSubmitting: false,
@@ -210,8 +208,8 @@ describe('useWorkspaceShellModel invitable users loading', () => {
           refetch: mockRefetchInvitableUsers,
         },
         artifactsQuery: { data: [], refetch: vi.fn() },
-        channels: [],
-        channelsQuery: { refetch: vi.fn() },
+        groups: [],
+        groupsQuery: { refetch: vi.fn() },
         dmCandidatesQuery: { data: [], isLoading: false, isFetching: false },
         dms: [],
         dmsQuery: { isLoading: false, isError: false, refetch: vi.fn() },

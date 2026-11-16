@@ -2,20 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   buildAttachmentImageMarkdown,
   insertMarkdownAtSelection,
-  parseSubscriptionTags,
 } from './subscription-editor-utils';
 
 describe('subscription editor helpers', () => {
-  it('creates deduplicated tags from enter, spaces, and Chinese or English commas', () => {
-    expect(parseSubscriptionTags('更新, 桌面端，公告  教程', ['已有', '更新'])).toEqual([
-      '已有',
-      '更新',
-      '桌面端',
-      '公告',
-      '教程',
-    ]);
-  });
-
   it('inserts markdown at the current selection and returns the new caret', () => {
     expect(insertMarkdownAtSelection('前后', 1, 1, '**重点**')).toEqual({
       value: '前**重点**后',

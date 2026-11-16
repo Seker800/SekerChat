@@ -13,7 +13,7 @@ import type { WorkspaceMode } from '../../store/workspace-store';
 
 interface UseWorkspaceMutationsOptions {
   accessToken: string;
-  channelsQuery: Pick<UseQueryResult<GroupResponse[]>, 'refetch'>;
+  groupsQuery: Pick<UseQueryResult<GroupResponse[]>, 'refetch'>;
   createChannelInServerName: string;
   createChannelName: string;
   createServerName: string;
@@ -47,7 +47,7 @@ interface UseWorkspaceMutationsOptions {
 
 export function useWorkspaceMutations({
   accessToken,
-  channelsQuery,
+  groupsQuery,
   createChannelInServerName,
   createChannelName,
   createServerName,
@@ -120,7 +120,7 @@ export function useWorkspaceMutations({
         'success',
         group.archivedAt ? `已归档频道「${group.name}」。` : `已恢复频道「${group.name}」。`,
       );
-      await channelsQuery.refetch();
+      await groupsQuery.refetch();
       await selectedGroupQuery.refetch();
     },
     onError(error) {
@@ -128,7 +128,7 @@ export function useWorkspaceMutations({
     },
   });
 
-  const archiveCategoryMutation = useMutation({
+  const archiveServerMutation = useMutation({
     mutationFn: async ({ serverId, archive }: { serverId: string; archive: boolean }) => {
       return archiveServer(accessToken, serverId, archive);
     },
@@ -140,7 +140,7 @@ export function useWorkspaceMutations({
           : `已恢复 Server「${result.category}」。`,
       );
       await serversQuery.refetch();
-      await channelsQuery.refetch();
+      await groupsQuery.refetch();
     },
     onError(error) {
       pushNotice('error', error instanceof Error ? error.message : '归档 Server 失败。');
@@ -153,7 +153,7 @@ export function useWorkspaceMutations({
     },
     onSuccess: async (result) => {
       pushNotice('success', `工作状态已更新为「${result.status}」。`);
-      await channelsQuery.refetch();
+      await groupsQuery.refetch();
       if (result.groupId === selectedGroupId) {
         await workStateQuery.refetch();
         await selectedGroupQuery.refetch();
@@ -188,7 +188,7 @@ export function useWorkspaceMutations({
       return updateGroup(accessToken, groupId, { serverId });
     },
     onSuccess: () => {
-      void channelsQuery.refetch();
+      void groupsQuery.refetch();
       void selectedGroupQuery.refetch();
       pushNotice('success', '已调整所属分类。');
     },
@@ -223,7 +223,7 @@ export function useWorkspaceMutations({
     },
   });
 
-  function onChangeCategory(groupId: string, serverId: string) {
+  function onMoveGroupToServer(groupId: string, serverId: string) {
     void changeCategoryMutation.mutateAsync({ groupId, serverId });
   }
 
@@ -240,7 +240,7 @@ export function useWorkspaceMutations({
   }
 
   return {
-    archiveCategoryMutation,
+    archiveServerMutation,
     archiveGroupMutation,
     createChannelDialogState: {
       isSubmitting: createChannelMutation.isPending,
@@ -272,7 +272,7 @@ export function useWorkspaceMutations({
         void renameServerMutation.mutateAsync();
       },
     },
-    onChangeCategory: mode === 'server' ? onChangeCategory : () => undefined,
+    onMoveGroupToServer: mode === 'server' ? onMoveGroupToServer : () => undefined,
     onEditMessage,
     onRevokeMessage,
     onSetWorkStatus: mode === 'server' ? onSetWorkStatus : () => undefined,

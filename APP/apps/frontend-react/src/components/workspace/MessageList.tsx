@@ -20,7 +20,7 @@ import {
   isSameCalendarDay,
   messageDisplayTime,
 } from './messagePaneUtils';
-import styles from './MessagePane.module.css';
+import styles from './message-stream.module.css';
 import type { PreviewImage } from '../media/image-preview/useImagePreviewState';
 import type { MessageArtifactAction } from './messageArtifactAction';
 import { useTranslation } from 'react-i18next';

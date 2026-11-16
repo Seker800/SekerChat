@@ -2,7 +2,7 @@ import { Avatar } from '../shared/Avatar';
 import type { MessageResponse } from '../../lib/messages-files-api';
 import { userDisplayName } from '../../lib/users-api';
 import { useTranslation } from 'react-i18next';
-import styles from './MessagePane.module.css';
+import styles from './message-stream.module.css';
 
 interface ReadReceiptPopoverProps {
   receipt: NonNullable<MessageResponse['readReceipt']>;
