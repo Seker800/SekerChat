@@ -30,6 +30,8 @@ export default [
       '**/.vite/**',
       '**/.tmp/**',
       '**/.local/**',
+      '**/.deploy-artifacts/**',
+      '**/.omx/**',
       '**/notes/**',
       '**/*.d.ts',
     ],
