@@ -15,6 +15,10 @@ The main workspace keeps four stable product regions: `server栏 / 频道栏 / �
 - Production data can only flow outward through an export copied to local development; development code never writes to production data services.
 - The production backend is currently a single active instance. Any in-memory coordination that depends on this assumption must state it explicitly and must not be used for durable business state.
 
+## Vocabulary
+
+`Server` is the stable workspace container; `Group` is a channel; `Channel` appears only in user-facing text; `Category` is a migration compatibility field and must not appear in new code. See [ADR 0008](./adr/0008-vocabulary-and-naming.md).
+
 ## Module direction
 
 ```text
@@ -119,7 +123,7 @@ Group mute is a core per-member preference, independent of external message sour
 
 QQ group synchronization is a built-in optional module. A separate connector subscribes directly to NapCat and calls scoped integration APIs; AstrBot is not its upstream. Core messages expose optional external-author snapshots without creating login accounts for QQ members. Outgoing delivery intent is recorded in the message transaction through a narrow registration port; provider calls happen only in the connector. Ambiguous provider results require reconciliation instead of automatic resend. The extension and all bindings start disabled. See [ADR 0006](./adr/0006-qq-bridge-extension.md) and [local verification](./qq-bridge.md). Released as v0.9.19 to Synology on 2026-10-18, with a separate persistent connector on the NapCat host and QQ-to-Chat only enabled. See [production verification](./qq-bridge-production-2026-10-18.md).
 
-Architectural decisions live in [`docs/adr`](./adr). Reversing an accepted decision requires a replacement ADR rather than silently changing this document.
+Architectural decisions live in [`docs/adr`](./adr). Reversing an accepted decision requires a replacement ADR rather than silently changing this document. Naming vocabulary is fixed by [ADR 0008](./adr/0008-vocabulary-and-naming.md).
 
 ## Refresh ownership and cost
 

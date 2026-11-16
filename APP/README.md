@@ -5,31 +5,31 @@
 
 ## Structure
 
-- `apps/backend` - NestJS + Prisma + JWT + email code auth baseline
-- `apps/frontend-react` - 第 4 阶段正式前端，React + Vite + React Router + TanStack Query + Zustand
+- `apps/backend` - NestJS + Prisma 业务服务
+- `apps/frontend-react` - 正式前端，React + Vite + React Router + TanStack Query + Zustand
+- `apps/reminder` - Electron 托盘提醒客户端，独立构建
+- `apps/mobile-shell` - Capacitor Android 外壳，独立 `package-lock` 与 CI 审计 job
+- `apps/ui-lab` - Vue 设计实验台，只用于视觉探索，不参与 build / typecheck / test
+- `packages/contracts` - 生成的 OpenAPI 类型与实时事件契约
+- `packages/shared` - 前后端共享的权限与工作状态常量
 - `native/desktop-pet` - 独立的 C# / WPF Windows 桌面消息助手，不参与 npm 或 Docker 构建
-- `notes/` - implementation notes and coding report
-- `scripts/` - build helpers and the project-local core auto-runner
+- `notes/` - 设计与复盘记录；`notes/archive/` 存放已退役流程的产物
+- `scripts/` - 构建、检查与 smoke 脚本
 
-## Core auto-runner
+## Where to start
 
-最小用法见 `docs/README.md`。
-
-本地启动与验证手册见 `docs/local-dev-runbook.md`。
-环境边界与发布模型见 `docs/environment-model.md`。
+- 先读 `docs/architecture.md`，再看 `docs/README.md` 的代码地图和阅读顺序。
+- 本地启动与验证见 `docs/local-dev-runbook.md`。
+- 环境边界与发布模型见 `docs/environment-model.md`。
 
 常用命令：
 
 ```bash
 cd APP
-npm run auto-slice:inspect
-npm run auto-slice:run
-npm run auto-slice:signal
+npm run dev:backend
+npm run dev:frontend
 npm run review:web
 ```
-
-`npm run auto-slice:signal` 只会输出 `DISPATCH_REVIEW_NOW` 或 `NO_REPLY`。
-如果需要给外层 cron / trigger 一个稳定输入，直接读取 `50-handoff/auto-slice-trigger.json`，不要自己从大 JSON 里推断是否该派发 review。
 
 ## Local Run
 
@@ -164,10 +164,5 @@ npm run test:e2e:update
 
 ## Historical note
 
-- Slice 1 的原始 acceptance targets 是：白名单邮箱可请求验证码并登录、非白名单邮箱被拒绝、登录后前端可调用后端受保护接口 `/users/me`
-- 这些目标已不是当前唯一状态来源；当前进度以 `50-handoff/status.md`、`APP/notes/` 与 `40-review/reports/` 为准
-- 第 4 阶段起，根脚本、Playwright review 和截图基线默认都已切到 `apps/frontend-react`
-
-## Current limitation
-
-当前目录不再保留“无法执行 `npm install` / build / typecheck`”这类历史性结论作为通用真相源；任何验证限制应写入对应 slice 的最新 implementation / review report。
+- 早期 slice 流程的实现报告已归档到 `notes/archive/`。
+- 当前进度以 Git 历史、`docs/` 与 `notes/` 中未归档的记录为准。
