@@ -192,6 +192,7 @@ describe('UserManagementSection', () => {
 
     await screen.findByText('member@example.com');
     fireEvent.click(screen.getByRole('button', { name: '重置密码' }));
+    expect(screen.getByRole('dialog')).toBeTruthy();
     fireEvent.change(screen.getByPlaceholderText('临时密码'), { target: { value: 'TempPass2' } });
     fireEvent.change(screen.getByPlaceholderText('确认临时密码'), { target: { value: 'TempPass2' } });
     fireEvent.click(screen.getByRole('button', { name: '确认重置' }));

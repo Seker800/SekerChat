@@ -125,6 +125,12 @@ export function UserManagementSection({ accessToken: providedAccessToken, curren
     }
   }
 
+  function closePasswordReset() {
+    setPasswordTarget(null);
+    setTemporaryPassword('');
+    setConfirmTemporaryPassword('');
+  }
+
   async function submitPasswordReset() {
     if (!passwordTarget) return;
     const policyError = validateNewPassword(temporaryPassword);
@@ -171,54 +177,64 @@ export function UserManagementSection({ accessToken: providedAccessToken, curren
       ) : null}
 
       {passwordTarget ? (
-        <form
-          className={styles.passwordResetPanel}
-          onSubmit={(event) => {
-            event.preventDefault();
-            void submitPasswordReset();
+        <div
+          className={styles.passwordResetBackdrop}
+          role="presentation"
+          onClick={closePasswordReset}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') closePasswordReset();
           }}
         >
-          <div className={styles.passwordResetCopy}>
-            <strong>重置 {passwordTarget.email} 的密码</strong>
-            <span>设置临时密码后，该用户的现有会话会失效，下次登录必须修改密码。</span>
-          </div>
-          <input
-            className={styles.input}
-            type="password"
-            autoComplete="new-password"
-            placeholder="临时密码"
-            value={temporaryPassword}
-            onChange={(event) => setTemporaryPassword(event.target.value)}
-            required
-            minLength={8}
-          />
-          <input
-            className={styles.input}
-            type="password"
-            autoComplete="new-password"
-            placeholder="确认临时密码"
-            value={confirmTemporaryPassword}
-            onChange={(event) => setConfirmTemporaryPassword(event.target.value)}
-            required
-            minLength={8}
-          />
-          <div className={styles.passwordResetActions}>
-            <button
-              className={styles.buttonSecondary}
-              type="button"
-              onClick={() => {
-                setPasswordTarget(null);
-                setTemporaryPassword('');
-                setConfirmTemporaryPassword('');
-              }}
-            >
-              取消
-            </button>
-            <button className={styles.button} type="submit" disabled={isResettingPassword}>
-              {isResettingPassword ? '重置中…' : '确认重置'}
-            </button>
-          </div>
-        </form>
+          <form
+            className={styles.passwordResetDialog}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`重置 ${passwordTarget.email} 的密码`}
+            onClick={(event) => event.stopPropagation()}
+            onSubmit={(event) => {
+              event.preventDefault();
+              void submitPasswordReset();
+            }}
+          >
+            <div className={styles.passwordResetCopy}>
+              <strong>重置 {passwordTarget.email} 的密码</strong>
+              <span>设置临时密码后，该用户的现有会话会失效，下次登录必须修改密码。</span>
+            </div>
+            <input
+              className={styles.input}
+              type="password"
+              autoComplete="new-password"
+              placeholder="临时密码"
+              value={temporaryPassword}
+              onChange={(event) => setTemporaryPassword(event.target.value)}
+              required
+              minLength={8}
+              autoFocus
+            />
+            <input
+              className={styles.input}
+              type="password"
+              autoComplete="new-password"
+              placeholder="确认临时密码"
+              value={confirmTemporaryPassword}
+              onChange={(event) => setConfirmTemporaryPassword(event.target.value)}
+              required
+              minLength={8}
+            />
+            <div className={styles.passwordResetActions}>
+              <button
+                className={styles.buttonSecondary}
+                type="button"
+                onClick={closePasswordReset}
+              >
+                取消
+              </button>
+              <button className={styles.button} type="submit" disabled={isResettingPassword}>
+                {isResettingPassword ? '重置中…' : '确认重置'}
+              </button>
+            </div>
+          </form>
+        </div>
       ) : null}
 
       <table className={styles.table}>
