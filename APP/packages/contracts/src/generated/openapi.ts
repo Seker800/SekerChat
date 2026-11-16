@@ -2940,6 +2940,7 @@ export interface components {
             archivedAt: string | null;
             createdAt: string;
             updatedAt: string;
+            isMember?: boolean;
         };
         UpdateServerDto: {
             /** @default  */
@@ -3177,7 +3178,7 @@ export interface components {
         };
         UpdateUserRoleDto: {
             /** @enum {string} */
-            role: "SUPER_ADMIN" | "MEMBER" | "CLI_BOT" | "ADMIN";
+            role: "SUPER_ADMIN" | "ADMIN" | "MEMBER" | "CLI_BOT";
         };
         ResetUserPasswordDto: {
             newPassword: string;
@@ -3224,7 +3225,7 @@ export interface components {
             displayName: string | null;
             avatarUrl: string | null;
             /** @enum {string} */
-            role: "MEMBER" | "ADMIN";
+            role: "ADMIN" | "MEMBER";
             joinedAt: string;
             isOnline: boolean;
             isDnd: boolean;
@@ -3246,7 +3247,7 @@ export interface components {
             updatedAt: string;
             createdById: string;
             /** @enum {string} */
-            currentUserRole: "MEMBER" | "ADMIN";
+            currentUserRole: "ADMIN" | "MEMBER";
             unreadCount: number;
             notificationsMuted?: boolean;
             memberCount?: number;
@@ -3272,7 +3273,7 @@ export interface components {
             memberCount: number;
             isCurrentUserMember: boolean;
             /** @enum {string|null} */
-            currentUserMembershipRole: "MEMBER" | "ADMIN" | null;
+            currentUserMembershipRole: "ADMIN" | "MEMBER" | null;
             canSelfJoin: boolean;
             /** @enum {string} */
             visibilityReason: "current_member" | "archived_admin_override" | "admin_override";
@@ -3318,7 +3319,7 @@ export interface components {
             email: string;
             displayName: string | null;
             /** @enum {string} */
-            role?: "SUPER_ADMIN" | "MEMBER" | "ADMIN";
+            role?: "SUPER_ADMIN" | "ADMIN" | "MEMBER";
         };
         UpdateGroupDto: {
             name?: string;
@@ -3331,7 +3332,7 @@ export interface components {
         };
         UpdateGroupMemberRoleDto: {
             /** @enum {string} */
-            role: "MEMBER" | "ADMIN";
+            role: "ADMIN" | "MEMBER";
         };
         LeaveGroupResponseDto: {
             groupId: string;

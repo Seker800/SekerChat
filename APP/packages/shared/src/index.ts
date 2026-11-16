@@ -17,6 +17,7 @@ export {
   PERMISSION_DESCRIPTIONS,
   PERMISSION_GROUPS,
   hasSystemPermission,
+  hasFullWorkspaceAccess,
   getDefaultRolePermissions,
 } from './permissions';
 export type { SystemPermission, RolePermissions } from './permissions';

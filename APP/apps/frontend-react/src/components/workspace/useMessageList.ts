@@ -22,6 +22,7 @@ interface UseMessageListInput {
   selectedGroupId: string;
   initialMessages?: MessageListResponse | null;
   initialMessagesUpdatedAt?: number;
+  canAdvanceReadCursor?: boolean;
   onError: (text: string) => void;
 }
 
@@ -40,6 +41,7 @@ export function useMessageList({
   selectedGroupId,
   initialMessages,
   initialMessagesUpdatedAt,
+  canAdvanceReadCursor = true,
   onError,
 }: UseMessageListInput): UseMessageListOutput {
   const queryClient = useQueryClient();
@@ -90,7 +92,7 @@ export function useMessageList({
   }, [selectedGroupId]);
 
   const markSelectedGroupRead = useCallback(() => {
-    if (hasPendingSends(selectedGroupId) || !selectedGroupId) return;
+    if (!canAdvanceReadCursor || hasPendingSends(selectedGroupId) || !selectedGroupId) return;
 
     if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
     const latest = messages.at(-1);
@@ -110,7 +112,7 @@ export function useMessageList({
     queryClient.setQueryData<GroupResponse>(['group', selectedGroupId], (current) =>
       current ? { ...current, unreadCount: 0 } : current,
     );
-  }, [messages, queryClient, selectedGroupId]);
+  }, [canAdvanceReadCursor, messages, queryClient, selectedGroupId]);
 
   const patchLoadedMessage = useCallback(
     (updatedMessage: MessageResponse) => {

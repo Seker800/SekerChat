@@ -7,7 +7,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from '../../auth/AuthContext';
 import type { CurrentUserResponse } from '../../lib/auth-api';
 import type { GroupResponse } from '../../lib/groups-api';
-import { DM_ATTENDANCE_ROUTE, DM_MONTHLY_REPORT_ROUTE, DM_SUBSCRIPTION_ROUTE } from '../../store/workspace-store';
+import {
+  DM_ATTENDANCE_ROUTE,
+  DM_MONTHLY_REPORT_ROUTE,
+  DM_SUBSCRIPTION_ROUTE,
+} from '../../store/workspace-store';
 import { WorkspaceShell } from './WorkspaceShell';
 
 const mockUseWorkspaceShellModel = vi.fn();
@@ -177,8 +181,12 @@ function createModel(overrides: Record<string, unknown> = {}) {
     serverGroups: [baseGroup],
     archivedServerGroups: [],
     serverRailItems: [],
+    unjoinedServerRailItems: [],
     serverNames: ['研发'],
     selectedServerName: '研发',
+    hasFullAccess: false,
+    isSelectedGroupMember: true,
+    openServer: vi.fn(),
     dmUnreadCount: 0,
     servers: [baseGroup],
     isNarrowViewport: false,
@@ -377,9 +385,11 @@ describe('WorkspaceShell missing server recovery', () => {
     });
   });
 
-  it('opens the clicked server when switching from dm mode to server mode', () => {
+  it('delegates the clicked server to openServer when switching from dm mode', () => {
+    const openServer = vi.fn();
     mockUseWorkspaceShellModel.mockImplementation(() =>
       createModel({
+        openServer,
         mode: 'dm',
         selectedGroupId: 'dm-1',
         requestedGroupId: 'dm-1',
@@ -473,7 +483,7 @@ describe('WorkspaceShell missing server recovery', () => {
 
     fireEvent.click(screen.getByTestId('server-rail'));
 
-    expect(mockNavigate).toHaveBeenCalledWith('/groups/group-2');
+    expect(openServer).toHaveBeenCalledWith('server-2');
   });
 
   it('opens the attendance page when switching to dm mode from the server rail', () => {

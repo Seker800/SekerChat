@@ -1,5 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { hasFullWorkspaceAccess } from '@sekerchat/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { groupWithMembersSelect } from './group-types';
 import { GroupMembershipService } from './group-membership.service';
@@ -83,7 +84,7 @@ export class GroupQueryService {
 
   async getGroup(userId: string, groupId: string, role?: string) {
     let membership: { role: string } | null = null;
-    if (role === 'SUPER_ADMIN') {
+    if (hasFullWorkspaceAccess(role)) {
       membership = (await this.prismaService.groupMember.findUnique({
         where: { groupId_userId: { groupId, userId } },
         select: { role: true },
@@ -101,8 +102,12 @@ export class GroupQueryService {
       throw new NotFoundException('Group not found.');
     }
 
-    // SUPER_ADMIN cannot view non-member DM metadata (matches assertReadableGroupMembership)
-    if (role === 'SUPER_ADMIN' && group.isDM && !group.members.some((m) => m.user.id === userId)) {
+    // Full-access admins still cannot view non-member DM metadata (matches assertReadableGroupMembership)
+    if (
+      hasFullWorkspaceAccess(role) &&
+      group.isDM &&
+      !group.members.some((m) => m.user.id === userId)
+    ) {
       throw new ForbiddenException('Group access denied.');
     }
 

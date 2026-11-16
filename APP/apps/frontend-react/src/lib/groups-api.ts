@@ -30,6 +30,14 @@ export async function listGroups(accessToken: string): Promise<GroupResponse[]> 
   return parseResponse<GroupResponse[]>(response);
 }
 
+export async function listServers(accessToken: string): Promise<ServerResponse[]> {
+  const response = await fetchApi(`${apiBaseUrl}/servers`, {
+    headers: bearerHeader(accessToken),
+  });
+
+  return parseResponse<ServerResponse[]>(response);
+}
+
 export async function updateGroupNotifications(
   accessToken: string,
   groupId: string,

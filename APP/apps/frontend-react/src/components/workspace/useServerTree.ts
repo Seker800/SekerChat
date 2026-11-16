@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { GroupResponse } from '../../lib/groups-api';
+import type { GroupResponse, ServerResponse } from '../../lib/groups-api';
 
 const DEFAULT_CATEGORY = '未分类';
 
@@ -38,6 +38,8 @@ interface UseServerTreeOptions {
   groups: GroupResponse[];
   selectedGroup: GroupResponse | undefined;
   servers: GroupResponse[];
+  serverDirectory?: ServerResponse[];
+  canAccessAllChannels?: boolean;
 }
 
 export interface ServerRailItem {
@@ -47,12 +49,33 @@ export interface ServerRailItem {
   unreadCount: number;
   avatarUrl: string | null;
   isArchived: boolean;
+  isMember?: boolean;
+}
+
+export function resolveServerLandingGroup(
+  groups: Array<{
+    id: string;
+    serverId?: string | null;
+    archivedAt?: string | null;
+    updatedAt: string;
+  }>,
+  serverId: string,
+) {
+  const serverGroups = groups
+    .filter((group) => group.serverId === serverId)
+    .sort(
+      (left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
+    );
+
+  return serverGroups.find((group) => !group.archivedAt) ?? serverGroups[0] ?? null;
 }
 
 export function useServerTree({
   groups,
   selectedGroup,
   servers,
+  serverDirectory = [],
+  canAccessAllChannels = false,
 }: UseServerTreeOptions) {
   const activeGroups = useMemo(() => groups.filter((item) => !item.archivedAt), [groups]);
   const selectedServerId = useMemo(
@@ -66,8 +89,8 @@ export function useServerTree({
     selectedGroup?.server?.name ??
     getCategoryName(selectedGroup ?? activeGroups[0] ?? { category: DEFAULT_CATEGORY });
 
-  /** All categories the user has groups in, ordered by latest activity, split into active vs archived. */
-  const { serverRailItems, archivedServerRailItems } = useMemo(() => {
+  /** Joined servers in the main rail; unjoined and archived servers in the collapsed section. */
+  const { serverRailItems, archivedServerRailItems, unjoinedServerRailItems } = useMemo(() => {
     const map = new Map<
       string,
       {
@@ -79,8 +102,25 @@ export function useServerTree({
         latestUpdatedAt: number;
         archivedGroupCount: number;
         categoryArchivedAt: string | null;
+        isMember: boolean;
       }
     >();
+
+    if (canAccessAllChannels) {
+      for (const server of serverDirectory) {
+        map.set(server.id, {
+          id: server.id,
+          name: server.name,
+          activeCount: 0,
+          unreadCount: 0,
+          avatarUrl: server.avatarUrl ?? null,
+          latestUpdatedAt: new Date(server.updatedAt).getTime(),
+          archivedGroupCount: 0,
+          categoryArchivedAt: server.archivedAt ?? null,
+          isMember: server.isMember !== false,
+        });
+      }
+    }
 
     for (const group of servers) {
       const serverId = getServerId(group);
@@ -95,8 +135,10 @@ export function useServerTree({
         latestUpdatedAt: 0,
         archivedGroupCount: 0,
         categoryArchivedAt: group.categoryArchivedAt ?? null,
+        isMember: true,
       };
 
+      entry.isMember = true;
       if (!group.archivedAt) {
         entry.activeCount += 1;
         entry.unreadCount += group.unreadCount ?? 0;
@@ -118,6 +160,7 @@ export function useServerTree({
 
     const all: ServerRailItem[] = [];
     const archived: ServerRailItem[] = [];
+    const unjoined: ServerRailItem[] = [];
 
     for (const entry of map.values()) {
       const item: ServerRailItem = {
@@ -127,37 +170,35 @@ export function useServerTree({
         unreadCount: entry.unreadCount,
         avatarUrl: entry.avatarUrl,
         isArchived: Boolean(entry.categoryArchivedAt),
+        isMember: entry.isMember,
       };
 
       if (item.isArchived) {
         archived.push(item);
+        continue;
       }
-      // Always include in main rail if has any groups (active or all-archived but not category-archived)
-      if (entry.activeCount > 0 || entry.archivedGroupCount > 0) {
-        if (!item.isArchived) {
-          all.push(item);
-        }
+      if (!entry.isMember) {
+        unjoined.push(item);
+        continue;
       }
+      all.push(item);
     }
 
-    all.sort((a, b) => {
-      const aTs = map.get(a.id)?.latestUpdatedAt ?? 0;
-      const bTs = map.get(b.id)?.latestUpdatedAt ?? 0;
-      return bTs - aTs;
-    });
-    archived.sort((a, b) => {
-      const aTs = map.get(a.id)?.latestUpdatedAt ?? 0;
-      const bTs = map.get(b.id)?.latestUpdatedAt ?? 0;
-      return bTs - aTs;
-    });
+    const byLatestActivity = (left: ServerRailItem, right: ServerRailItem) =>
+      (map.get(right.id)?.latestUpdatedAt ?? 0) - (map.get(left.id)?.latestUpdatedAt ?? 0);
 
-    return { serverRailItems: all, archivedServerRailItems: archived };
-  }, [servers]);
+    all.sort(byLatestActivity);
+    archived.sort(byLatestActivity);
+    unjoined.sort(byLatestActivity);
 
-  const serverNames = useMemo(
-    () => serverRailItems.map((item) => item.name),
-    [serverRailItems],
-  );
+    return {
+      serverRailItems: all,
+      archivedServerRailItems: archived,
+      unjoinedServerRailItems: unjoined,
+    };
+  }, [canAccessAllChannels, serverDirectory, servers]);
+
+  const serverNames = useMemo(() => serverRailItems.map((item) => item.name), [serverRailItems]);
 
   const serverGroups = useMemo(() => {
     const filtered = activeGroups.filter((group) => getServerId(group) === selectedServerId);
@@ -183,6 +224,7 @@ export function useServerTree({
     serverNames: serverRailItems.map((item) => item.name),
     serverOptions: serverRailItems.map((item) => ({ id: item.id, name: item.name })),
     serverRailItems,
+    unjoinedServerRailItems,
     selectedServerName,
     selectedServerId,
   };

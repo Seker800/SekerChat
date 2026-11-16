@@ -200,15 +200,32 @@ for (const archive of [true, false]) {
       server: { updateMany: async () => ({ count: 1 }) },
       group: { count: async () => 1 },
     };
-    const service = new ServersService({
-      server: { findUnique: async () => buildServer({ name: '未分类', archivedAt: archive ? null : new Date() }) },
-      $transaction: async (callback: (tx: typeof transaction) => unknown) => callback(transaction),
-    } as never, {} as never, { enqueue: async (_tx: unknown, event: unknown) => events.push(event) } as never,
-      {} as never);
-    const result = await service.archive({ sub: 'super-1', role: 'SUPER_ADMIN' }, 'server-1', archive);
+    const service = new ServersService(
+      {
+        server: {
+          findUnique: async () =>
+            buildServer({ name: '未分类', archivedAt: archive ? null : new Date() }),
+        },
+        $transaction: async (callback: (tx: typeof transaction) => unknown) =>
+          callback(transaction),
+      } as never,
+      {} as never,
+      { enqueue: async (_tx: unknown, event: unknown) => events.push(event) } as never,
+      {} as never,
+    );
+    const result = await service.archive(
+      { sub: 'super-1', role: 'SUPER_ADMIN' },
+      'server-1',
+      archive,
+    );
     assert.equal(Boolean(result.archivedAt), archive);
-    assert.deepEqual((events[0] as { payload: unknown }).payload, { serverId: 'server-1', archive });
-    await assert.rejects(() => service.archive({ sub: 'admin-1', role: 'ADMIN' }, 'server-1', archive));
+    assert.deepEqual((events[0] as { payload: unknown }).payload, {
+      serverId: 'server-1',
+      archive,
+    });
+    await assert.rejects(() =>
+      service.archive({ sub: 'admin-1', role: 'ADMIN' }, 'server-1', archive),
+    );
   });
 }
 
@@ -225,3 +242,60 @@ for (const input of [{ serverId: 'server-1' }, { category: '未分类' }, {}]) {
     await assert.rejects(() => service.resolveServer(input, transaction as never), /已归档/);
   });
 }
+
+test('listForUser keeps membership filtering for regular members', async () => {
+  const serverQueries: unknown[] = [];
+  const service = new ServersService(
+    {
+      server: {
+        findMany: async (args: unknown) => {
+          serverQueries.push(args);
+          return [buildServer()];
+        },
+      },
+    } as never,
+    {} as never,
+    {} as never,
+    { getOrThrow: () => 'http://api.example.test' } as never,
+  );
+
+  const result = await service.listForUser({ sub: 'member-1', role: 'MEMBER' });
+
+  assert.equal(result.length, 1);
+  assert.equal(result[0]?.isMember, true);
+  assert.deepEqual((serverQueries[0] as { where: unknown }).where, {
+    archivedAt: null,
+    groups: {
+      some: {
+        isDM: false,
+        members: { some: { userId: 'member-1' } },
+      },
+    },
+  });
+});
+
+test('listForUser returns every server with membership flags for full-access admins', async () => {
+  const service = new ServersService(
+    {
+      server: {
+        findMany: async () => [
+          buildServer(),
+          buildServer({ id: 'server-2', name: '归档', archivedAt: new Date() }),
+        ],
+      },
+      group: {
+        findMany: async () => [{ serverId: 'server-1' }],
+      },
+    } as never,
+    {} as never,
+    {} as never,
+    { getOrThrow: () => 'http://api.example.test' } as never,
+  );
+
+  const result = await service.listForUser({ sub: 'admin-1', role: 'ADMIN' });
+
+  assert.equal(result.length, 2);
+  assert.equal(result[0]?.isMember, true);
+  assert.equal(result[1]?.isMember, false);
+  assert.ok(result[1]?.archivedAt);
+});

@@ -43,24 +43,6 @@ interface WorkspaceShellProps {
   mode?: WorkspaceMode;
 }
 
-function resolveCategoryLandingGroup(
-  groups: Array<{
-    id: string;
-    serverId?: string | null;
-    archivedAt?: string | null;
-    updatedAt: string;
-  }>,
-  serverId: string,
-) {
-  const serverGroups = groups
-    .filter((group) => group.serverId === serverId)
-    .sort(
-      (left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime(),
-    );
-
-  return serverGroups.find((group) => !group.archivedAt) ?? serverGroups[0] ?? null;
-}
-
 export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
   const { currentUser, logout } = useAuth();
   const accessToken = BROWSER_COOKIE_CREDENTIAL;
@@ -248,6 +230,7 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
       <ServerRail
         servers={model.serverRailItems}
         archivedServers={model.archivedServerRailItems}
+        unjoinedServers={model.unjoinedServerRailItems}
         selectedServerId={model.selectedServerId}
         accessToken={accessToken}
         isDMMode={mode === 'dm'}
@@ -261,19 +244,7 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
           void navigate(DM_ATTENDANCE_ROUTE);
         }}
         onSelect={(serverId) => {
-          const fallbackGroup = resolveCategoryLandingGroup(model.servers, serverId);
-
-          if (!fallbackGroup) {
-            return;
-          }
-
-          if (mode === 'dm') {
-            setWorkspaceMode('server');
-            void navigate(`/groups/${fallbackGroup.id}`);
-            return;
-          }
-
-          model.navigateToGroup(fallbackGroup.id, { keepMobileSidebarOpen: true });
+          void model.openServer(serverId);
         }}
         onOpenCreateServer={model.openServerCreateDialog}
         onOpenCategorySettings={model.openServerSettingsDialog}
@@ -303,7 +274,7 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
         onSetWorkStatus={model.onSetWorkStatus}
         onMoveGroupToServer={model.onMoveGroupToServer}
         discoverableGroups={model.discoverableGroups}
-        isSuperAdmin={model.isSuperAdmin}
+        canAccessAllChannels={model.hasFullAccess}
         isJoiningGroup={model.isJoiningGroup}
         onRequestArchiveGroup={model.requestArchiveGroup}
         onJoinGroup={model.onJoinGroup}
@@ -551,7 +522,26 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
               onRetryPendingUpload={model.retryPendingUpload}
               onRetryPendingMessage={model.retryFailedMessage}
             />
-            <Composer {...model.composer} />
+            {model.isSelectedGroupMember ? (
+              <Composer {...model.composer} />
+            ) : (
+              <div className={styles.readOnlyBar} data-testid="channel-readonly-bar">
+                <span>
+                  {model.selectedGroup?.archivedAt
+                    ? '该频道已归档，只读。'
+                    : '你尚未加入该频道，加入后可参与讨论。'}
+                </span>
+                {!model.selectedGroup?.archivedAt ? (
+                  <button
+                    type="button"
+                    onClick={model.onJoinCurrentGroup}
+                    disabled={model.isJoiningGroup}
+                  >
+                    {model.isJoiningGroup ? '加入中…' : '加入频道'}
+                  </button>
+                ) : null}
+              </div>
+            )}
           </>
         )}
       </div>

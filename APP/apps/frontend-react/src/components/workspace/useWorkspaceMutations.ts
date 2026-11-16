@@ -1,4 +1,4 @@
-import { useMutation, type UseQueryResult } from '@tanstack/react-query';
+import { useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import {
   archiveServer,
   archiveGroup,
@@ -68,6 +68,7 @@ export function useWorkspaceMutations({
   setServerDialogState,
   workStateQuery,
 }: UseWorkspaceMutationsOptions) {
+  const queryClient = useQueryClient();
   const createServerMutation = useMutation({
     mutationFn: async () => {
       return createGroup(accessToken, {
@@ -81,6 +82,7 @@ export function useWorkspaceMutations({
       setCreateChannelName('');
       pushNotice('success', `已创建 server「${group.category}」和首个频道。`);
       await serversQuery.refetch();
+      await queryClient.invalidateQueries({ queryKey: ['server-directory'] });
       navigateToGroup(group.id);
     },
     onError(error) {
@@ -104,6 +106,7 @@ export function useWorkspaceMutations({
       setServerDialogState(null);
       pushNotice('success', `已将 server 改名为「${result.name}」。`);
       await serversQuery.refetch();
+      await queryClient.invalidateQueries({ queryKey: ['server-directory'] });
       await selectedGroupQuery.refetch();
     },
     onError(error) {
@@ -141,6 +144,7 @@ export function useWorkspaceMutations({
       );
       await serversQuery.refetch();
       await groupsQuery.refetch();
+      await queryClient.invalidateQueries({ queryKey: ['server-directory'] });
     },
     onError(error) {
       pushNotice('error', error instanceof Error ? error.message : '归档 Server 失败。');

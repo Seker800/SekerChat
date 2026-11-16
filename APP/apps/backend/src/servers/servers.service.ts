@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, ServerNameKind, type Server } from '@prisma/client';
+import { hasFullWorkspaceAccess } from '@sekerchat/shared';
 import { OutboxService } from '../outbox/outbox.service';
 import { OUTBOX_EVENT_TYPES } from '../outbox/outbox.types';
 import { PrismaService } from '../prisma/prisma.service';
@@ -116,20 +117,45 @@ export class ServersService {
   }
 
   async listForUser(actor: AuthenticatedActor) {
-    const canViewArchived = actor.role === 'SUPER_ADMIN';
+    const canViewAll = hasFullWorkspaceAccess(actor.role);
     const servers = await this.prismaService.server.findMany({
-      where: {
-        ...(canViewArchived ? {} : { archivedAt: null }),
-        groups: {
-          some: {
-            isDM: false,
-            members: { some: { userId: actor.sub } },
+      where: canViewAll
+        ? {}
+        : {
+            archivedAt: null,
+            groups: {
+              some: {
+                isDM: false,
+                members: { some: { userId: actor.sub } },
+              },
+            },
           },
-        },
-      },
       orderBy: [{ archivedAt: 'asc' }, { updatedAt: 'desc' }],
     });
-    return servers.map((server) => this.present(server));
+
+    if (!canViewAll || servers.length === 0) {
+      return servers.map((server) => ({ ...this.present(server), isMember: true }));
+    }
+
+    const memberships = await this.prismaService.group.findMany({
+      where: {
+        isDM: false,
+        serverId: { in: servers.map((server) => server.id) },
+        members: { some: { userId: actor.sub } },
+      },
+      select: { serverId: true },
+      distinct: ['serverId'],
+    });
+    const memberServerIds = new Set(
+      memberships
+        .map((group) => group.serverId)
+        .filter((serverId): serverId is string => Boolean(serverId)),
+    );
+
+    return servers.map((server) => ({
+      ...this.present(server),
+      isMember: memberServerIds.has(server.id),
+    }));
   }
 
   async rename(actor: AuthenticatedActor, serverId: string, nextName?: string) {

@@ -1492,3 +1492,30 @@
   pointer-events: none;
   margin: 8px;
 }
+
+.readOnlyBar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line-subtle, #2b2d31);
+  color: var(--text-dim, #949ba4);
+  font-size: 13px;
+}
+
+.readOnlyBar button {
+  min-height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent, #5865f2);
+  color: #fff;
+  cursor: pointer;
+}
+
+.readOnlyBar button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

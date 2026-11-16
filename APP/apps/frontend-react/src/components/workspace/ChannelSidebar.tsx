@@ -42,7 +42,7 @@ interface ChannelSidebarProps {
   selectedSpecialPageId?: string;
   albumHasUpdates?: boolean;
   discoverableGroups?: { id: string; name: string; memberCount: number }[];
-  isSuperAdmin?: boolean;
+  canAccessAllChannels?: boolean;
   isJoiningGroup?: boolean;
   selectedGroupId: string;
   isMobileSidebarOpen: boolean;
@@ -79,7 +79,7 @@ export function ChannelSidebar({
   selectedSpecialPageId = '',
   albumHasUpdates = false,
   discoverableGroups,
-  isSuperAdmin = false,
+  canAccessAllChannels = false,
   isJoiningGroup = false,
   selectedGroupId,
   isMobileSidebarOpen,
@@ -118,6 +118,14 @@ export function ChannelSidebar({
   );
   const [archivedExpanded, setArchivedExpanded] = useState(false);
   const [discoverableExpanded, setDiscoverableExpanded] = useState(false);
+  const discoverableCount = discoverableGroups?.length ?? 0;
+
+  useEffect(() => {
+    if (groups.length === 0 && discoverableCount > 0) {
+      setDiscoverableExpanded(true);
+    }
+  }, [discoverableCount, groups.length]);
+
   const { markSecondaryClick, shouldSuppressClick } = useSecondaryClickGuard();
   const handleCloseMenu = useCallback(() => setMenuState(null), []);
   const isDMMode = mode === 'dm';
@@ -563,7 +571,7 @@ export function ChannelSidebar({
           </>
         ) : null}
 
-        {isSuperAdmin && discoverableGroups && discoverableGroups.length > 0 ? (
+        {canAccessAllChannels && discoverableGroups && discoverableGroups.length > 0 ? (
           <>
             <div
               className={styles.sectionTitle}
@@ -634,7 +642,9 @@ export function ChannelSidebar({
                             {workStatus}
                           </span>
                         ) : null}
-                        <span>{t('navigation.memberCount', { count: group.memberCount ?? 0 })}</span>
+                        <span>
+                          {t('navigation.memberCount', { count: group.memberCount ?? 0 })}
+                        </span>
                       </div>
                     </button>
                   );

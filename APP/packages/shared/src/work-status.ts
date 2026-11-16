@@ -207,7 +207,7 @@ export const PERMISSION_LABELS: Record<SystemPermission, string> = {
   manage_system_config: '修改系统设置',
   upload_server_avatar: '上传分类头像',
   view_archived_channels: '查看已归档频道',
-  view_all_groups: '查看全部频道',
+  view_all_groups: '查看全部 Server 与频道',
   join_any_group: '加入任意频道',
   access_admin_page: '进入管理后台',
   view_admin_artifacts: '查看产出文件后台',
@@ -230,7 +230,7 @@ export const PERMISSION_DESCRIPTIONS: Record<SystemPermission, string> = {
   manage_system_config: '可以修改通知免打扰、消息与附件、注册开关等全局设置',
   upload_server_avatar: '可以为服务器分类上传自定义头像',
   view_archived_channels: '可以查看自己加入的已归档频道和对应的 server 分类',
-  view_all_groups: '可以查看所有频道，包括已归档的（否则只能看到活跃频道）',
+  view_all_groups: '可以查看所有 Server 和频道（含未加入、已归档），并可浏览未加入频道的消息',
   join_any_group: '可以加入任意频道',
   access_admin_page: '可以进入 /admin 管理后台',
   view_admin_artifacts: '可以进入管理后台中的产出文件页面，查看并下载全局产出文件',
@@ -273,6 +273,11 @@ export function hasSystemPermission(
   const perms = rolePermissions[role];
   if (!perms) return false;
   return perms.includes(permission);
+}
+
+/** ADMIN and SUPER_ADMIN share full workspace read/server visibility; only system config and role administration stay super-admin-only. */
+export function hasFullWorkspaceAccess(role: string | undefined): boolean {
+  return role === 'ADMIN' || role === 'SUPER_ADMIN';
 }
 
 export function getDefaultRolePermissions(): RolePermissions {

@@ -128,6 +128,7 @@ export const resources = {
         collapseActions: '收起 Server 操作',
         noCreatePermission: '暂无创建 Server 权限',
         archived: '已归档',
+        unjoined: '未加入',
       },
       sidebarFooter: {
         reminder: '提醒',
@@ -367,6 +368,7 @@ export const resources = {
         collapseActions: 'Collapse server actions',
         noCreatePermission: 'You do not have permission to create servers',
         archived: 'Archived',
+        unjoined: 'Not joined',
       },
       sidebarFooter: {
         reminder: 'Reminder',

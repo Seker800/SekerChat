@@ -7,6 +7,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { hasFullWorkspaceAccess } from '@sekerchat/shared';
 import { basename, extname } from 'node:path';
 import { FilesService } from '../files/files.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -422,6 +423,7 @@ export class ArtifactsService {
 
   async unlockArtifacts(userId: string, groupId: string) {
     const group = await this.getReadableGroupOrThrow(groupId, userId);
+    await this.assertAdminWritableMembership(groupId, userId);
 
     if (group.archivedAt) {
       throw new BadRequestException('Archived group is read-only.');
@@ -565,12 +567,16 @@ export class ArtifactsService {
   }
 
   private async getReadableGroupOrThrow(groupId: string, userId: string) {
-    // Check if SUPER_ADMIN for bypass
     const user = await this.prismaService.user.findUnique({
       where: { id: userId },
       select: { role: true },
     });
-    const membershipFilter = user?.role === 'SUPER_ADMIN' ? {} : { members: { some: { userId } } };
+    const membershipFilter =
+      user?.role === 'SUPER_ADMIN'
+        ? {}
+        : hasFullWorkspaceAccess(user?.role)
+          ? { isDM: false }
+          : { members: { some: { userId } } };
 
     const group = await this.prismaService.group.findFirst({
       where: {
@@ -596,8 +602,31 @@ export class ArtifactsService {
     return group;
   }
 
+  private async assertAdminWritableMembership(groupId: string, userId: string) {
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    if (user?.role !== 'ADMIN') {
+      return;
+    }
+
+    const membership = await this.prismaService.groupMember.findUnique({
+      where: { groupId_userId: { groupId, userId } },
+      select: { userId: true },
+    });
+    if (!membership) {
+      this.logger.warn(
+        'group_artifact_write_denied',
+        JSON.stringify({ userId, groupId, reason: 'not_member' }),
+      );
+      throw new ForbiddenException('Group access denied.');
+    }
+  }
+
   private async getWritableGroupOrThrow(groupId: string, userId: string) {
     const group = await this.getReadableGroupOrThrow(groupId, userId);
+    await this.assertAdminWritableMembership(groupId, userId);
 
     if (group.archivedAt) {
       this.logger.warn(

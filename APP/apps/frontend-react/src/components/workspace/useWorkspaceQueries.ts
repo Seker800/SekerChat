@@ -18,9 +18,10 @@ import {
 interface UseWorkspaceQueriesOptions {
   accessToken: string;
   canInviteMembers: boolean;
+  canAccessAnyGroup?: boolean;
+  currentUserId?: string;
   shouldLoadInvitableUsers: boolean;
   isStartDMDialogOpen: boolean;
-  isSuperAdmin?: boolean;
   mode: WorkspaceMode;
   routeDmId?: string;
   routeGroupId?: string;
@@ -37,16 +38,18 @@ function resolveFallbackGroupId(groups: GroupResponse[], mode: WorkspaceMode): s
 export function useWorkspaceQueries({
   accessToken,
   canInviteMembers,
+  canAccessAnyGroup = false,
+  currentUserId = '',
   shouldLoadInvitableUsers,
   isStartDMDialogOpen,
-  isSuperAdmin = false,
   mode,
   routeDmId,
   routeGroupId,
 }: UseWorkspaceQueriesOptions) {
   const requestedRouteGroupId = ((mode === 'dm' ? routeDmId : routeGroupId) ?? '').trim();
   const isDmAttendancePage = mode === 'dm' && requestedRouteGroupId === DM_ATTENDANCE_PAGE_ID;
-  const isDmMonthlyReportPage = mode === 'dm' && requestedRouteGroupId === DM_MONTHLY_REPORT_PAGE_ID;
+  const isDmMonthlyReportPage =
+    mode === 'dm' && requestedRouteGroupId === DM_MONTHLY_REPORT_PAGE_ID;
   const isDmAlbumPage = mode === 'dm' && requestedRouteGroupId === DM_ALBUM_PAGE_ID;
   const isDmSubscriptionPage = mode === 'dm' && requestedRouteGroupId === DM_SUBSCRIPTION_PAGE_ID;
   const isDmSpecialPage = mode === 'dm' && isDmSpecialPageId(requestedRouteGroupId);
@@ -102,10 +105,7 @@ export function useWorkspaceQueries({
   const groups = mode === 'dm' ? dms : servers;
   const groupsQuery = mode === 'dm' ? dmsQuery : serversQuery;
   const requestedGroupId = requestedRouteGroupId;
-  const fallbackGroupId = useMemo(
-    () => resolveFallbackGroupId(groups, mode),
-    [groups, mode],
-  );
+  const fallbackGroupId = useMemo(() => resolveFallbackGroupId(groups, mode), [groups, mode]);
   const selectedGroupId = useMemo(() => {
     if (isDmSpecialPage) {
       return requestedRouteGroupId;
@@ -115,16 +115,25 @@ export function useWorkspaceQueries({
       return fallbackGroupId;
     }
 
-    // SUPER_ADMIN can view any group by ID regardless of membership
-    if (isSuperAdmin) return requestedGroupId;
+    // Full-access admins can view any group by ID regardless of membership.
+    if (canAccessAnyGroup) return requestedGroupId;
 
     return groups.some((group) => group.id === requestedGroupId)
       ? requestedGroupId
       : fallbackGroupId;
-  }, [groups, fallbackGroupId, isDmSpecialPage, isSuperAdmin, requestedGroupId]);
+  }, [canAccessAnyGroup, groups, fallbackGroupId, isDmSpecialPage, requestedGroupId]);
   const fallbackSelectedGroup = useMemo(
     () => groups.find((group) => group.id === selectedGroupId),
     [groups, selectedGroupId],
+  );
+  const isSelectedGroupMember = useMemo(
+    () =>
+      groups.some(
+        (group) =>
+          group.id === selectedGroupId &&
+          group.members.some((member) => member.userId === currentUserId),
+      ),
+    [currentUserId, groups, selectedGroupId],
   );
 
   const selectedGroupQuery = useQuery({
@@ -145,7 +154,7 @@ export function useWorkspaceQueries({
   const workStateQuery = useQuery({
     queryKey: ['work-state', selectedGroupId],
     queryFn: () => getGroupWorkState(accessToken, selectedGroupId),
-    enabled: mode === 'server' && Boolean(selectedGroupId),
+    enabled: mode === 'server' && Boolean(selectedGroupId) && isSelectedGroupMember,
     staleTime: 30 * 1000,
   });
 
@@ -161,7 +170,11 @@ export function useWorkspaceQueries({
     queryFn: () => listInvitableUsers(accessToken, selectedGroupId),
     staleTime: 60 * 1000,
     enabled:
-      mode === 'server' && Boolean(selectedGroupId) && canInviteMembers && shouldLoadInvitableUsers,
+      mode === 'server' &&
+      Boolean(selectedGroupId) &&
+      canInviteMembers &&
+      shouldLoadInvitableUsers &&
+      isSelectedGroupMember,
   });
 
   // Prefer fallbackSelectedGroup (refreshed by ['groups'] invalidation on presence.changed)

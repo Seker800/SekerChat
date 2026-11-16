@@ -182,6 +182,10 @@ export class GroupChannelService {
       throw new BadRequestException('Cannot admin-join a DM group.');
     }
 
+    if (group.archivedAt && actor.role !== 'SUPER_ADMIN') {
+      throw new BadRequestException('归档频道只读，不能加入。');
+    }
+
     const existingMembership = await this.prismaService.groupMember.findUnique({
       where: {
         groupId_userId: {
@@ -202,7 +206,7 @@ export class GroupChannelService {
       data: {
         groupId,
         userId: actor.sub,
-        role: GroupMemberRole.ADMIN,
+        role: actor.role === 'SUPER_ADMIN' ? GroupMemberRole.ADMIN : GroupMemberRole.MEMBER,
       },
     });
 

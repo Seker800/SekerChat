@@ -6,6 +6,7 @@ import {
   adminJoinGroup,
   leaveGroup,
   listAdminDiscoverableGroups,
+  listServers,
   type GroupResponse,
 } from '../../lib/groups-api';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
@@ -20,12 +21,16 @@ import { useComposer } from './useComposer';
 import { useDmActions } from './useDmActions';
 import { useManagePanel } from './useManagePanel';
 import { useMessageList } from './useMessageList';
-import { buildServerStats, useServerTree } from './useServerTree';
+import { buildServerStats, resolveServerLandingGroup, useServerTree } from './useServerTree';
 import { useWorkspaceDialogs } from './useWorkspaceDialogs';
 import { useWorkspaceMutations } from './useWorkspaceMutations';
 import { useWorkspaceNavigation } from './useWorkspaceNavigation';
 import { useWorkspaceQueries } from './useWorkspaceQueries';
-import { hasSystemPermission, type RolePermissions } from '@sekerchat/shared';
+import {
+  hasFullWorkspaceAccess,
+  hasSystemPermission,
+  type RolePermissions,
+} from '@sekerchat/shared';
 
 interface WorkspaceShellModelProps {
   accessToken: string;
@@ -57,6 +62,7 @@ export function useWorkspaceShellModel({
     currentUser,
   });
   const resolvedRolePermissions = rolePermissions ?? null;
+  const hasFullAccess = hasFullWorkspaceAccess(currentUser.role);
   const isSuperAdmin = currentUser.role === 'SUPER_ADMIN';
   const canInviteMembers = useMemo(
     () =>
@@ -69,7 +75,8 @@ export function useWorkspaceShellModel({
   const workspaceQueries = useWorkspaceQueries({
     accessToken,
     canInviteMembers,
-    isSuperAdmin,
+    canAccessAnyGroup: hasFullAccess,
+    currentUserId: currentUser.id,
     shouldLoadInvitableUsers: hasRequestedInvitableUsers,
     isStartDMDialogOpen: dialogs.isStartDMDialogOpen,
     mode,
@@ -113,10 +120,19 @@ export function useWorkspaceShellModel({
         }
       : null;
 
+  const serverDirectoryQuery = useQuery({
+    queryKey: ['server-directory'],
+    queryFn: () => listServers(accessToken),
+    enabled: hasFullAccess && mode === 'server',
+    staleTime: 30 * 1000,
+  });
+
   const serverTree = useServerTree({
     groups,
     selectedGroup: selectedGroup ?? undefined,
     servers,
+    serverDirectory: serverDirectoryQuery.data ?? [],
+    canAccessAllChannels: hasFullAccess,
   });
 
   const {
@@ -126,6 +142,7 @@ export function useWorkspaceShellModel({
     serverGroups,
     serverNames,
     serverRailItems,
+    unjoinedServerRailItems,
     selectedServerName,
     selectedServerId,
     serverOptions,
@@ -135,7 +152,7 @@ export function useWorkspaceShellModel({
     queryKey: ['admin-discovery', 'former', selectedServerId],
     queryFn: () =>
       listAdminDiscoverableGroups(accessToken, { scope: 'former', serverId: selectedServerId }),
-    enabled: isSuperAdmin && mode === 'server' && Boolean(selectedServerId),
+    enabled: hasFullAccess && mode === 'server' && Boolean(selectedServerId),
     staleTime: 0,
   });
 
@@ -146,6 +163,7 @@ export function useWorkspaceShellModel({
       await discoverableQuery.refetch();
       await groupsQuery.refetch();
       await serversQuery.refetch();
+      await serverDirectoryQuery.refetch();
     },
     onError: (error) => {
       dialogs.pushNotice('error', error instanceof Error ? error.message : '加入频道失败。');
@@ -163,6 +181,62 @@ export function useWorkspaceShellModel({
     setWorkspaceMode,
   });
   const dmSpecialPage = getDmSpecialPage(selectedGroupId);
+  const isSelectedGroupMember = Boolean(
+    selectedGroup && selectedGroup.members.some((member) => member.userId === currentUser.id),
+  );
+
+  const openServer = useCallback(
+    async (serverId: string) => {
+      const openGroup = (groupId: string) => {
+        if (mode === 'dm') {
+          setWorkspaceMode('server');
+          setReplyToMessageId('');
+          void navigate(`/groups/${groupId}`);
+          return;
+        }
+        navigation.navigateToGroup(groupId, { keepMobileSidebarOpen: true });
+      };
+
+      const fallbackGroup = resolveServerLandingGroup(servers, serverId);
+      if (fallbackGroup) {
+        openGroup(fallbackGroup.id);
+        return;
+      }
+
+      if (!hasFullAccess) {
+        return;
+      }
+
+      try {
+        const discoverableGroups = await queryClient.fetchQuery({
+          queryKey: ['admin-discovery', 'former', serverId],
+          queryFn: () => listAdminDiscoverableGroups(accessToken, { scope: 'former', serverId }),
+          staleTime: 0,
+        });
+        const landingGroup =
+          discoverableGroups.find((group) => !group.archivedAt) ?? discoverableGroups[0];
+        if (!landingGroup) {
+          dialogs.pushNotice('info', '该 Server 下暂无频道。');
+          return;
+        }
+        openGroup(landingGroup.id);
+      } catch (error) {
+        dialogs.pushNotice('error', error instanceof Error ? error.message : '无法打开 Server。');
+      }
+    },
+    [
+      accessToken,
+      dialogs,
+      hasFullAccess,
+      mode,
+      navigate,
+      navigation,
+      queryClient,
+      servers,
+      setReplyToMessageId,
+      setWorkspaceMode,
+    ],
+  );
 
   const canManageGroup = mode === 'server';
   const {
@@ -178,6 +252,7 @@ export function useWorkspaceShellModel({
     selectedGroupId: isDmSpecialPage ? '' : selectedGroupId,
     initialMessages: workspaceBootstrapQuery.data?.messages ?? null,
     initialMessagesUpdatedAt: workspaceBootstrapQuery.dataUpdatedAt,
+    canAdvanceReadCursor: isSelectedGroupMember,
     onError: (message) => dialogs.pushNotice('error', message),
   });
 
@@ -348,6 +423,7 @@ export function useWorkspaceShellModel({
           await discoverableQuery.refetch();
           await groupsQuery.refetch();
           await serversQuery.refetch();
+          await serverDirectoryQuery.refetch();
           // Navigate to next group in same server, fallback to any other
           const sameServer = groups.find(
             (group) => group.id !== selectedGroupId && group.serverId === selectedServerId,
@@ -368,6 +444,7 @@ export function useWorkspaceShellModel({
     navigation,
     selectedGroupId,
     selectedServerId,
+    serverDirectoryQuery,
     serversQuery,
   ]);
 
@@ -461,7 +538,11 @@ export function useWorkspaceShellModel({
     serverGroups,
     serverNames,
     serverRailItems,
+    unjoinedServerRailItems,
     serverOptions,
+    hasFullAccess,
+    isSelectedGroupMember,
+    openServer,
     channelDialog: dialogs.channelDialog,
     discoverableGroups: discoverableQuery.data ?? [],
     isJoiningGroup: joinGroupMutation.isPending,
@@ -480,7 +561,10 @@ export function useWorkspaceShellModel({
     groups,
     notificationGroups: [...servers, ...workspaceQueries.dms],
     groupsQuery,
-    isLoading: workspaceBootstrapQuery.isPending || serversQuery.isLoading || (mode === 'dm' && workspaceQueries.dmsQuery.isLoading),
+    isLoading:
+      workspaceBootstrapQuery.isPending ||
+      serversQuery.isLoading ||
+      (mode === 'dm' && workspaceQueries.dmsQuery.isLoading),
     loadError,
     retryLoadError: () => {
       if (loadError?.source === 'servers') {
@@ -497,6 +581,7 @@ export function useWorkspaceShellModel({
     },
     refreshServerList: () => {
       void serversQuery.refetch();
+      void serverDirectoryQuery.refetch();
     },
     requestedGroupId,
     selectedGroupQuery,
@@ -504,7 +589,7 @@ export function useWorkspaceShellModel({
       channelMeta:
         mode === 'dm'
           ? (dmSpecialPage?.description ?? '收件箱')
-          : `${selectedServerName} · ${selectedGroup?.memberCount ?? selectedGroup?.members.length ?? 0} 人 · ${selectedGroup?.archivedAt ? '只读' : '可协作'}`,
+          : `${selectedServerName} · ${selectedGroup?.memberCount ?? selectedGroup?.members.length ?? 0} 人 · ${selectedGroup?.archivedAt ? '只读' : isSelectedGroupMember ? '可协作' : '未加入'}`,
       channelName: dmSpecialPage?.label ?? selectedGroup?.name ?? '',
       userLabel: currentUser.email,
     },

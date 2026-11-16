@@ -6623,6 +6623,9 @@
           },
           "updatedAt": {
             "type": "string"
+          },
+          "isMember": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -7572,9 +7575,9 @@
             "type": "string",
             "enum": [
               "SUPER_ADMIN",
+              "ADMIN",
               "MEMBER",
-              "CLI_BOT",
-              "ADMIN"
+              "CLI_BOT"
             ]
           }
         },
@@ -7759,8 +7762,8 @@
           "role": {
             "type": "string",
             "enum": [
-              "MEMBER",
-              "ADMIN"
+              "ADMIN",
+              "MEMBER"
             ]
           },
           "joinedAt": {
@@ -7856,8 +7859,8 @@
           },
           "currentUserRole": {
             "enum": [
-              "MEMBER",
-              "ADMIN"
+              "ADMIN",
+              "MEMBER"
             ],
             "type": "string"
           },
@@ -7976,8 +7979,8 @@
             "type": "string",
             "nullable": true,
             "enum": [
-              "MEMBER",
-              "ADMIN"
+              "ADMIN",
+              "MEMBER"
             ]
           },
           "canSelfJoin": {
@@ -8163,8 +8166,8 @@
             "type": "string",
             "enum": [
               "SUPER_ADMIN",
-              "MEMBER",
-              "ADMIN"
+              "ADMIN",
+              "MEMBER"
             ]
           }
         },
@@ -8208,8 +8211,8 @@
           "role": {
             "type": "string",
             "enum": [
-              "MEMBER",
-              "ADMIN"
+              "ADMIN",
+              "MEMBER"
             ]
           }
         },

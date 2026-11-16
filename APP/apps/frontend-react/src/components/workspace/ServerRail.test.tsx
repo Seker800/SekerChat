@@ -12,6 +12,7 @@ function renderServerRail({
   canCreateServers = true,
   canManageServerSettings = true,
   archivedServers = [],
+  unjoinedServers = [],
   dmUnreadCount = 0,
   isDMMode = false,
   isOverlay = false,
@@ -24,6 +25,7 @@ function renderServerRail({
   canCreateServers?: boolean;
   canManageServerSettings?: boolean;
   archivedServers?: ServerRailItem[];
+  unjoinedServers?: ServerRailItem[];
   dmUnreadCount?: number;
   isDMMode?: boolean;
   isOverlay?: boolean;
@@ -46,6 +48,7 @@ function renderServerRail({
     <ServerRail
       servers={[activeServer]}
       archivedServers={archivedServers}
+      unjoinedServers={unjoinedServers}
       selectedServerId="server-1"
       isDMMode={isDMMode}
       dmUnreadCount={dmUnreadCount}
@@ -118,7 +121,7 @@ describe('ServerRail', () => {
       onOpenCategorySettings,
     });
 
-    fireEvent.contextMenu(screen.getByTestId('server-rail-item'));
+    fireEvent.contextMenu(screen.getByTestId('server-rail-category'));
 
     expect(screen.getByRole('menuitem', { name: '新建 server' })).toBeDisabled();
     fireEvent.click(screen.getByRole('menuitem', { name: '打开 server 设置' }));
@@ -131,7 +134,7 @@ describe('ServerRail', () => {
     renderServerRail({ onOpenDM, onSelect });
 
     fireEvent.click(screen.getByRole('button', { name: '私聊/收件箱' }));
-    const activeServerButton = screen.getByTestId('server-rail-item');
+    const activeServerButton = screen.getByTestId('server-rail-category');
     fireEvent.mouseDown(activeServerButton);
     fireEvent.click(activeServerButton);
 
@@ -172,9 +175,54 @@ describe('ServerRail', () => {
   it('disables settings separately when only Server creation is allowed', () => {
     renderServerRail({ canCreateServers: true, canManageServerSettings: false });
 
-    fireEvent.contextMenu(screen.getByTestId('server-rail-item'));
+    fireEvent.contextMenu(screen.getByTestId('server-rail-category'));
 
     expect(screen.getByRole('menuitem', { name: '新建 server' })).toBeEnabled();
+    expect(screen.getByRole('menuitem', { name: '打开 server 设置' })).toBeDisabled();
+  });
+
+  it('renders unjoined servers in the expanded section and selects them', () => {
+    const onSelect = vi.fn();
+    renderServerRail({
+      unjoinedServers: [
+        {
+          id: 'server-unjoined',
+          name: '外部项目',
+          avatarUrl: null,
+          activeCount: 0,
+          unreadCount: 0,
+          isArchived: false,
+          isMember: false,
+        },
+      ],
+      onSelect,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '展开 Server 操作' }));
+    expect(screen.getByText('未加入')).toBeInTheDocument();
+    fireEvent.click(screen.getByTitle('外部项目 · 未加入'));
+
+    expect(onSelect).toHaveBeenCalledWith('server-unjoined');
+  });
+
+  it('disables server settings for unjoined servers', () => {
+    renderServerRail({
+      unjoinedServers: [
+        {
+          id: 'server-unjoined',
+          name: '外部项目',
+          avatarUrl: null,
+          activeCount: 0,
+          unreadCount: 0,
+          isArchived: false,
+          isMember: false,
+        },
+      ],
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '展开 Server 操作' }));
+    fireEvent.contextMenu(screen.getByTitle('外部项目 · 未加入'));
+
     expect(screen.getByRole('menuitem', { name: '打开 server 设置' })).toBeDisabled();
   });
 });

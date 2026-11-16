@@ -435,6 +435,7 @@ export async function installAuthenticatedAppWithOptions(
   page: Page,
   options: {
     groupsResponse?: { status: number; body: unknown };
+    serversResponse?: { status: number; body: unknown };
     dmsResponse?: { status: number; body: unknown };
     dmCandidatesResponse?: { status: number; body: unknown };
     messagesResponse?: { status: number; body: unknown };
@@ -465,9 +466,25 @@ export async function installAuthenticatedAppWithOptions(
   const confirmedSubscriptionPostIds = new Set(
     subscriptionPosts.filter((post) => post.isConfirmed).map((post) => post.id),
   );
-  const articleViewers = new Map<string, Array<{userId: string; displayName: string | null; email: string; avatarUrl: string | null; firstViewedAt: string}>>();
-  articleViewers.set('subscription-post-2', [{userId:'user-member',displayName:'值班同学',email:'member@local.invalid',avatarUrl:null,firstViewedAt:'2026-04-09T12:00:00.000Z'}]);
-
+  const articleViewers = new Map<
+    string,
+    Array<{
+      userId: string;
+      displayName: string | null;
+      email: string;
+      avatarUrl: string | null;
+      firstViewedAt: string;
+    }>
+  >();
+  articleViewers.set('subscription-post-2', [
+    {
+      userId: 'user-member',
+      displayName: '值班同学',
+      email: 'member@local.invalid',
+      avatarUrl: null,
+      firstViewedAt: '2026-04-09T12:00:00.000Z',
+    },
+  ]);
 
   await installRealtimeStub(page);
   await page.addInitScript(
@@ -597,9 +614,16 @@ export async function installAuthenticatedAppWithOptions(
     if (articleViewMatch && route.request().method() === 'PUT') {
       const postId = articleViewMatch[1];
       const viewers = articleViewers.get(postId) ?? [];
-      if (!viewers.some(viewer => viewer.userId === effectiveCurrentUser.id)) viewers.push({userId:effectiveCurrentUser.id,displayName:effectiveCurrentUser.displayName,email:effectiveCurrentUser.email,avatarUrl:null,firstViewedAt:fixedNowIso});
+      if (!viewers.some((viewer) => viewer.userId === effectiveCurrentUser.id))
+        viewers.push({
+          userId: effectiveCurrentUser.id,
+          displayName: effectiveCurrentUser.displayName,
+          email: effectiveCurrentUser.email,
+          avatarUrl: null,
+          firstViewedAt: fixedNowIso,
+        });
       articleViewers.set(postId, viewers);
-      await json(route,{postId,viewCount:viewers.length,viewers});
+      await json(route, { postId, viewCount: viewers.length, viewers });
       return;
     }
 
@@ -746,6 +770,16 @@ export async function installAuthenticatedAppWithOptions(
       return;
     }
 
+    if (pathname === '/api/servers') {
+      if (options.serversResponse) {
+        await json(route, options.serversResponse.body, options.serversResponse.status);
+        return;
+      }
+
+      await json(route, []);
+      return;
+    }
+
     if (pathname === '/api/groups') {
       if (options.groupsResponse) {
         await json(route, options.groupsResponse.body, options.groupsResponse.status);
@@ -878,8 +912,24 @@ export async function installAuthenticatedAppWithOptions(
     if (pathname === '/api/groups/admin/discovery') {
       const scope = searchParams.get('scope') ?? 'archived';
       const search = searchParams.get('search')?.trim() ?? '';
+      const serverId = searchParams.get('serverId');
       const filteredGroups = allGroups.filter((group) => {
         if (scope === 'archived' && !group.archivedAt) {
+          return false;
+        }
+
+        if (
+          scope === 'former' &&
+          group.members.some((member) => member.userId === effectiveCurrentUser.id)
+        ) {
+          return false;
+        }
+
+        if (
+          serverId &&
+          ((group as typeof group & { serverId?: string }).serverId ??
+            `legacy:${group.category}`) !== serverId
+        ) {
           return false;
         }
 

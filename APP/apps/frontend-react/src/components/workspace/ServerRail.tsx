@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 interface ServerRailProps {
   servers: ServerRailItem[];
   archivedServers: ServerRailItem[];
+  unjoinedServers?: ServerRailItem[];
   selectedServerId: string;
   accessToken?: string;
   isOverlay?: boolean;
@@ -26,6 +27,7 @@ interface ServerRailProps {
 export function ServerRail({
   servers,
   archivedServers,
+  unjoinedServers = [],
   selectedServerId,
   accessToken,
   isOverlay,
@@ -62,7 +64,7 @@ export function ServerRail({
         {
           key: 'open-server-settings',
           label: t('serverRail.openSettings'),
-          disabled: !canManageServerSettings,
+          disabled: !canManageServerSettings || menuState.server.isMember === false,
           onSelect: () => onOpenCategorySettings(menuState.server),
         },
       ]
@@ -100,7 +102,7 @@ export function ServerRail({
           <button
             key={server.id}
             className={`${styles.button} ${server.id === selectedServerId ? styles.buttonActive : ''}`}
-            data-testid="server-rail-item"
+            data-testid="server-rail-category"
             onMouseDown={(event) => {
               if (!event.ctrlKey || event.button !== 0) {
                 return;
@@ -191,39 +193,84 @@ export function ServerRail({
                 <path d="M12 5v14M5 12h14" />
               </svg>
             </button>
-            {archivedServers.map((server) => (
-              <button
-                key={server.id}
-                className={`${styles.button} ${styles.buttonArchived} ${server.id === selectedServerId ? styles.buttonActive : ''}`}
-                onMouseDown={(event) => {
-                  if (!event.ctrlKey || event.button !== 0) return;
-                  event.preventDefault();
-                  markSecondaryClick();
-                  setMenuState({ server, x: event.clientX, y: event.clientY });
-                }}
-                onClick={(event) => {
-                  if (shouldSuppressClick()) {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    return;
-                  }
-                  onSelect(server.id);
-                }}
-                onContextMenu={(event) => {
-                  event.preventDefault();
-                  markSecondaryClick();
-                  setMenuState({ server, x: event.clientX, y: event.clientY });
-                }}
-                title={`${server.name} · ${t('serverRail.archived')}`}
-              >
-                <Avatar
-                  avatarUrl={server.avatarUrl}
-                  name={server.name}
-                  size={40}
-                  accessToken={accessToken}
-                />
-              </button>
-            ))}
+            {unjoinedServers.length > 0 ? (
+              <>
+                <div className={styles.railSectionLabel}>{t('serverRail.unjoined')}</div>
+                {unjoinedServers.map((server) => (
+                  <button
+                    key={server.id}
+                    className={`${styles.button} ${server.id === selectedServerId ? styles.buttonActive : ''}`}
+                    data-testid="server-rail-hidden-item"
+                    onMouseDown={(event) => {
+                      if (!event.ctrlKey || event.button !== 0) return;
+                      event.preventDefault();
+                      markSecondaryClick();
+                      setMenuState({ server, x: event.clientX, y: event.clientY });
+                    }}
+                    onClick={(event) => {
+                      if (shouldSuppressClick()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        return;
+                      }
+                      onSelect(server.id);
+                    }}
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      markSecondaryClick();
+                      setMenuState({ server, x: event.clientX, y: event.clientY });
+                    }}
+                    title={`${server.name} · ${t('serverRail.unjoined')}`}
+                  >
+                    <Avatar
+                      avatarUrl={server.avatarUrl}
+                      name={server.name}
+                      size={40}
+                      accessToken={accessToken}
+                    />
+                  </button>
+                ))}
+              </>
+            ) : null}
+            {archivedServers.length > 0 ? (
+              <>
+                <div className={styles.railSectionLabel}>{t('serverRail.archived')}</div>
+                {archivedServers.map((server) => (
+                  <button
+                    key={server.id}
+                    className={`${styles.button} ${styles.buttonArchived} ${server.id === selectedServerId ? styles.buttonActive : ''}`}
+                    data-testid="server-rail-hidden-item"
+                    onMouseDown={(event) => {
+                      if (!event.ctrlKey || event.button !== 0) return;
+                      event.preventDefault();
+                      markSecondaryClick();
+                      setMenuState({ server, x: event.clientX, y: event.clientY });
+                    }}
+                    onClick={(event) => {
+                      if (shouldSuppressClick()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        return;
+                      }
+                      onSelect(server.id);
+                    }}
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      markSecondaryClick();
+                      setMenuState({ server, x: event.clientX, y: event.clientY });
+                    }}
+                    title={`${server.name} · ${t('serverRail.archived')}`}
+                  >
+                    <Avatar
+                      avatarUrl={server.avatarUrl}
+                      name={server.name}
+                      size={40}
+                      accessToken={accessToken}
+                    />
+                  </button>
+                ))}
+              </>
+            ) : null}
           </div>
         ) : null}
       </div>

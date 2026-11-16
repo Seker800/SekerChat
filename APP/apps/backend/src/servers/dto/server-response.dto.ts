@@ -5,6 +5,7 @@ export class ServerResponseDto {
   archivedAt!: string | null;
   createdAt!: string;
   updatedAt!: string;
+  isMember?: boolean;
 }
 
 export class ArchiveServerResponseDto {

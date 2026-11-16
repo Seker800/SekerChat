@@ -6,7 +6,7 @@ import type { GroupResponse, UserOptionResponse } from '../../lib/groups-api';
 import type { GroupArtifactResponse } from '../../lib/messages-files-api';
 import { useWorkspaceStore } from '../../store/workspace-store';
 import { apiBaseUrl, downloadFile } from '../../lib/api-core';
-import { hasSystemPermission, getDefaultRolePermissions, type RolePermissions } from '@sekerchat/shared';
+import { hasFullWorkspaceAccess, hasSystemPermission, getDefaultRolePermissions, type RolePermissions } from '@sekerchat/shared';
 import { Avatar } from '../shared/Avatar';
 import { userDisplayName } from '../../lib/users-api';
 import { ContextMenu, type ContextMenuItem } from './ContextMenu';
@@ -98,6 +98,8 @@ export function RightSidebar({
   const resolvedAccessToken = useResolvedAccessToken(accessToken);
   const rp = rolePermissions ?? getDefaultRolePermissions();
   const canManageArtifacts = hasSystemPermission(rp, currentUserRole, 'manage_artifacts');
+  const isMember = group.members.some((member) => member.userId === currentUserId);
+  const hasFullAccess = hasFullWorkspaceAccess(currentUserRole);
   const isNarrowViewport = useMediaQuery('(max-width: 880px)');
   const isEdgeAndroid = typeof navigator !== 'undefined' && /EdgA\//.test(navigator.userAgent);
   const [menuState, setMenuState] = useState<{ memberUserId: string; x: number; y: number } | null>(null);
@@ -132,7 +134,7 @@ export function RightSidebar({
           : []),
         {
           key: 'remove', label: t('rightSidebar.remove'), danger: true,
-          disabled: !hasSystemPermission(rp, currentUserRole, 'remove_members') || activeMember.userId === currentUserId,
+          disabled: !isMember || !hasSystemPermission(rp, currentUserRole, 'remove_members') || activeMember.userId === currentUserId,
           separatorBefore: true,
           onSelect: () => onRequestRemoveMember(activeMember.userId),
         },
@@ -172,7 +174,7 @@ export function RightSidebar({
 
   function handleArtifactDrop(event: React.DragEvent<HTMLDivElement>) {
     const hasFiles = Array.from(event.dataTransfer?.types ?? []).includes('Files');
-    if (!hasFiles) {
+    if (!hasFiles || !isMember) {
       return;
     }
     event.preventDefault();
@@ -215,7 +217,7 @@ export function RightSidebar({
           })()
         ) : null}
 
-        {!group.isDM ? (
+        {!group.isDM && isMember ? (
           <>
             <TaskSection
               isActive={!isOverlay || isOpen}
@@ -227,7 +229,10 @@ export function RightSidebar({
           </>
         ) : null}
 
-        {currentUserRole === 'SUPER_ADMIN' && !group.members.some((m) => m.userId === currentUserId) ? (
+        {!isMember &&
+        !group.isDM &&
+        hasFullAccess &&
+        (!group.archivedAt || currentUserRole === 'SUPER_ADMIN') ? (
           <button
             className={styles.joinBtn}
             type="button"
@@ -240,7 +245,7 @@ export function RightSidebar({
         <div className={styles.sectionFlat}>
           <div className={styles.sectionHead}>
             <span className={styles.sectionLabel}>{t('rightSidebar.members')}</span>
-            {!group.isDM && hasSystemPermission(rp, currentUserRole, 'invite_members') ? (
+            {!group.isDM && isMember && hasSystemPermission(rp, currentUserRole, 'invite_members') ? (
               <button
                 className={styles.addBtn}
                 data-testid="invite-members-button"
@@ -299,7 +304,7 @@ export function RightSidebar({
                   >
                     ✕
                   </button>
-                ) : hasSystemPermission(rp, currentUserRole, 'manage_user_roles') ? (
+                ) : isMember && hasSystemPermission(rp, currentUserRole, 'manage_user_roles') ? (
                   <button
                     className={styles.removeBtn}
                     type="button"
@@ -333,6 +338,7 @@ export function RightSidebar({
                   </button>
                   <label
                     className={styles.addBtn}
+                    style={{ display: isMember ? undefined : 'none' }}
                     aria-disabled={artifacts.isLocked || artifacts.isUploading || Boolean(artifacts.pendingDeleteArtifactId)}
                     data-disabled={artifacts.isLocked || artifacts.isUploading || Boolean(artifacts.pendingDeleteArtifactId)}
                     htmlFor={
@@ -360,6 +366,7 @@ export function RightSidebar({
                   {isNarrowViewport ? (
                     <label
                       className={styles.filePill}
+                      style={{ display: isMember ? undefined : 'none' }}
                       aria-disabled={artifacts.isLocked || artifacts.isUploading || Boolean(artifacts.pendingDeleteArtifactId)}
                       data-disabled={artifacts.isLocked || artifacts.isUploading || Boolean(artifacts.pendingDeleteArtifactId)}
                       htmlFor={
@@ -408,6 +415,7 @@ export function RightSidebar({
                 multiple
                 accept="image/*,video/*"
                 className={styles.fileInput}
+                style={{ display: isMember ? undefined : 'none' }}
                 disabled={artifacts.isLocked || artifacts.isUploading || Boolean(artifacts.pendingDeleteArtifactId)}
                 onChange={(event) => {
                   artifacts.onPick(Array.from(event.target.files ?? []));
@@ -420,6 +428,7 @@ export function RightSidebar({
                 multiple={fileInputMultiple}
                 accept={fileInputAccept}
                 className={styles.fileInput}
+                style={{ display: isMember ? undefined : 'none' }}
                 disabled={artifacts.isLocked || artifacts.isUploading || Boolean(artifacts.pendingDeleteArtifactId)}
                 onChange={(event) => {
                   artifacts.onPick(Array.from(event.target.files ?? []));
@@ -428,6 +437,7 @@ export function RightSidebar({
               />
               <div
                 className={`${styles.artifactDropZone} ${isArtifactDropActive ? styles.artifactDropZoneActive : ''} ${artifacts.isLocked ? styles.artifactDropZoneDisabled : ''}`}
+                style={{ display: isMember ? undefined : 'none' }}
                 onDragOver={(event) => {
                   const hasFiles = Array.from(event.dataTransfer?.types ?? []).includes('Files');
                   if (!hasFiles) {
@@ -476,6 +486,7 @@ export function RightSidebar({
                         disabled={
                           artifact.isOptimistic ||
                           !canManageArtifacts ||
+                          !isMember ||
                           artifacts.isLocked ||
                           artifacts.isUploading ||
                           Boolean(artifacts.pendingDeleteArtifactId)
@@ -502,7 +513,10 @@ export function RightSidebar({
               ) : (
                 <p className={styles.subtle}>{t('rightSidebar.empty')}</p>
               )}
-              <div className={styles.confirmFooter}>
+              <div
+                className={styles.confirmFooter}
+                style={{ display: isMember ? undefined : 'none' }}
+              >
                 <button
                   className={`${styles.confirmBtn} ${artifacts.isLocked ? styles.confirmBtnActive : ''}`}
                   type="button"

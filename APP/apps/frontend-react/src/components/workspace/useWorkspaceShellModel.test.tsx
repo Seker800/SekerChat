@@ -12,6 +12,7 @@ const mockRefetchInvitableUsers = vi.fn().mockResolvedValue(undefined);
 const mockUseWorkspaceQueries = vi.fn();
 
 vi.mock('@sekerchat/shared', () => ({
+  hasFullWorkspaceAccess: () => true,
   hasSystemPermission: () => true,
 }));
 
@@ -81,6 +82,8 @@ vi.mock('./useWorkspaceQueries', () => ({
 }));
 
 vi.mock('./useServerTree', () => ({
+  buildServerStats: () => ({}),
+  resolveServerLandingGroup: () => null,
   useServerTree: () => ({
     activeGroups: [],
     archivedServerGroups: [],
@@ -88,7 +91,10 @@ vi.mock('./useServerTree', () => ({
     serverGroups: [],
     serverNames: [],
     serverRailItems: [],
+    unjoinedServerRailItems: [],
     selectedServerName: '未分类',
+    selectedServerId: '',
+    serverOptions: [],
   }),
 }));
 
