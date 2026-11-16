@@ -69,3 +69,20 @@
   min-height: 70px;
   overflow-wrap: anywhere;
 }
+.dialogBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(7, 8, 10, 0.72);
+  backdrop-filter: blur(12px);
+}
+.dialog {
+  width: min(520px, calc(100vw - 32px));
+  max-height: min(85dvh, 720px);
+  overflow-y: auto;
+  background: var(--bg-shell);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
+}

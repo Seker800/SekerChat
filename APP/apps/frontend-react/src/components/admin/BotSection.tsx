@@ -10,6 +10,7 @@ import {
   type BotConfig,
   type BotSummary,
 } from '../../lib/bots-api';
+import { AdminNotice } from './AdminNotice';
 import type { UserSummary } from '../../lib/users-api';
 import { fetchUsers } from '../../lib/users-api';
 import { Avatar } from '../shared/Avatar';
@@ -185,11 +186,7 @@ export function BotSection({ accessToken: providedAccessToken }: BotSectionProps
         </button>
       </div>
 
-      {notice ? (
-        <div className={notice.type === 'success' ? styles.noticeSuccess : styles.noticeError} style={{ marginBottom: 10 }}>
-          {notice.message}
-        </div>
-      ) : null}
+      <AdminNotice notice={notice} onDismiss={() => setNotice(null)} />
 
       {showCreate ? (
         <ConfigForm
@@ -278,18 +275,25 @@ export function BotSection({ accessToken: providedAccessToken }: BotSectionProps
       </table>
 
       {editingBotId ? (
-        <div className={styles.editBlock}>
-          <h4 className={styles.subsectionTitle}>编辑 Agent Bot</h4>
-          <ConfigForm
-            name={editName}
-            onNameChange={setEditName}
-            config={editConfig}
-            onConfigChange={setEditConfig}
-            onSave={() => void handleUpdate(editingBotId)}
-            onCancel={() => { setEditingBotId(null); setNotice(null); }}
-            saveLabel="保存修改"
-            allUsers={allUsers}
-          />
+        <div className={styles.editBackdrop} role="presentation">
+          <div
+            className={styles.editDialog}
+            role="dialog"
+            aria-modal="true"
+            aria-label="编辑 Agent Bot"
+          >
+            <h4 className={styles.subsectionTitle}>编辑 Agent Bot</h4>
+            <ConfigForm
+              name={editName}
+              onNameChange={setEditName}
+              config={editConfig}
+              onConfigChange={setEditConfig}
+              onSave={() => void handleUpdate(editingBotId)}
+              onCancel={() => { setEditingBotId(null); setNotice(null); }}
+              saveLabel="保存修改"
+              allUsers={allUsers}
+            />
+          </div>
         </div>
       ) : null}
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { bridgeApi, type BridgeBinding, type BridgeOverview } from '../../../lib/qq-bridge-api';
+import { AdminNotice } from '../../admin/AdminNotice';
 import styles from './QqBridgeSection.module.css';
 
 const taskLabels: Record<string, string> = {
@@ -73,7 +74,10 @@ export function QqBridgeSection() {
         新连接器与绑定默认关闭，只接收启用后的新消息。开启双向后，群里的普通成员消息将通过桥接 QQ
         账号发出。
       </p>
-      {error && <p role="alert">{error}</p>}
+      <AdminNotice
+        notice={error ? { type: 'error', message: error } : null}
+        onDismiss={() => setError('')}
+      />
       <button type="button" disabled={busy} onClick={() => void load()}>
         刷新状态
       </button>
@@ -196,53 +200,58 @@ export function QqBridgeSection() {
         </article>
       ))}
       {edit && (
-        <form
-          className={styles.card}
-          onSubmit={(event) => {
-            event.preventDefault();
-            void mutate(async () => {
-              await bridgeApi(`/bindings/${edit.id}`, 'PATCH', {
-                enabled: edit.enabled,
-                bidirectional: edit.bidirectional,
-                backlog,
+        <div className={styles.dialogBackdrop} role="presentation">
+          <form
+            className={`${styles.card} ${styles.dialog}`}
+            role="dialog"
+            aria-modal="true"
+            aria-label="绑定设置"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void mutate(async () => {
+                await bridgeApi(`/bindings/${edit.id}`, 'PATCH', {
+                  enabled: edit.enabled,
+                  bidirectional: edit.bidirectional,
+                  backlog,
+                });
+                setEdit(null);
               });
-              setEdit(null);
-            });
-          }}
-        >
-          <h4>绑定设置</h4>
-          <label>
-            <input
-              type="checkbox"
-              checked={edit.enabled}
-              onChange={(e) => setEdit({ ...edit, enabled: e.target.checked })}
-            />
-            启用同步
-          </label>
-          <label>
-            <input
-              type="checkbox"
-              checked={edit.bidirectional}
-              onChange={(e) => setEdit({ ...edit, bidirectional: e.target.checked })}
-            />
-            允许 Chat 普通成员消息发回 QQ
-          </label>
-          <label>
-            暂停前的积压任务
-            <select value={backlog} onChange={(e) => setBacklog(e.target.value)}>
-              <option value="keep-paused">保留暂停，不补发</option>
-              <option value="resume">继续发送旧任务</option>
-              <option value="discard">放弃未发送的旧任务</option>
-            </select>
-          </label>
-          <p>已同步消息会保留。暂停会停止新任务，已经发出的请求可能仍会完成。</p>
-          <div className={styles.actions}>
-            <button disabled={busy}>保存绑定</button>
-            <button type="button" onClick={() => setEdit(null)}>
-              取消
-            </button>
-          </div>
-        </form>
+            }}
+          >
+            <h4>绑定设置</h4>
+            <label>
+              <input
+                type="checkbox"
+                checked={edit.enabled}
+                onChange={(e) => setEdit({ ...edit, enabled: e.target.checked })}
+              />
+              启用同步
+            </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={edit.bidirectional}
+                onChange={(e) => setEdit({ ...edit, bidirectional: e.target.checked })}
+              />
+              允许 Chat 普通成员消息发回 QQ
+            </label>
+            <label>
+              暂停前的积压任务
+              <select value={backlog} onChange={(e) => setBacklog(e.target.value)}>
+                <option value="keep-paused">保留暂停，不补发</option>
+                <option value="resume">继续发送旧任务</option>
+                <option value="discard">放弃未发送的旧任务</option>
+              </select>
+            </label>
+            <p>已同步消息会保留。暂停会停止新任务，已经发出的请求可能仍会完成。</p>
+            <div className={styles.actions}>
+              <button disabled={busy}>保存绑定</button>
+              <button type="button" onClick={() => setEdit(null)}>
+                取消
+              </button>
+            </div>
+          </form>
+        </div>
       )}
       <form
         className={styles.form}

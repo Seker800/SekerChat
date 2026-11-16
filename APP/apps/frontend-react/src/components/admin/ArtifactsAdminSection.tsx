@@ -7,6 +7,7 @@ import {
   type AdminArtifactResponse,
 } from '../../lib/messages-files-api';
 import { getWorkStatusTextTone, getWorkStatusTone, normalizeGroupWorkStatus } from '../../lib/work-status';
+import { AdminNotice } from './AdminNotice';
 import {
   useArtifactFilters,
   useArtifactSelection,
@@ -179,11 +180,7 @@ export function ArtifactsAdminSection({ accessToken: providedAccessToken, canDel
         </select>
       </div>
 
-      {notice ? (
-        <div className={notice.type === 'success' ? styles.noticeSuccess : styles.noticeError}>
-          {notice.message}
-        </div>
-      ) : null}
+      <AdminNotice notice={notice} onDismiss={() => setNotice(null)} />
       {error ? <div className={styles.noticeError}>{error}</div> : null}
 
       <div className={styles.artifactsBrowserLayout}>

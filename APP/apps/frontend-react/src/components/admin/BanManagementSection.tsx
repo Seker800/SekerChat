@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useResolvedAccessToken } from '../../auth/AuthContext';
 import { fetchBlacklist, unbanLoginRisk, type BanEntry } from '../../lib/bans-api';
+import { AdminNotice } from './AdminNotice';
 import styles from './AdminPage.module.css';
 
 interface BanManagementSectionProps {
@@ -98,11 +99,7 @@ export function BanManagementSection({ accessToken: providedAccessToken }: BanMa
     <section>
       <h3 className={styles.sectionTitle}>封禁</h3>
 
-      {notice ? (
-        <div className={notice.type === 'success' ? styles.noticeSuccess : styles.noticeError}>
-          {notice.message}
-        </div>
-      ) : null}
+      <AdminNotice notice={notice} onDismiss={() => setNotice(null)} />
 
       <div className={styles.toolbar}>
         <input

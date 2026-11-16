@@ -3,6 +3,7 @@ import { useResolvedAccessToken } from '../../auth/AuthContext';
 import type { CurrentUserResponse } from '../../lib/auth-api';
 import { validateNewPassword } from '../../lib/password-policy';
 import { deleteUser, fetchUsers, resetUserPassword, setUserDisabled, updateUserRole, userDisplayName, type UserSummary } from '../../lib/users-api';
+import { AdminNotice } from './AdminNotice';
 import styles from './AdminPage.module.css';
 
 interface UserManagementSectionProps {
@@ -170,11 +171,7 @@ export function UserManagementSection({ accessToken: providedAccessToken, curren
     <section>
       <h3 className={styles.sectionTitle}>用户</h3>
 
-      {notice ? (
-        <div className={notice.type === 'success' ? styles.noticeSuccess : styles.noticeError} style={{ marginBottom: 10 }}>
-          {notice.message}
-        </div>
-      ) : null}
+      <AdminNotice notice={notice} onDismiss={() => setNotice(null)} />
 
       {passwordTarget ? (
         <div
