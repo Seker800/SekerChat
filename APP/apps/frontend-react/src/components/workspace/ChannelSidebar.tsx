@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useResolvedAccessToken } from '../../auth/AuthContext';
 import type { GroupResponse } from '../../lib/groups-api';
 import type { CurrentUserResponse } from '../../lib/auth-api';
