@@ -5,4 +5,9 @@ export const moduleBoundaryRules = [
   { name: '共享包不能依赖具体应用实现', from: /^packages\//, disallow: /^apps\// },
   { name: '业务模块通过窄接口发布实时事件', from: businessFiles, disallow: /^apps\/backend\/src\/realtime\/realtime\.service\.ts$/ },
   { name: '业务模块不能调用 HTTP controller', from: businessFiles, disallow: /\.controller\.ts$/ },
+  {
+    name: '迁移期 Category 服务不得被新的业务模块引用',
+    from: /^apps\/backend\/src\/(?!groups\/)(?!.*\.test\.ts$).*\.ts$/,
+    disallow: /^apps\/backend\/src\/groups\/group-category\.service\.ts$/,
+  },
 ];
