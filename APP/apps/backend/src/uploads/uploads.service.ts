@@ -41,11 +41,7 @@ import { InitiateUploadDto } from './dto/initiate-upload.dto';
 import { UPLOAD_PART_SIZE_BYTES } from './upload-limits';
 import { AlbumStorageService } from '../album/album-storage.service';
 import { AlbumVideoService } from '../album/album-video.service';
-import { UploadTargetRegistry } from './upload-target-registry';
-import {
-  UploadSessionAlreadyFinalizedError,
-  type UploadTargetHandler,
-} from './upload-target-handler';
+import { UploadSessionAlreadyFinalizedError } from './upload-session.types';
 import { presentUploadSession } from './upload-session.presenter';
 
 const ALBUM_PHOTO_MAX_BYTES = 25n * 1024n * 1024n;
@@ -65,6 +61,57 @@ const BUILT_IN_UPLOAD_KINDS = new Set<UploadKind>([
   UploadKind.ALBUM_PHOTO,
 ]);
 
+type TransactionResult =
+  | {
+      kind: typeof UploadKind.CHAT_ATTACHMENT;
+      createdFileObject: {
+        id: string;
+        groupId: string;
+        originalName: string;
+        mimeType: string;
+        size: bigint;
+        createdAt: Date;
+        uploaderId: string;
+        thumbnailStorageKey: string | null;
+        imageWidth: number | null;
+        imageHeight: number | null;
+      };
+    }
+  | {
+      kind: typeof UploadKind.ARTIFACT;
+      createdArtifact: {
+        id: string;
+        groupId: string;
+        uploaderId: string;
+        originalName: string;
+        storedName: string;
+        relativePath: string;
+        mimeType: string;
+        size: bigint;
+        createdAt: Date;
+      };
+    }
+  | {
+      kind: typeof UploadKind.SUBSCRIPTION_ATTACHMENT;
+      attachment: {
+        id: string;
+        postId: string;
+        uploaderId: string;
+        originalName: string;
+        mimeType: string;
+        size: bigint;
+        sha256: string | null;
+        downloadCount: bigint;
+        usage: SubscriptionAttachmentUsage;
+        createdAt: Date;
+      };
+    }
+  | {
+      kind: typeof UploadKind.ALBUM_PHOTO;
+      photo: { id: string; width: number; height: number; createdAt: Date };
+      duplicate: boolean;
+    };
+
 @Injectable()
 export class UploadsService {
   private readonly logger = new Logger(UploadsService.name);
@@ -81,15 +128,10 @@ export class UploadsService {
     private readonly subscriptionStorageService: SubscriptionStorageService,
     private readonly albumStorageService?: AlbumStorageService,
     private readonly albumVideoService?: AlbumVideoService,
-    private readonly uploadTargets?: UploadTargetRegistry,
     @Optional() private readonly workSignals?: WorkQueueSignals,
   ) {}
 
   async initiateUpload(userId: string, dto: InitiateUploadDto) {
-    const targetHandler = this.uploadTargets?.get(dto.kind);
-    if (targetHandler) {
-      return presentUploadSession(await targetHandler.initiate(userId, dto));
-    }
     if (!BUILT_IN_UPLOAD_KINDS.has(dto.kind)) {
       throw new ServiceUnavailableException('上传目标暂时不可用。');
     }
@@ -333,8 +375,7 @@ export class UploadsService {
     if (session.status === UploadSessionStatus.COMPLETED) {
       return this.getFinalizedUploadResult(session);
     }
-    const targetHandler = this.uploadTargets?.get(session.kind);
-    if (!targetHandler && !BUILT_IN_UPLOAD_KINDS.has(session.kind)) {
+    if (!BUILT_IN_UPLOAD_KINDS.has(session.kind)) {
       throw new ServiceUnavailableException('上传目标暂时不可用。');
     }
     if (parts.length < 1) {
@@ -435,13 +476,6 @@ export class UploadsService {
               lastError: error instanceof Error ? error.message.slice(0, 2000) : 'Unknown',
             },
       });
-      await this.notifyTargetFinalizationFailure(
-        targetHandler,
-        session,
-        error,
-        isPermanentValidationFailure,
-        isPermanentValidationFailure,
-      );
       if (error instanceof BadRequestException) throw error;
       if (error instanceof ObjectSizeMismatchError) {
         throw new BadRequestException('文件上传完整性校验失败，请重新上传。');
@@ -480,13 +514,6 @@ export class UploadsService {
                 : 'Unknown preprocessing error',
           },
         });
-        await this.notifyTargetFinalizationFailure(
-          targetHandler,
-          session,
-          error,
-          isPermanentFailure || session.finalizationAttempts + 1 >= 10,
-          isPermanentFailure,
-        );
         throw error;
       }
     }
@@ -518,311 +545,16 @@ export class UploadsService {
       });
       throw new BadRequestException('无法读取相册图片尺寸。');
     }
-    let targetPreparation: unknown;
-    if (targetHandler) {
-      try {
-        targetPreparation = await targetHandler.prepareFinalization(session);
-      } catch (error) {
-        const isPermanentFailure = error instanceof BadRequestException;
-        await this.prismaService.uploadSession.updateMany({
-          where: {
-            id: session.id,
-            status: { in: [UploadSessionStatus.ASSEMBLED, UploadSessionStatus.FAILED] },
-          },
-          data: {
-            status: UploadSessionStatus.FAILED,
-            finalizationAttempts: isPermanentFailure ? 10 : { increment: 1 },
-            lastError:
-              error instanceof Error
-                ? error.message.slice(0, 2_000)
-                : 'Unknown preprocessing error',
-          },
-        });
-        await this.notifyTargetFinalizationFailure(
-          targetHandler,
-          session,
-          error,
-          isPermanentFailure || session.finalizationAttempts + 1 >= 10,
-          isPermanentFailure,
-        );
-        throw error;
-      }
-    }
-
     // ── DB transaction with optimistic locking on recoverable assembled state ──
-    type TransactionResult =
-      | {
-          kind: typeof UploadKind.CHAT_ATTACHMENT;
-          createdFileObject: {
-            id: string;
-            groupId: string;
-            originalName: string;
-            mimeType: string;
-            size: bigint;
-            createdAt: Date;
-            uploaderId: string;
-            thumbnailStorageKey: string | null;
-            imageWidth: number | null;
-            imageHeight: number | null;
-          };
-        }
-      | {
-          kind: typeof UploadKind.ARTIFACT;
-          createdArtifact: {
-            id: string;
-            groupId: string;
-            uploaderId: string;
-            originalName: string;
-            storedName: string;
-            relativePath: string;
-            mimeType: string;
-            size: bigint;
-            createdAt: Date;
-          };
-        }
-      | {
-          kind: typeof UploadKind.SUBSCRIPTION_ATTACHMENT;
-          attachment: {
-            id: string;
-            postId: string;
-            uploaderId: string;
-            originalName: string;
-            mimeType: string;
-            size: bigint;
-            sha256: string | null;
-            downloadCount: bigint;
-            usage: SubscriptionAttachmentUsage;
-            createdAt: Date;
-          };
-        }
-      | {
-          kind: typeof UploadKind.ALBUM_PHOTO;
-          photo: { id: string; width: number; height: number; createdAt: Date };
-          duplicate: boolean;
-        }
-      | {
-          kind: 'REGISTERED_TARGET';
-          finalized: FinalizedUploadResult;
-        };
 
     let txResult: TransactionResult;
     try {
-      if (targetHandler) {
-        txResult = {
-          kind: 'REGISTERED_TARGET',
-          finalized: await targetHandler.finalize(session, targetPreparation),
-        };
-      } else {
-        txResult = await this.prismaService.$transaction(async (transaction) => {
-          // Optimistic lock: one request owns finalization at a time. A failed
-          // transaction rolls this state change back to ASSEMBLED/FAILED.
-          const updated = await transaction.uploadSession.updateMany({
-            where: {
-              id: session.id,
-              status: {
-                in: [UploadSessionStatus.ASSEMBLED, UploadSessionStatus.FAILED],
-              },
-            },
-            data: {
-              status: UploadSessionStatus.FINALIZING,
-              finalizationStartedAt: new Date(),
-              finalizationAttempts: { increment: 1 },
-              lastError: null,
-            },
-          });
-
-          if (updated.count === 0) {
-            throw new UploadSessionAlreadyFinalizedError();
-          }
-
-          if (session.kind === UploadKind.CHAT_ATTACHMENT) {
-            const created = await transaction.fileObject.create({
-              data: {
-                groupId: session.groupId!,
-                uploaderId: session.uploaderId,
-                storageKey: session.objectKey,
-                originalName: session.originalName,
-                mimeType: session.mimeType,
-                size: session.size,
-                previewJob: previewJobForImage(session.mimeType),
-                imageWidth: imageDimensions?.width ?? null,
-                imageHeight: imageDimensions?.height ?? null,
-              },
-              select: {
-                id: true,
-                groupId: true,
-                originalName: true,
-                mimeType: true,
-                size: true,
-                createdAt: true,
-                uploaderId: true,
-                thumbnailStorageKey: true,
-                imageWidth: true,
-                imageHeight: true,
-              },
-            });
-
-            await transaction.uploadSession.update({
-              where: { id: session.id },
-              data: {
-                status: UploadSessionStatus.COMPLETED,
-                completedAt: new Date(),
-                lastError: null,
-              },
-            });
-
-            return {
-              kind: UploadKind.CHAT_ATTACHMENT,
-              createdFileObject: created,
-            };
-          }
-
-          if (session.kind === UploadKind.SUBSCRIPTION_ATTACHMENT) {
-            if (!session.subscriptionAttachmentId || !subscriptionSha256) {
-              throw new BadRequestException('文章附件上传会话不完整。');
-            }
-            const attachment = await transaction.subscriptionAttachment.update({
-              where: { id: session.subscriptionAttachmentId },
-              data: {
-                status: SubscriptionAttachmentStatus.READY,
-                sha256: subscriptionSha256,
-              },
-              select: {
-                id: true,
-                postId: true,
-                uploaderId: true,
-                originalName: true,
-                mimeType: true,
-                size: true,
-                sha256: true,
-                downloadCount: true,
-                usage: true,
-                createdAt: true,
-              },
-            });
-            await transaction.uploadSession.update({
-              where: { id: session.id },
-              data: {
-                status: UploadSessionStatus.COMPLETED,
-                completedAt: new Date(),
-                lastError: null,
-              },
-            });
-            return {
-              kind: UploadKind.SUBSCRIPTION_ATTACHMENT,
-              attachment,
-            };
-          }
-
-          if (session.kind === UploadKind.ALBUM_PHOTO) {
-            if (!albumSha256) throw new BadRequestException('无法计算相册图片哈希。');
-            await transaction.$queryRaw(
-              Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${albumSha256}, 0))::text AS "locked"`,
-            );
-            const duplicate = await transaction.albumPhoto.findFirst({
-              where: { sha256: albumSha256, deletedAt: null },
-              select: { id: true, width: true, height: true, createdAt: true },
-            });
-            if (duplicate) {
-              await transaction.uploadSession.update({
-                where: { id: session.id },
-                data: {
-                  status: UploadSessionStatus.COMPLETED,
-                  completedAt: new Date(),
-                  lastError: null,
-                  albumPhotoId: duplicate.id,
-                  objectCleanupPending: true,
-                },
-              });
-              return { kind: UploadKind.ALBUM_PHOTO, photo: duplicate, duplicate: true };
-            }
-            const albumState = await transaction.albumState.upsert({
-              where: { id: 1 },
-              create: { id: 1, revision: 1n },
-              update: { revision: { increment: 1 } },
-              select: { revision: true },
-            });
-            const photo = await transaction.albumPhoto.create({
-              data: {
-                storageKey: session.objectKey,
-                originalName: session.originalName,
-                mimeType: session.mimeType,
-                size: session.size,
-                sha256: albumSha256,
-                width: (imageDimensions ?? videoMetadata)!.width,
-                height: (imageDimensions ?? videoMetadata)!.height,
-                durationMs: videoMetadata?.durationMs ?? null,
-                uploaderId: session.uploaderId,
-                revision: albumState.revision,
-              },
-              select: { id: true, width: true, height: true, createdAt: true },
-            });
-            await transaction.albumMediaJob.upsert({
-              where: { photoId_kind: { photoId: photo.id, kind: 'GENERATE_THUMBNAIL' } },
-              create: { photoId: photo.id, kind: 'GENERATE_THUMBNAIL' },
-              update: {
-                status: 'PENDING',
-                availableAt: new Date(),
-                lockedAt: null,
-                completedAt: null,
-                lastError: null,
-              },
-            });
-            await transaction.uploadSession.update({
-              where: { id: session.id },
-              data: {
-                status: UploadSessionStatus.COMPLETED,
-                completedAt: new Date(),
-                lastError: null,
-                albumPhotoId: photo.id,
-              },
-            });
-            return { kind: UploadKind.ALBUM_PHOTO, photo, duplicate: false };
-          }
-
-          const groupId = session.groupId!;
-          const existingArtifacts = await this.artifactRepository.listByGroupAscending(
-            groupId,
-            transaction,
-          );
-          const storedName = this.resolveArtifactStoredName(
-            session.originalName,
-            existingArtifacts.map((item) => item.storedName),
-          );
-          const created = await this.artifactRepository.create(
-            {
-              groupId,
-              uploaderId: session.uploaderId,
-              originalName: session.originalName,
-              storedName,
-              relativePath: this.artifactStorageService.serializeStorageKey(session.objectKey),
-              mimeType: session.mimeType,
-              size: session.size,
-            },
-            transaction,
-          );
-
-          await this.artifactWorkflowService.prepareArtifactUploaded(
-            groupId,
-            session.uploaderId,
-            session.originalName,
-            transaction,
-          );
-          await transaction.uploadSession.update({
-            where: { id: session.id },
-            data: {
-              status: UploadSessionStatus.COMPLETED,
-              completedAt: new Date(),
-              lastError: null,
-            },
-          });
-
-          return {
-            kind: UploadKind.ARTIFACT,
-            createdArtifact: created,
-          };
-        });
-      }
+      txResult = await this.finalizeUploadTransaction(session, {
+        subscriptionSha256,
+        albumSha256,
+        videoMetadata,
+        imageDimensions,
+      });
     } catch (error) {
       if (error instanceof UploadSessionAlreadyFinalizedError) {
         this.logger.log(
@@ -864,23 +596,12 @@ export class UploadsService {
           }),
         );
       }
-      await this.notifyTargetFinalizationFailure(
-        targetHandler,
-        session,
-        error,
-        isPermanentFailure || session.finalizationAttempts + 1 >= 10,
-        isPermanentFailure,
-      );
       throw error;
     }
 
-    if (txResult.kind === UploadKind.CHAT_ATTACHMENT && previewJobForImage(session.mimeType)) this.workSignals?.notify('file-preview');
+    if (txResult.kind === UploadKind.CHAT_ATTACHMENT && previewJobForImage(session.mimeType))
+      this.workSignals?.notify('file-preview');
     if (txResult.kind === UploadKind.ALBUM_PHOTO) this.workSignals?.notify('album-media');
-
-    if (txResult.kind === 'REGISTERED_TARGET') {
-      await targetHandler!.afterCommit?.(session, txResult.finalized);
-      return txResult.finalized;
-    }
 
     // ── thumbnail generation (fire-and-forget, best-effort) ──
     if (txResult.kind === UploadKind.CHAT_ATTACHMENT) {
@@ -990,6 +711,227 @@ export class UploadsService {
     } satisfies FinalizedUploadResult;
   }
 
+  private async finalizeUploadTransaction(
+    session: UploadSessionRecord,
+    context: {
+      subscriptionSha256: string | null;
+      albumSha256: string | null;
+      videoMetadata: { width: number; height: number; durationMs: number } | null;
+      imageDimensions: { width: number; height: number } | null;
+    },
+  ): Promise<TransactionResult> {
+    const { subscriptionSha256, albumSha256, videoMetadata, imageDimensions } = context;
+    return this.prismaService.$transaction(async (transaction) => {
+      // Optimistic lock: one request owns finalization at a time. A failed
+      // transaction rolls this state change back to ASSEMBLED/FAILED.
+      const updated = await transaction.uploadSession.updateMany({
+        where: {
+          id: session.id,
+          status: {
+            in: [UploadSessionStatus.ASSEMBLED, UploadSessionStatus.FAILED],
+          },
+        },
+        data: {
+          status: UploadSessionStatus.FINALIZING,
+          finalizationStartedAt: new Date(),
+          finalizationAttempts: { increment: 1 },
+          lastError: null,
+        },
+      });
+
+      if (updated.count === 0) {
+        throw new UploadSessionAlreadyFinalizedError();
+      }
+
+      if (session.kind === UploadKind.CHAT_ATTACHMENT) {
+        const created = await transaction.fileObject.create({
+          data: {
+            groupId: session.groupId!,
+            uploaderId: session.uploaderId,
+            storageKey: session.objectKey,
+            originalName: session.originalName,
+            mimeType: session.mimeType,
+            size: session.size,
+            previewJob: previewJobForImage(session.mimeType),
+            imageWidth: imageDimensions?.width ?? null,
+            imageHeight: imageDimensions?.height ?? null,
+          },
+          select: {
+            id: true,
+            groupId: true,
+            originalName: true,
+            mimeType: true,
+            size: true,
+            createdAt: true,
+            uploaderId: true,
+            thumbnailStorageKey: true,
+            imageWidth: true,
+            imageHeight: true,
+          },
+        });
+
+        await transaction.uploadSession.update({
+          where: { id: session.id },
+          data: {
+            status: UploadSessionStatus.COMPLETED,
+            completedAt: new Date(),
+            lastError: null,
+          },
+        });
+
+        return {
+          kind: UploadKind.CHAT_ATTACHMENT,
+          createdFileObject: created,
+        };
+      }
+
+      if (session.kind === UploadKind.SUBSCRIPTION_ATTACHMENT) {
+        if (!session.subscriptionAttachmentId || !subscriptionSha256) {
+          throw new BadRequestException('文章附件上传会话不完整。');
+        }
+        const attachment = await transaction.subscriptionAttachment.update({
+          where: { id: session.subscriptionAttachmentId },
+          data: {
+            status: SubscriptionAttachmentStatus.READY,
+            sha256: subscriptionSha256,
+          },
+          select: {
+            id: true,
+            postId: true,
+            uploaderId: true,
+            originalName: true,
+            mimeType: true,
+            size: true,
+            sha256: true,
+            downloadCount: true,
+            usage: true,
+            createdAt: true,
+          },
+        });
+        await transaction.uploadSession.update({
+          where: { id: session.id },
+          data: {
+            status: UploadSessionStatus.COMPLETED,
+            completedAt: new Date(),
+            lastError: null,
+          },
+        });
+        return {
+          kind: UploadKind.SUBSCRIPTION_ATTACHMENT,
+          attachment,
+        };
+      }
+
+      if (session.kind === UploadKind.ALBUM_PHOTO) {
+        if (!albumSha256) throw new BadRequestException('无法计算相册图片哈希。');
+        await transaction.$queryRaw(
+          Prisma.sql`SELECT pg_advisory_xact_lock(hashtextextended(${albumSha256}, 0))::text AS "locked"`,
+        );
+        const duplicate = await transaction.albumPhoto.findFirst({
+          where: { sha256: albumSha256, deletedAt: null },
+          select: { id: true, width: true, height: true, createdAt: true },
+        });
+        if (duplicate) {
+          await transaction.uploadSession.update({
+            where: { id: session.id },
+            data: {
+              status: UploadSessionStatus.COMPLETED,
+              completedAt: new Date(),
+              lastError: null,
+              albumPhotoId: duplicate.id,
+              objectCleanupPending: true,
+            },
+          });
+          return { kind: UploadKind.ALBUM_PHOTO, photo: duplicate, duplicate: true };
+        }
+        const albumState = await transaction.albumState.upsert({
+          where: { id: 1 },
+          create: { id: 1, revision: 1n },
+          update: { revision: { increment: 1 } },
+          select: { revision: true },
+        });
+        const photo = await transaction.albumPhoto.create({
+          data: {
+            storageKey: session.objectKey,
+            originalName: session.originalName,
+            mimeType: session.mimeType,
+            size: session.size,
+            sha256: albumSha256,
+            width: (imageDimensions ?? videoMetadata)!.width,
+            height: (imageDimensions ?? videoMetadata)!.height,
+            durationMs: videoMetadata?.durationMs ?? null,
+            uploaderId: session.uploaderId,
+            revision: albumState.revision,
+          },
+          select: { id: true, width: true, height: true, createdAt: true },
+        });
+        await transaction.albumMediaJob.upsert({
+          where: { photoId_kind: { photoId: photo.id, kind: 'GENERATE_THUMBNAIL' } },
+          create: { photoId: photo.id, kind: 'GENERATE_THUMBNAIL' },
+          update: {
+            status: 'PENDING',
+            availableAt: new Date(),
+            lockedAt: null,
+            completedAt: null,
+            lastError: null,
+          },
+        });
+        await transaction.uploadSession.update({
+          where: { id: session.id },
+          data: {
+            status: UploadSessionStatus.COMPLETED,
+            completedAt: new Date(),
+            lastError: null,
+            albumPhotoId: photo.id,
+          },
+        });
+        return { kind: UploadKind.ALBUM_PHOTO, photo, duplicate: false };
+      }
+
+      const groupId = session.groupId!;
+      const existingArtifacts = await this.artifactRepository.listByGroupAscending(
+        groupId,
+        transaction,
+      );
+      const storedName = this.resolveArtifactStoredName(
+        session.originalName,
+        existingArtifacts.map((item) => item.storedName),
+      );
+      const created = await this.artifactRepository.create(
+        {
+          groupId,
+          uploaderId: session.uploaderId,
+          originalName: session.originalName,
+          storedName,
+          relativePath: this.artifactStorageService.serializeStorageKey(session.objectKey),
+          mimeType: session.mimeType,
+          size: session.size,
+        },
+        transaction,
+      );
+
+      await this.artifactWorkflowService.prepareArtifactUploaded(
+        groupId,
+        session.uploaderId,
+        session.originalName,
+        transaction,
+      );
+      await transaction.uploadSession.update({
+        where: { id: session.id },
+        data: {
+          status: UploadSessionStatus.COMPLETED,
+          completedAt: new Date(),
+          lastError: null,
+        },
+      });
+
+      return {
+        kind: UploadKind.ARTIFACT,
+        createdArtifact: created,
+      };
+    });
+  }
+
   async abortUpload(userId: string, sessionId: string) {
     const session = await this.getSessionOrThrow(sessionId, userId);
     if (session.status === UploadSessionStatus.ABORTED) {
@@ -1065,27 +1007,6 @@ export class UploadsService {
         },
       });
       throw error;
-    }
-  }
-
-  private async notifyTargetFinalizationFailure(
-    targetHandler: UploadTargetHandler | undefined,
-    session: UploadSessionRecord,
-    error: unknown,
-    terminal: boolean,
-    permanent: boolean,
-  ): Promise<void> {
-    if (!targetHandler?.onFinalizationFailure) return;
-    try {
-      await targetHandler.onFinalizationFailure(session, error, { terminal, permanent });
-    } catch (notificationError) {
-      this.logger.error(
-        'upload_target_failure_notification_failed',
-        JSON.stringify({
-          sessionId: session.id,
-          error: notificationError instanceof Error ? notificationError.message : 'Unknown',
-        }),
-      );
     }
   }
 
@@ -1300,9 +1221,6 @@ export class UploadsService {
   private async getFinalizedUploadResult(
     session: UploadSessionRecord,
   ): Promise<FinalizedUploadResult> {
-    const targetHandler = this.uploadTargets?.get(session.kind);
-    if (targetHandler) return targetHandler.getFinalizedResult(session);
-
     if (session.kind === UploadKind.CHAT_ATTACHMENT) {
       const file = await this.prismaService.fileObject.findFirst({
         where: { storageKey: session.objectKey },

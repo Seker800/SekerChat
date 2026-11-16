@@ -4,7 +4,6 @@ import { Prisma, SubscriptionAttachmentStatus, UploadSessionStatus } from '@pris
 import { serializeArtifactStorageKey } from '../artifacts/artifact-storage-key';
 import { PrismaService } from '../prisma/prisma.service';
 import { FilesService } from '../files/files.service';
-import { UploadTargetRegistry } from './upload-target-registry';
 import { UPLOAD_SESSION_RESUME_WINDOW_MS } from '@sekerchat/shared';
 
 @Injectable()
@@ -14,7 +13,6 @@ export class UploadCleanupService {
   constructor(
     private readonly prismaService: PrismaService,
     private readonly filesService: FilesService,
-    private readonly uploadTargets?: UploadTargetRegistry,
   ) {}
 
   @Cron(CronExpression.EVERY_HOUR, {
@@ -61,18 +59,16 @@ export class UploadCleanupService {
             session.multipartUploadId,
           );
           const abortedAt = new Date();
-          const target = this.uploadTargets?.get(session.kind);
-          const expired = target?.expireInitiatedSession
-            ? await target.expireInitiatedSession(session, abortedAt)
-            : (
-                await this.prismaService.uploadSession.updateMany({
-                  where: { id: session.id, status: UploadSessionStatus.INITIATED },
-                  data: {
-                    status: UploadSessionStatus.ABORTED,
-                    abortedAt,
-                  },
-                })
-              ).count === 1;
+          const expired =
+            (
+              await this.prismaService.uploadSession.updateMany({
+                where: { id: session.id, status: UploadSessionStatus.INITIATED },
+                data: {
+                  status: UploadSessionStatus.ABORTED,
+                  abortedAt,
+                },
+              })
+            ).count === 1;
           if (!expired) continue;
           if (session.subscriptionAttachmentId) {
             await this.prismaService.subscriptionAttachment.delete({
@@ -130,7 +126,10 @@ export class UploadCleanupService {
           }
         } else {
           try {
-            await this.filesService.abortMultipartUpload(session.objectKey, session.multipartUploadId);
+            await this.filesService.abortMultipartUpload(
+              session.objectKey,
+              session.multipartUploadId,
+            );
           } catch (error) {
             if (!(error instanceof Error && error.name === 'NoSuchUpload')) throw error;
           }
@@ -206,14 +205,18 @@ export class UploadCleanupService {
     const eligible = {
       objectCleanupPending: false,
       AND: [
-        { OR: [
-          { status: UploadSessionStatus.COMPLETED, completedAt: { lt: cutoff } },
-          { status: UploadSessionStatus.ABORTED, abortedAt: { lt: cutoff } },
-        ] },
-        { OR: [
-          { finalizationJob: { is: null } },
-          { finalizationJob: { is: { status: { in: ['COMPLETED', 'FAILED'] } } } },
-        ] },
+        {
+          OR: [
+            { status: UploadSessionStatus.COMPLETED, completedAt: { lt: cutoff } },
+            { status: UploadSessionStatus.ABORTED, abortedAt: { lt: cutoff } },
+          ],
+        },
+        {
+          OR: [
+            { finalizationJob: { is: null } },
+            { finalizationJob: { is: { status: { in: ['COMPLETED', 'FAILED'] } } } },
+          ],
+        },
       ],
     } satisfies Prisma.UploadSessionWhereInput;
     let removed = 0;

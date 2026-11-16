@@ -43,42 +43,6 @@ test('stale subscription upload cleanup paginates by id after cascade deletion',
   assert.deepEqual(queryCursors, [undefined, 'upload-099', 'upload-100']);
 });
 
-test('stale cleanup delegates an atomic target-specific expiration transition', async () => {
-  const expired: unknown[] = [];
-  let queryCount = 0;
-  const staleSession = {
-    id: 'custom-upload-1',
-    objectKey: 'custom/owner-1/upload.bin',
-    multipartUploadId: 'multipart-1',
-    subscriptionAttachmentId: null,
-    kind: 'CUSTOM_ASSET',
-    uploaderId: 'owner-1',
-  };
-  const prisma = {
-    uploadSession: {
-      findMany: async () => (++queryCount === 1 ? [staleSession] : []),
-    },
-  };
-  const service = new UploadCleanupService(
-    prisma as never,
-    { abortMultipartUpload: async () => undefined } as never,
-    {
-      get: () => ({
-        expireInitiatedSession: async (session: unknown, expiredAt: Date) => {
-          expired.push({ session, expiredAt });
-          return true;
-        },
-      }),
-    } as never,
-  );
-
-  await service.cleanupExpiredInitiatedUploads();
-
-  assert.equal(expired.length, 1);
-  assert.equal((expired[0] as { session: unknown }).session, staleSession);
-  assert.ok((expired[0] as { expiredAt: Date }).expiredAt instanceof Date);
-});
-
 test('failed upload cleanup deletes only old objects without database references', async () => {
   const deletedObjectKeys: string[] = [];
   const abortedSessionIds: string[] = [];

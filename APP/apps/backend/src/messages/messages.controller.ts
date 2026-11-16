@@ -15,7 +15,6 @@ import { AuthenticatedUser } from '../auth/types/authenticated-user.type';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { EditMessageDto } from './dto/edit-message.dto';
 import { MessagesService } from './messages.service';
-import { SendMessageUseCase } from './send-message.use-case';
 import { ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { MessageListResponseDto, MessageResponseDto } from './dto/message-response.dto';
 
@@ -23,10 +22,7 @@ import { MessageListResponseDto, MessageResponseDto } from './dto/message-respon
 @ApiTags('messages')
 @Controller('groups/:groupId/messages')
 export class MessagesController {
-  constructor(
-    private readonly messagesService: MessagesService,
-    private readonly sendMessageUseCase: SendMessageUseCase,
-  ) {}
+  constructor(private readonly messagesService: MessagesService) {}
 
   @Get()
   @ApiOkResponse({ type: MessageListResponseDto })
@@ -62,7 +58,7 @@ export class MessagesController {
     @Param('groupId') groupId: string,
     @Body() dto: CreateMessageDto,
   ) {
-    return this.sendMessageUseCase.execute(user.sub, groupId, dto);
+    return this.messagesService.createMessage(user.sub, groupId, dto);
   }
 
   @Patch(':messageId')

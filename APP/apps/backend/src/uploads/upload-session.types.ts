@@ -29,6 +29,12 @@ export type UploadSessionRecord = Prisma.UploadSessionGetPayload<{
   select: typeof uploadSessionSelect;
 }>;
 
+export class UploadSessionAlreadyFinalizedError extends Error {
+  constructor() {
+    super('Upload session has already been finalized.');
+  }
+}
+
 export type FinalizedUploadResult =
   | {
       kind: 'CHAT_ATTACHMENT';

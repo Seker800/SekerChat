@@ -13,7 +13,6 @@ import { MessageEventsService } from './message-events.service';
 import { MessageReadReceiptService } from './message-read-receipt.service';
 import { MessageSerializerService } from './message-serializer.service';
 import { MessagesService } from './messages.service';
-import { SendMessageUseCase } from './send-message.use-case';
 import { SystemMessageService } from './system-message.service';
 import { OutboxCoreModule } from '../outbox/outbox-core.module';
 
@@ -30,12 +29,6 @@ import { OutboxCoreModule } from '../outbox/outbox-core.module';
     MessageSerializerService,
     BotAccessService,
     SystemMessageService,
-    {
-      provide: SendMessageUseCase,
-      inject: [MessagesService],
-      useFactory: (messagesService: MessagesService) =>
-        new SendMessageUseCase(messagesService.createMessage.bind(messagesService)),
-    },
   ],
   exports: [
     MessageDeliveryIntents,
