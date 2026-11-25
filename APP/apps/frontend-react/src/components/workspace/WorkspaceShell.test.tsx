@@ -670,6 +670,64 @@ describe('WorkspaceShell missing server recovery', () => {
     });
   });
 
+  it('renders an unjoined channel for an admin with no joined groups', () => {
+    mockUseWorkspaceShellModel.mockImplementation(() =>
+      createModel({
+        selectedGroupId: 'group-1',
+        requestedGroupId: 'group-1',
+        selectedGroup: baseGroup,
+        groups: [],
+        activeGroups: [],
+        serverGroups: [],
+        isSelectedGroupMember: false,
+        hasFullAccess: true,
+        canJoinAnyGroup: true,
+      }),
+    );
+
+    renderShell({ initialPath: '/groups/group-1' });
+
+    expect(screen.queryByText('欢迎使用 SekerChat')).not.toBeInTheDocument();
+    expect(screen.getByTestId('message-pane')).toBeInTheDocument();
+  });
+
+  it('disables artifact and file-share writes for a non-member viewer', async () => {
+    mockFetchSystemConfig.mockResolvedValue({
+      rolePermissions: undefined,
+      workStatusDefs: [
+        {
+          name: '准备交付',
+          tone: '#ffd93d',
+          textTone: '#1e1f22',
+          isPackaging: true,
+        },
+      ],
+    });
+    mockUseWorkspaceShellModel.mockImplementation(() =>
+      createModel({
+        selectedGroupId: 'group-1',
+        requestedGroupId: 'group-1',
+        selectedGroup: {
+          ...baseGroup,
+          workState: { status: '准备交付', reason: null, updatedAt: '2026-08-12T00:00:00.000Z' },
+        },
+        workState: { status: '准备交付', reason: null, updatedAt: '2026-08-12T00:00:00.000Z' },
+        isSelectedGroupMember: false,
+      }),
+    );
+
+    renderShell({ initialPath: '/groups/group-1' });
+
+    await waitFor(() => {
+      const props = mockMessagePane.mock.calls.at(-1)?.[0] as {
+        artifactAction?: { isEnabled: boolean };
+        canManageFileShare?: () => boolean;
+      };
+      expect(props.artifactAction?.isEnabled).toBe(false);
+      expect(props.canManageFileShare?.()).toBe(false);
+    });
+  });
+
   it('marks the workspace as local development in dev builds', () => {
     mockResetOwnCheckInTodayForDev.mockResolvedValue({ workDate: '2026-07-04', deletedCount: 1 });
     mockUseWorkspaceShellModel.mockImplementation(() =>

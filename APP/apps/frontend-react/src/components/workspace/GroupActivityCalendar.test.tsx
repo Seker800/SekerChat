@@ -71,6 +71,20 @@ describe('GroupActivityCalendar', () => {
     expect(screen.getByRole('button', { name: '收起更早的 4 个月' })).toBeInTheDocument();
   });
 
+  it('refreshes the activity counts on the polling interval', async () => {
+    renderCalendar('2026-09-01T04:00:00.000Z');
+
+    await waitFor(() => {
+      expect(mockedFetchGroupMessageActivity).toHaveBeenCalledTimes(1);
+    });
+
+    await vi.advanceTimersByTimeAsync(60_000);
+
+    await waitFor(() => {
+      expect(mockedFetchGroupMessageActivity).toHaveBeenCalledTimes(2);
+    });
+  });
+
   it('renders one dot per day and applies the fixed intensity thresholds', async () => {
     const { container } = renderCalendar('2026-09-01T04:00:00.000Z');
 

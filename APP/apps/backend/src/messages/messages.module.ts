@@ -7,6 +7,7 @@ import { BotAccessService } from '../common/bot-access.service';
 import { FilesModule } from '../files/files.module';
 import { PrismaModule } from '../prisma/prisma.module';
 import { RealtimeModule } from '../realtime/realtime.module';
+import { SystemConfigModule } from '../system-config/system-config.module';
 import { MessagesController } from './messages.controller';
 import { MessageApplicationService } from './message-application.service';
 import { MessageEventsService } from './message-events.service';
@@ -17,7 +18,15 @@ import { SystemMessageService } from './system-message.service';
 import { OutboxCoreModule } from '../outbox/outbox-core.module';
 
 @Module({
-  imports: [WorkQueuesModule, PrismaModule, FilesModule, RealtimeModule, AvatarsModule, OutboxCoreModule],
+  imports: [
+    WorkQueuesModule,
+    PrismaModule,
+    FilesModule,
+    RealtimeModule,
+    AvatarsModule,
+    OutboxCoreModule,
+    SystemConfigModule,
+  ],
   controllers: [MessagesController],
   providers: [
     MessageDeliveryIntents,

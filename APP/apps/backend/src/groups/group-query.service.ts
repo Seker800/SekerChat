@@ -1,7 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { hasFullWorkspaceAccess } from '@sekerchat/shared';
 import { PrismaService } from '../prisma/prisma.service';
+import { PermissionService } from '../system-config/permission.service';
 import { groupWithMembersSelect } from './group-types';
 import { GroupMembershipService } from './group-membership.service';
 import { GroupPresenter } from './group-presenter.service';
@@ -12,6 +12,7 @@ export class GroupQueryService {
     private readonly prismaService: PrismaService,
     private readonly membershipService: GroupMembershipService,
     private readonly presenter: GroupPresenter,
+    private readonly permissionService: PermissionService,
   ) {}
 
   async listGroups(userId: string, canViewArchived: boolean) {
@@ -83,8 +84,12 @@ export class GroupQueryService {
   }
 
   async getGroup(userId: string, groupId: string, role?: string) {
+    const canViewAllGroups = await this.permissionService.hasPermission(
+      role ?? 'MEMBER',
+      'view_all_groups',
+    );
     let membership: { role: string } | null = null;
-    if (hasFullWorkspaceAccess(role)) {
+    if (canViewAllGroups) {
       membership = (await this.prismaService.groupMember.findUnique({
         where: { groupId_userId: { groupId, userId } },
         select: { role: true },
@@ -104,7 +109,7 @@ export class GroupQueryService {
 
     // Full-access admins still cannot view non-member DM metadata (matches assertReadableGroupMembership)
     if (
-      hasFullWorkspaceAccess(role) &&
+      canViewAllGroups &&
       group.isDM &&
       !group.members.some((m) => m.user.id === userId)
     ) {

@@ -51,7 +51,7 @@ function createFilesService() {
   return new FilesService(
     prisma as never,
     objectStorage as never,
-    new FileAccessService(prisma as never),
+    new FileAccessService(prisma as never, { hasPermission: async () => false } as never),
     new ImageMetadataService(objectStorage as never),
     new FileUrlService(config as never),
   );

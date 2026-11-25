@@ -72,6 +72,7 @@ test('buildGroupSerializePrefetch handles empty confirmedByUserIds', async () =>
     prismaService,
     {} as GroupMembershipService,
     {} as GroupPresenter,
+    { hasPermission: async () => false } as never,
   );
 
   const prefetch = await service.buildGroupSerializePrefetch([
@@ -102,6 +103,7 @@ test('buildGroupSerializePrefetch handles empty category list', async () => {
     prismaService,
     {} as GroupMembershipService,
     {} as GroupPresenter,
+    { hasPermission: async () => false } as never,
   );
 
   const prefetch = await service.buildGroupSerializePrefetch([]);
@@ -162,7 +164,7 @@ test('listGroups passes prefetch to serializeGroup', async () => {
     },
   } as GroupPresenter;
 
-  const service = new GroupQueryService(prismaService as any, membershipService, presenter);
+  const service = new GroupQueryService(prismaService as any, membershipService, presenter, { hasPermission: async () => false } as never);
 
   await service.listGroups('user-1', false);
 
@@ -213,7 +215,7 @@ test('getGroup does not pass prefetch (single group, no batching needed)', async
     },
   } as GroupPresenter;
 
-  const service = new GroupQueryService(prismaService as any, membershipService, presenter);
+  const service = new GroupQueryService(prismaService as any, membershipService, presenter, { hasPermission: async () => false } as never);
 
   await service.getGroup('user-1', 'group-1');
 
@@ -239,6 +241,7 @@ test('advanceReadCursor only advances a member cursor to a message in the same g
     prismaService as any,
     {} as GroupMembershipService,
     {} as GroupPresenter,
+    { hasPermission: async () => false } as never,
   );
 
   const result = await service.advanceReadCursor('user-1', 'group-1', 42n);
@@ -281,6 +284,7 @@ test('advanceReadCursor is a no-op when the cursor is already ahead', async () =
     prismaService as any,
     {} as GroupMembershipService,
     {} as GroupPresenter,
+    { hasPermission: async () => false } as never,
   );
 
   const result = await service.advanceReadCursor('user-1', 'group-1', 42n);
@@ -306,6 +310,7 @@ test('advanceReadCursor rejects values outside the PostgreSQL bigint range befor
     } as any,
     {} as GroupMembershipService,
     {} as GroupPresenter,
+    { hasPermission: async () => false } as never,
   );
 
   await assert.rejects(

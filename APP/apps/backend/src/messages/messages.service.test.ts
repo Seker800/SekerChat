@@ -69,6 +69,7 @@ function createService(deps: {
     new BotAccessService(deps.prismaService as never),
     (deps.outboxWakeupService ?? { notify: () => undefined }) as never,
     new MessageDeliveryIntents(),
+    { hasPermission: async () => true } as never,
   );
 }
 
@@ -358,6 +359,7 @@ test('createMessage returns the existing message when clientMessageId wins a con
     { ensureTextMessageAccessAllowed: async () => undefined } as never,
     { notify: () => undefined } as never,
     new MessageDeliveryIntents(),
+    { hasPermission: async () => true } as never,
   );
 
   const result = await service.createMessage('user-1', 'group-1', {
@@ -649,6 +651,7 @@ test('listReminderEvents batch-fetches receipt members per unique group', async 
     new BotAccessService(prismaService as any),
     { notify: () => undefined } as any,
     new MessageDeliveryIntents(),
+    { hasPermission: async () => true } as never,
   );
 
   const result = await service.listReminderEvents('user-1', {});
@@ -724,6 +727,7 @@ test('serializeMessageForGroup uses pre-fetched receipt members when provided', 
     {} as any,
     { notify: () => undefined } as any,
     new MessageDeliveryIntents(),
+    { hasPermission: async () => true } as never,
   );
 
   const message = {
@@ -794,6 +798,7 @@ test('serializeMessageForGroup falls back to fetching receipt members when not p
     {} as any,
     { notify: () => undefined } as any,
     new MessageDeliveryIntents(),
+    { hasPermission: async () => true } as never,
   );
 
   const message = {

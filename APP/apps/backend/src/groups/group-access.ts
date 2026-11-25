@@ -1,5 +1,4 @@
 import { ForbiddenException, Logger } from '@nestjs/common';
-import { hasFullWorkspaceAccess } from '@sekerchat/shared';
 import { PrismaService } from '../prisma/prisma.service';
 
 export async function assertReadableGroupMembership(
@@ -8,10 +7,8 @@ export async function assertReadableGroupMembership(
   userId: string,
   groupId: string,
   denyEvent: string,
-  role?: string,
+  canReadAllNonDmGroups = false,
 ) {
-  const effectiveRole = role ?? (await lookupUserRole(prismaService, userId));
-
   // First try normal membership check
   const group = await prismaService.group.findFirst({
     where: {
@@ -29,8 +26,8 @@ export async function assertReadableGroupMembership(
 
   if (group) return group;
 
-  // Not a member — ADMIN and SUPER_ADMIN can read non-DM groups without joining.
-  if (hasFullWorkspaceAccess(effectiveRole)) {
+  // Non-members can read non-DM groups only when the caller has view_all_groups.
+  if (canReadAllNonDmGroups) {
     const nonDmGroup = await prismaService.group.findUnique({
       where: { id: groupId },
       select: { id: true, isDM: true },
@@ -48,16 +45,4 @@ export async function assertReadableGroupMembership(
     }),
   );
   throw new ForbiddenException('Group access denied.');
-}
-
-/** Lazy lookup: only queries DB when caller didn't pass a role. */
-async function lookupUserRole(
-  prismaService: PrismaService,
-  userId: string,
-): Promise<string | undefined> {
-  const user = await prismaService.user.findUnique({
-    where: { id: userId },
-    select: { role: true },
-  });
-  return user?.role;
 }

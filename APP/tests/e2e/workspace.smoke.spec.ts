@@ -6,6 +6,7 @@ import {
 
 test.describe('review web smoke', () => {
   test.beforeEach(async ({ page }) => {
+    await page.clock.install({ time: new Date('2026-04-10T12:00:00Z') });
     await installAuthenticatedApp(page);
     await page.route('**/api/attendance/me/checkin/today', async (route) => {
       await route.fulfill({

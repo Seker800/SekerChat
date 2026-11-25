@@ -857,6 +857,12 @@ export async function installAuthenticatedAppWithOptions(
       return;
     }
 
+    const activityMatch = /^\/api\/groups\/([^/]+)\/messages\/activity$/.exec(pathname);
+    if (activityMatch) {
+      await json(route, { days: [] });
+      return;
+    }
+
     const artifactsMatch = /^\/api\/groups\/([^/]+)\/artifacts$/.exec(pathname);
     if (artifactsMatch) {
       if (options.artifactsResponse) {

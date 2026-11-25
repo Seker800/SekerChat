@@ -55,6 +55,7 @@ for (const [text, expected] of [
       {} as never,
       {} as never,
       { enqueue: async () => undefined } as never,
+      { hasPermission: async () => true } as never,
     );
     const result = await service.editMessage('u1', 'g1', 'm1', text);
     assert.deepEqual(result.mentionedUserIds, expected);

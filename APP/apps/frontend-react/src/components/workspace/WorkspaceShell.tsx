@@ -112,7 +112,10 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
     useState<AttendanceReminderRequest | null>(null);
   const userAvatarInputRef = useRef<HTMLInputElement | null>(null);
   const { isFileDragActive, clearFileDragState, handleMessageDrop, handleMessageDragOver } =
-    useWorkspaceFileDrop(model.composer.onPickAttachments, !model.isDmSpecialPage);
+    useWorkspaceFileDrop(
+      model.composer.onPickAttachments,
+      !model.isDmSpecialPage && model.isSelectedGroupMember,
+    );
 
   const handleUserAvatarCropSave = useCallback(
     async (blob: Blob) => {
@@ -162,7 +165,10 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
   ) : null;
 
   const showServerEmptyState =
-    mode === 'server' && !model.isServerGroupsLoading && !model.groups.length;
+    mode === 'server' &&
+    !model.isServerGroupsLoading &&
+    !model.groups.length &&
+    !model.selectedGroupId;
   const showDmEmptyState =
     mode === 'dm' && !model.isDmSpecialPage && !model.isLoading && !model.groups.length;
   const showInitialServerLoadingState =
@@ -482,10 +488,12 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
             <MessagePane
               activeGroupId={model.selectedGroupId}
               artifactAction={{
-                isEnabled: isPackagingWorkStatus(
-                  model.workState?.status ?? model.selectedGroup?.workState?.status,
-                  systemConfigQuery.data?.workStatusDefs,
-                ),
+                isEnabled:
+                  Boolean(model.isSelectedGroupMember || model.isSuperAdmin) &&
+                  isPackagingWorkStatus(
+                    model.workState?.status ?? model.selectedGroup?.workState?.status,
+                    systemConfigQuery.data?.workStatusDefs,
+                  ),
                 isLocked: model.artifacts.isLocked,
                 addedFileIds: model.artifacts.sourceFileIds,
                 pendingFileIds: model.artifacts.pendingSourceFileIds,
@@ -495,7 +503,9 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
               currentUserId={currentUser.id}
               groupMembers={model.selectedGroup?.members}
               currentUserMentionTargets={currentUserMentionTargets}
-              canManageFileShare={() => canManageAttachmentShare(model.selectedGroup)}
+              canManageFileShare={() =>
+                model.isSelectedGroupMember && canManageAttachmentShare(model.selectedGroup)
+              }
               isLoadingMessages={
                 model.messagesQuery.isLoading ||
                 (model.messagesQuery.isFetching && model.messages.length === 0)
@@ -531,7 +541,8 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
                     ? '该频道已归档，只读。'
                     : '你尚未加入该频道，加入后可参与讨论。'}
                 </span>
-                {!model.selectedGroup?.archivedAt ? (
+                {model.canJoinAnyGroup &&
+                (!model.selectedGroup?.archivedAt || currentUser.role === 'SUPER_ADMIN') ? (
                   <button
                     type="button"
                     onClick={model.onJoinCurrentGroup}

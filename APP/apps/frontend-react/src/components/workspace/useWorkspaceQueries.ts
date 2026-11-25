@@ -116,12 +116,12 @@ export function useWorkspaceQueries({
     }
 
     // Full-access admins can view any group by ID regardless of membership.
-    if (canAccessAnyGroup) return requestedGroupId;
+    if (mode === 'server' && canAccessAnyGroup) return requestedGroupId;
 
     return groups.some((group) => group.id === requestedGroupId)
       ? requestedGroupId
       : fallbackGroupId;
-  }, [canAccessAnyGroup, groups, fallbackGroupId, isDmSpecialPage, requestedGroupId]);
+  }, [canAccessAnyGroup, groups, fallbackGroupId, isDmSpecialPage, mode, requestedGroupId]);
   const fallbackSelectedGroup = useMemo(
     () => groups.find((group) => group.id === selectedGroupId),
     [groups, selectedGroupId],
@@ -136,14 +136,16 @@ export function useWorkspaceQueries({
     [currentUserId, groups, selectedGroupId],
   );
 
+  const bootstrapSelectedGroup = bootstrapData?.selectedGroup;
+  const bootstrapGroupMatches = bootstrapSelectedGroup?.id === selectedGroupId;
   const selectedGroupQuery = useQuery({
     queryKey: ['group', selectedGroupId],
     queryFn: () => getGroup(accessToken, selectedGroupId),
     enabled:
       Boolean(selectedGroupId) && !isDmSpecialPage && hasLoadedChannels && !fallbackSelectedGroup,
     staleTime: 30 * 1000,
-    initialData: bootstrapData?.selectedGroup ?? fallbackSelectedGroup,
-    initialDataUpdatedAt: bootstrapData
+    initialData: bootstrapGroupMatches ? bootstrapSelectedGroup : fallbackSelectedGroup,
+    initialDataUpdatedAt: bootstrapGroupMatches
       ? workspaceBootstrapQuery.dataUpdatedAt
       : fallbackSelectedGroup
         ? Date.now()

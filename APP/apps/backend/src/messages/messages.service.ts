@@ -11,6 +11,7 @@ import { MessageType, Prisma } from '@prisma/client';
 import { BotAccessService } from '../common/bot-access.service';
 import { FilesService } from '../files/files.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { PermissionService } from '../system-config/permission.service';
 import { MessageRealtimePublisher } from '../realtime/message-realtime-publisher.service';
 import { RealtimePullResponse } from '../realtime/realtime.types';
 import { CreateMessageDto, CreateMessageType } from './dto/create-message.dto';
@@ -47,6 +48,7 @@ export class MessagesService {
     private readonly botAccessService: BotAccessService,
     private readonly outboxWakeupService: OutboxWakeupService,
     private readonly deliveryIntents: MessageDeliveryIntents,
+    private readonly permissionService: PermissionService,
   ) {}
 
   private async ensureBotAccessAllowed(botUserId: string, actorUserId: string): Promise<void> {
@@ -492,13 +494,25 @@ export class MessagesService {
   }
 
   private async getReadableGroupOrThrow(groupId: string, userId: string, role?: string) {
+    const effectiveRole =
+      role ??
+      (
+        await this.prismaService.user.findUnique({
+          where: { id: userId },
+          select: { role: true },
+        })
+      )?.role;
+    const canReadAllNonDmGroups = effectiveRole
+      ? await this.permissionService.hasPermission(effectiveRole, 'view_all_groups')
+      : false;
+
     return assertReadableGroupMembership(
       this.prismaService,
       this.logger,
       userId,
       groupId,
       'message_access_denied',
-      role,
+      canReadAllNonDmGroups,
     );
   }
 

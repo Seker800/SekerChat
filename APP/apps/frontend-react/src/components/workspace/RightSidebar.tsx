@@ -6,7 +6,7 @@ import type { GroupResponse, UserOptionResponse } from '../../lib/groups-api';
 import type { GroupArtifactResponse } from '../../lib/messages-files-api';
 import { useWorkspaceStore } from '../../store/workspace-store';
 import { apiBaseUrl, downloadFile } from '../../lib/api-core';
-import { hasFullWorkspaceAccess, hasSystemPermission, getDefaultRolePermissions, type RolePermissions } from '@sekerchat/shared';
+import { hasSystemPermission, getDefaultRolePermissions, type RolePermissions } from '@sekerchat/shared';
 import { Avatar } from '../shared/Avatar';
 import { userDisplayName } from '../../lib/users-api';
 import { ContextMenu, type ContextMenuItem } from './ContextMenu';
@@ -100,7 +100,8 @@ export function RightSidebar({
   const rp = rolePermissions ?? getDefaultRolePermissions();
   const canManageArtifacts = hasSystemPermission(rp, currentUserRole, 'manage_artifacts');
   const isMember = group.members.some((member) => member.userId === currentUserId);
-  const hasFullAccess = hasFullWorkspaceAccess(currentUserRole);
+  const canJoinAnyGroup = hasSystemPermission(rp, currentUserRole, 'join_any_group');
+  const canViewAllGroups = hasSystemPermission(rp, currentUserRole, 'view_all_groups');
   const isNarrowViewport = useMediaQuery('(max-width: 880px)');
   const isEdgeAndroid = typeof navigator !== 'undefined' && /EdgA\//.test(navigator.userAgent);
   const [menuState, setMenuState] = useState<{ memberUserId: string; x: number; y: number } | null>(null);
@@ -232,7 +233,7 @@ export function RightSidebar({
 
         {!isMember &&
         !group.isDM &&
-        hasFullAccess &&
+        canJoinAnyGroup &&
         (!group.archivedAt || currentUserRole === 'SUPER_ADMIN') ? (
           <button
             className={styles.joinBtn}
@@ -535,7 +536,7 @@ export function RightSidebar({
                 </button>
               </div>
             </div>
-            {isMember || hasFullAccess ? (
+            {isMember || canViewAllGroups ? (
               <>
                 <div className={styles.divider} />
                 <GroupActivityCalendar

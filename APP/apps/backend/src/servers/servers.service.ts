@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, ServerNameKind, type Server } from '@prisma/client';
-import { hasFullWorkspaceAccess } from '@sekerchat/shared';
 import { OutboxService } from '../outbox/outbox.service';
 import { OUTBOX_EVENT_TYPES } from '../outbox/outbox.types';
 import { PrismaService } from '../prisma/prisma.service';
@@ -117,7 +116,10 @@ export class ServersService {
   }
 
   async listForUser(actor: AuthenticatedActor) {
-    const canViewAll = hasFullWorkspaceAccess(actor.role);
+    const canViewAll = await this.permissionService.hasPermission(
+      actor.role,
+      'view_all_groups',
+    );
     const servers = await this.prismaService.server.findMany({
       where: canViewAll
         ? {}

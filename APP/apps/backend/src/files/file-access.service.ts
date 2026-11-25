@@ -7,21 +7,34 @@ import {
 } from '@nestjs/common';
 import { assertReadableGroupMembership } from '../groups/group-access';
 import { PrismaService } from '../prisma/prisma.service';
+import { PermissionService } from '../system-config/permission.service';
 import { fileObjectSelect } from './file-record.types';
 
 @Injectable()
 export class FileAccessService {
   private readonly logger = new Logger(FileAccessService.name);
 
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(
+    private readonly prismaService: PrismaService,
+    private readonly permissionService: PermissionService,
+  ) {}
 
   async getReadableFile(groupId: string, fileId: string, userId: string) {
+    const user = await this.prismaService.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    });
+    const canReadAllNonDmGroups = user
+      ? await this.permissionService.hasPermission(user.role, 'view_all_groups')
+      : false;
+
     await assertReadableGroupMembership(
       this.prismaService,
       this.logger,
       userId,
       groupId,
       'file_access_denied',
+      canReadAllNonDmGroups,
     );
     const file = await this.prismaService.fileObject.findFirst({
       where: { id: fileId, groupId },

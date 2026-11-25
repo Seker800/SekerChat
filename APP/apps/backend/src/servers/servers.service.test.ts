@@ -254,7 +254,7 @@ test('listForUser keeps membership filtering for regular members', async () => {
         },
       },
     } as never,
-    {} as never,
+    { hasPermission: async () => false } as never,
     {} as never,
     { getOrThrow: () => 'http://api.example.test' } as never,
   );
@@ -287,7 +287,7 @@ test('listForUser returns every server with membership flags for full-access adm
         findMany: async () => [{ serverId: 'server-1' }],
       },
     } as never,
-    {} as never,
+    { hasPermission: async () => true } as never,
     {} as never,
     { getOrThrow: () => 'http://api.example.test' } as never,
   );
@@ -298,4 +298,34 @@ test('listForUser returns every server with membership flags for full-access adm
   assert.equal(result[0]?.isMember, true);
   assert.equal(result[1]?.isMember, false);
   assert.ok(result[1]?.archivedAt);
+});
+
+test('listForUser keeps membership filtering when an admin lacks view_all_groups', async () => {
+  const serverQueries: unknown[] = [];
+  const service = new ServersService(
+    {
+      server: {
+        findMany: async (args: unknown) => {
+          serverQueries.push(args);
+          return [buildServer()];
+        },
+      },
+    } as never,
+    { hasPermission: async () => false } as never,
+    {} as never,
+    { getOrThrow: () => 'http://api.example.test' } as never,
+  );
+
+  const result = await service.listForUser({ sub: 'admin-1', role: 'ADMIN' });
+
+  assert.equal(result.length, 1);
+  assert.deepEqual((serverQueries[0] as { where: unknown }).where, {
+    archivedAt: null,
+    groups: {
+      some: {
+        isDM: false,
+        members: { some: { userId: 'admin-1' } },
+      },
+    },
+  });
 });

@@ -27,7 +27,7 @@ import { useWorkspaceMutations } from './useWorkspaceMutations';
 import { useWorkspaceNavigation } from './useWorkspaceNavigation';
 import { useWorkspaceQueries } from './useWorkspaceQueries';
 import {
-  hasFullWorkspaceAccess,
+  getDefaultRolePermissions,
   hasSystemPermission,
   type RolePermissions,
 } from '@sekerchat/shared';
@@ -62,7 +62,17 @@ export function useWorkspaceShellModel({
     currentUser,
   });
   const resolvedRolePermissions = rolePermissions ?? null;
-  const hasFullAccess = hasFullWorkspaceAccess(currentUser.role);
+  const effectiveRolePermissions = resolvedRolePermissions ?? getDefaultRolePermissions();
+  const hasFullAccess = hasSystemPermission(
+    effectiveRolePermissions,
+    currentUser.role,
+    'view_all_groups',
+  );
+  const canJoinAnyGroup = hasSystemPermission(
+    effectiveRolePermissions,
+    currentUser.role,
+    'join_any_group',
+  );
   const isSuperAdmin = currentUser.role === 'SUPER_ADMIN';
   const canInviteMembers = useMemo(
     () =>
@@ -541,6 +551,7 @@ export function useWorkspaceShellModel({
     unjoinedServerRailItems,
     serverOptions,
     hasFullAccess,
+    canJoinAnyGroup,
     isSelectedGroupMember,
     openServer,
     channelDialog: dialogs.channelDialog,

@@ -7,7 +7,6 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { hasFullWorkspaceAccess } from '@sekerchat/shared';
 import { basename, extname } from 'node:path';
 import { FilesService } from '../files/files.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -571,10 +570,13 @@ export class ArtifactsService {
       where: { id: userId },
       select: { role: true },
     });
+    const canReadAllNonDmGroups = user
+      ? await this.permissionService.hasPermission(user.role, 'view_all_groups')
+      : false;
     const membershipFilter =
       user?.role === 'SUPER_ADMIN'
         ? {}
-        : hasFullWorkspaceAccess(user?.role)
+        : canReadAllNonDmGroups
           ? { isDM: false }
           : { members: { some: { userId } } };
 

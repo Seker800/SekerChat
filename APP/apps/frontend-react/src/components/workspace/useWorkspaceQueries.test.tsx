@@ -347,6 +347,63 @@ describe('useWorkspaceQueries selection recovery', () => {
     expect(getGroupMock).not.toHaveBeenCalled();
   });
 
+  it('does not seed an unjoined requested group with a different bootstrap group', async () => {
+    const bootstrapGroup = {
+      id: 'group-1',
+      name: 'Joined',
+      category: '研发',
+      isDM: false,
+      latestMessage: null,
+      serverAvatarUrl: null,
+      workState: null,
+      artifactConfirmation: {
+        isConfirmed: false,
+        confirmedAt: null,
+        confirmedByUserId: null,
+        confirmedByDisplayName: null,
+      },
+      archivedAt: null,
+      createdAt: '2026-05-01T00:00:00.000Z',
+      updatedAt: '2026-05-01T00:00:00.000Z',
+      createdById: 'user-1',
+      currentUserRole: 'ADMIN',
+      unreadCount: 0,
+      memberCount: 1,
+      members: [],
+    };
+    fetchWorkspaceBootstrapMock.mockResolvedValue({
+      mode: 'server',
+      systemConfig: { rolePermissions: null },
+      groups: [bootstrapGroup],
+      dms: [],
+      selectedGroupId: 'group-1',
+      selectedGroup: bootstrapGroup,
+      messages: { groupId: 'group-1', items: [] },
+    });
+    getGroupMock.mockClear();
+
+    const { result } = renderHook(
+      () =>
+        useWorkspaceQueries({
+          accessToken: 'token',
+          canInviteMembers: false,
+          canAccessAnyGroup: true,
+          shouldLoadInvitableUsers: false,
+          isStartDMDialogOpen: false,
+          mode: 'server',
+          routeGroupId: 'unjoined-group',
+        }),
+      {
+        wrapper: createWrapper(),
+      },
+    );
+
+    await waitFor(() => {
+      expect(result.current.selectedGroup?.id).toBe('unjoined-group');
+    });
+    expect(getGroupMock).toHaveBeenCalledWith('token', 'unjoined-group');
+  });
+
   it('waits for bootstrap before starting fallback list requests', async () => {
     let resolveBootstrap:
       | ((value: {
