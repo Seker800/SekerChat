@@ -10,6 +10,10 @@ vi.mock('../../lib/dm-api', () => ({
   createOrGetDM: vi.fn(),
 }));
 
+vi.mock('../../lib/activity-api', () => ({
+  fetchGroupMessageActivity: vi.fn().mockResolvedValue({ days: [] }),
+}));
+
 vi.mock('../../hooks/useMediaQuery', () => ({
   useMediaQuery: () => true,
 }));

@@ -113,6 +113,34 @@ export class MessagesService {
     };
   }
 
+  async getMessageActivity(userId: string, groupId: string, role?: string) {
+    await this.getReadableGroupOrThrow(groupId, userId, role);
+
+    const rows = await this.prismaService.$queryRaw<Array<{ date: string; count: number }>>(
+      Prisma.sql`
+        SELECT
+          to_char(
+            (("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Shanghai')::date,
+            'YYYY-MM-DD'
+          ) AS date,
+          COUNT(*)::int AS count
+        FROM "Message"
+        WHERE "groupId" = ${groupId}
+          AND "revokedAt" IS NULL
+          AND "type"::text <> 'SYSTEM'
+        GROUP BY 1
+        ORDER BY 1 ASC
+      `,
+    );
+
+    return {
+      days: rows.map((row) => ({
+        date: row.date,
+        count: Number(row.count),
+      })),
+    };
+  }
+
   async createMessage(userId: string, groupId: string, dto: CreateMessageDto) {
     const group = await this.getWritableGroupOrThrow(groupId, userId);
 

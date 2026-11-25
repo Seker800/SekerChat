@@ -372,6 +372,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/groups/{groupId}/messages/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MessagesController_getMessageActivity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/groups/{groupId}/messages/{messageId}": {
         parameters: {
             query?: never;
@@ -2915,6 +2931,13 @@ export interface components {
             items: components["schemas"]["MessageResponseDto"][];
             nextCursor?: string | null;
         };
+        GroupMessageActivityDayResponseDto: {
+            date: string;
+            count: number;
+        };
+        GroupMessageActivityResponseDto: {
+            days: components["schemas"]["GroupMessageActivityDayResponseDto"][];
+        };
         MessageAttachmentDto: {
             fileId: string;
         };
@@ -4290,6 +4313,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MessageResponseDto"];
+                };
+            };
+        };
+    };
+    MessagesController_getMessageActivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                groupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GroupMessageActivityResponseDto"];
                 };
             };
         };

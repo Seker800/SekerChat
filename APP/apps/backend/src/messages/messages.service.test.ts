@@ -820,3 +820,37 @@ test('serializeMessageForGroup falls back to fetching receipt members when not p
   assert.equal(receiptCalls.length, 1);
   assert.equal(receiptCalls[0], 'group-1');
 });
+
+test('getMessageActivity returns daily counts and excludes system or revoked messages', async () => {
+  let capturedQuery: { strings?: readonly string[] } | undefined;
+  const prismaService = {
+    group: {
+      findFirst: async () => ({ id: 'group-1' }),
+    },
+    $queryRaw: async (query: { strings?: readonly string[] }) => {
+      capturedQuery = query;
+      return [
+        { date: '2026-11-01', count: 12 },
+        { date: '2026-11-03', count: 4 },
+      ];
+    },
+  };
+  const service = createService({
+    prismaService,
+    filesService: {},
+    realtimeService: {},
+    avatarsService: {},
+  });
+
+  const result = await service.getMessageActivity('user-1', 'group-1', 'MEMBER');
+
+  assert.deepEqual(result, {
+    days: [
+      { date: '2026-11-01', count: 12 },
+      { date: '2026-11-03', count: 4 },
+    ],
+  });
+  const sql = capturedQuery?.strings?.join('') ?? '';
+  assert.match(sql, /"revokedAt" IS NULL/);
+  assert.match(sql, /"type"::text <> 'SYSTEM'/);
+});

@@ -10,6 +10,7 @@ import { hasFullWorkspaceAccess, hasSystemPermission, getDefaultRolePermissions,
 import { Avatar } from '../shared/Avatar';
 import { userDisplayName } from '../../lib/users-api';
 import { ContextMenu, type ContextMenuItem } from './ContextMenu';
+import { GroupActivityCalendar } from './GroupActivityCalendar';
 import { TaskSection } from './TaskSection';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import styles from './RightSidebar.module.css';
@@ -534,6 +535,17 @@ export function RightSidebar({
                 </button>
               </div>
             </div>
+            {isMember || hasFullAccess ? (
+              <>
+                <div className={styles.divider} />
+                <GroupActivityCalendar
+                  groupId={group.id}
+                  groupCreatedAt={group.createdAt}
+                  accessToken={resolvedAccessToken}
+                  isActive={!isOverlay || isOpen}
+                />
+              </>
+            ) : null}
           </>
         ) : null}
       </div>

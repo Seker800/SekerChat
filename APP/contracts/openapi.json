@@ -852,6 +852,36 @@
         ]
       }
     },
+    "/api/groups/{groupId}/messages/activity": {
+      "get": {
+        "operationId": "MessagesController_getMessageActivity",
+        "parameters": [
+          {
+            "name": "groupId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupMessageActivityResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "messages"
+        ]
+      }
+    },
     "/api/groups/{groupId}/messages/{messageId}": {
       "patch": {
         "operationId": "MessagesController_editMessage",
@@ -6537,6 +6567,35 @@
         "required": [
           "groupId",
           "items"
+        ]
+      },
+      "GroupMessageActivityDayResponseDto": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "count": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "date",
+          "count"
+        ]
+      },
+      "GroupMessageActivityResponseDto": {
+        "type": "object",
+        "properties": {
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GroupMessageActivityDayResponseDto"
+            }
+          }
+        },
+        "required": [
+          "days"
         ]
       },
       "MessageAttachmentDto": {

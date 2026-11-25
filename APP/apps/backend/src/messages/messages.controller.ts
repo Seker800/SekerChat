@@ -17,6 +17,7 @@ import { EditMessageDto } from './dto/edit-message.dto';
 import { MessagesService } from './messages.service';
 import { ApiCreatedResponse, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { MessageListResponseDto, MessageResponseDto } from './dto/message-response.dto';
+import { GroupMessageActivityResponseDto } from './dto/message-activity-response.dto';
 
 @UseGuards(JwtAuthGuard)
 @ApiTags('messages')
@@ -49,6 +50,15 @@ export class MessagesController {
       },
       user.role,
     );
+  }
+
+  @Get('activity')
+  @ApiOkResponse({ type: GroupMessageActivityResponseDto })
+  getMessageActivity(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('groupId') groupId: string,
+  ) {
+    return this.messagesService.getMessageActivity(user.sub, groupId, user.role);
   }
 
   @Post()

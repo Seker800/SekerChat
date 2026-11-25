@@ -1,0 +1,188 @@
+.section {
+  padding: 12px 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.label {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.chevron {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-dim);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.chevron:hover {
+  color: var(--text-strong);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.chevronIcon {
+  width: 12px;
+  height: 12px;
+  transition: transform 140ms ease;
+}
+
+.collapsed .chevronIcon {
+  transform: rotate(-90deg);
+}
+
+.collapsed .body {
+  display: none;
+}
+
+.body {
+  padding-top: 10px;
+}
+
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+  gap: 2px;
+  margin-bottom: 4px;
+  color: var(--text-dim);
+  font-size: 9px;
+}
+
+.weekdays span {
+  text-align: center;
+  line-height: 12px;
+}
+
+.months {
+  display: grid;
+  gap: 10px;
+}
+
+.month {
+  display: grid;
+  gap: 5px;
+}
+
+.monthLabel {
+  color: var(--text-dim);
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(14, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.dot,
+.spacer {
+  width: 100%;
+  aspect-ratio: 1;
+}
+
+.dot {
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #2d2f34;
+  cursor: pointer;
+}
+
+.dot:hover {
+  filter: brightness(1.25);
+}
+
+.dot:focus-visible {
+  outline: 1px solid #a5d6ff;
+  outline-offset: 1px;
+}
+
+.level1 {
+  background: #0e4429;
+}
+
+.level2 {
+  background: #006d32;
+}
+
+.level3 {
+  background: #26a641;
+}
+
+.level4 {
+  background: #39d353;
+}
+
+.today {
+  box-shadow: 0 0 0 1px rgba(242, 243, 245, 0.7);
+}
+
+.actions {
+  display: flex;
+  padding-top: 9px;
+}
+
+.actionButton {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.actionButton:hover {
+  color: var(--text-soft);
+  text-decoration: underline;
+}
+
+.status {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.error {
+  color: #f7b3b6;
+}
+
+.errorActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.tooltip {
+  position: fixed;
+  z-index: 1000;
+  max-width: 220px;
+  padding: 6px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  background: #111214;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  color: var(--text-soft);
+  font-size: 11px;
+  line-height: 1.5;
+  pointer-events: none;
+  white-space: nowrap;
+}
