@@ -112,9 +112,10 @@ export function GroupActivityCalendar({
     () => (firstMessageKey && lastMessageKey ? listMonths(firstMessageKey, lastMessageKey) : []),
     [firstMessageKey, lastMessageKey],
   );
-  const ordered = useMemo(() => [...months].reverse(), [months]);
-  const visible = olderOpen ? ordered : ordered.slice(0, VISIBLE_MONTH_LIMIT);
-  const olderCount = Math.max(0, ordered.length - VISIBLE_MONTH_LIMIT);
+  const recentMonths = months.slice(-VISIBLE_MONTH_LIMIT);
+  const olderMonths = months.slice(0, Math.max(0, months.length - VISIBLE_MONTH_LIMIT));
+  const visible = olderOpen ? months : recentMonths;
+  const olderCount = olderMonths.length;
   const errorMessage = activityQuery.error instanceof Error
     ? activityQuery.error.message
     : t('rightSidebar.activityLoadFailed');
@@ -167,6 +168,8 @@ export function GroupActivityCalendar({
 
     for (let day = firstDay; day <= lastDay; day += 1) {
       const key = dayKey(monthInfo.year, monthInfo.month, day);
+      const weekday = new Date(Date.UTC(monthInfo.year, monthInfo.month, day)).getUTCDay();
+      const isWeekend = weekday === 0 || weekday === 6;
 
       const count = counts.get(key) ?? 0;
       const level = heatLevel(count);
@@ -175,6 +178,7 @@ export function GroupActivityCalendar({
           key={key}
           type="button"
           data-date={key}
+          data-weekend={isWeekend ? 'true' : undefined}
           className={[
             styles.dot,
             styles[`level${level}`],

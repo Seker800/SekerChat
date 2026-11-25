@@ -863,7 +863,7 @@ export async function installAuthenticatedAppWithOptions(
         days:
           activityMatch[1] === 'group-1'
             ? [
-                { date: '2026-03-30', count: 5 },
+                { date: '2026-03-28', count: 5 },
                 { date: '2026-04-02', count: 12 },
               ]
             : [],

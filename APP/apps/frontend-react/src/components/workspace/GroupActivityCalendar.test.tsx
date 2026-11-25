@@ -54,7 +54,11 @@ describe('GroupActivityCalendar', () => {
     await waitFor(() => {
       expect(container.querySelectorAll('[data-month]')).toHaveLength(3);
     });
-    expect(container.querySelector('[data-month="2026-11"]')).not.toBeNull();
+    expect(
+      [...container.querySelectorAll('[data-month]')].map((element) =>
+        element.getAttribute('data-month'),
+      ),
+    ).toEqual(['2026-9', '2026-10', '2026-11']);
     expect(screen.queryByRole('button', { name: /更早的/ })).not.toBeInTheDocument();
   });
 
@@ -68,10 +72,18 @@ describe('GroupActivityCalendar', () => {
     await waitFor(() => {
       expect(container.querySelectorAll('[data-month]')).toHaveLength(3);
     });
+    expect(
+      [...container.querySelectorAll('[data-month]')].map((element) =>
+        element.getAttribute('data-month'),
+      ),
+    ).toEqual(['2026-9', '2026-10', '2026-11']);
 
     fireEvent.click(screen.getByRole('button', { name: '更早的 4 个月' }));
 
-    expect(container.querySelectorAll('[data-month]')).toHaveLength(7);
+    const allMonths = [...container.querySelectorAll('[data-month]')];
+    expect(allMonths).toHaveLength(7);
+    expect(allMonths[0]?.getAttribute('data-month')).toBe('2026-5');
+    expect(allMonths[allMonths.length - 1]?.getAttribute('data-month')).toBe('2026-11');
     expect(screen.getByRole('button', { name: '收起更早的 4 个月' })).toBeInTheDocument();
   });
 
@@ -116,6 +128,25 @@ describe('GroupActivityCalendar', () => {
       expect(grid?.children).toHaveLength(11);
     });
     expect(container.querySelector('[data-date="2026-11-06"]')).toBeNull();
+  });
+
+  it('marks weekend days with a weak slash while keeping the activity color', async () => {
+    mockActivity([
+      { date: '2026-11-01', count: 12 },
+      { date: '2026-11-02', count: 3 },
+    ]);
+    const { container } = renderCalendar();
+
+    const sunday = await waitFor(() => {
+      const element = container.querySelector<HTMLElement>('[data-date="2026-11-01"]');
+      expect(element).not.toBeNull();
+      return element;
+    });
+    const monday = container.querySelector<HTMLElement>('[data-date="2026-11-02"]');
+
+    expect(sunday?.dataset.weekend).toBe('true');
+    expect(sunday?.className).toContain('level2');
+    expect(monday?.dataset.weekend).toBeUndefined();
   });
 
   it('renders one dot per day and applies the fixed intensity thresholds', async () => {

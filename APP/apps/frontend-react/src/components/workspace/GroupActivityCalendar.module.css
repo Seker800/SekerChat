@@ -98,11 +98,26 @@
 }
 
 .dot {
+  position: relative;
   padding: 0;
   border: 0;
   border-radius: 50%;
   background: #2d2f34;
   cursor: pointer;
+  overflow: hidden;
+}
+
+.dot[data-weekend='true']::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 72%;
+  height: 1px;
+  border-radius: 1px;
+  background: rgba(255, 255, 255, 0.22);
+  transform: translate(-50%, -50%) rotate(-45deg);
+  pointer-events: none;
 }
 
 .dot:hover {
