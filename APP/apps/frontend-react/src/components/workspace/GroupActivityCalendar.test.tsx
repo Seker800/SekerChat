@@ -101,7 +101,7 @@ describe('GroupActivityCalendar', () => {
     });
   });
 
-  it('starts the first month at the first message day without leading blank rows', async () => {
+  it('renders the full first and last message months', async () => {
     mockActivity([
       { date: '2026-11-24', count: 1 },
       { date: '2026-11-25', count: 2 },
@@ -111,23 +111,10 @@ describe('GroupActivityCalendar', () => {
     await waitFor(() => {
       const grid = container.querySelector<HTMLElement>('[data-month="2026-11"] [data-grid]');
       expect(grid).not.toBeNull();
-      expect(grid?.children).toHaveLength(3);
+      expect(grid?.children).toHaveLength(36);
     });
-  });
-
-  it('ends the last month at the last message day', async () => {
-    mockActivity([
-      { date: '2026-11-01', count: 1 },
-      { date: '2026-11-05', count: 2 },
-    ]);
-    const { container } = renderCalendar();
-
-    await waitFor(() => {
-      const grid = container.querySelector<HTMLElement>('[data-month="2026-11"] [data-grid]');
-      expect(grid).not.toBeNull();
-      expect(grid?.children).toHaveLength(11);
-    });
-    expect(container.querySelector('[data-date="2026-11-06"]')).toBeNull();
+    expect(container.querySelector('[data-date="2026-11-01"]')).not.toBeNull();
+    expect(container.querySelector('[data-date="2026-11-30"]')).not.toBeNull();
   });
 
   it('marks weekend days with a weak slash while keeping the activity color', async () => {

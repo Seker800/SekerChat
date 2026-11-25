@@ -141,21 +141,8 @@ export function GroupActivityCalendar({
   };
 
   const renderMonth = (monthInfo: MonthInfo, previousMonth: MonthInfo | undefined) => {
-    if (!firstMessageKey || !lastMessageKey) return null;
     const daysInMonth = new Date(Date.UTC(monthInfo.year, monthInfo.month + 1, 0)).getUTCDate();
-    const [firstRangeYear, firstRangeMonth, firstRangeDay] = firstMessageKey
-      .split('-')
-      .map(Number);
-    const [lastRangeYear, lastRangeMonth, lastRangeDay] = lastMessageKey.split('-').map(Number);
-    const isFirstRangeMonth =
-      monthInfo.year === firstRangeYear && monthInfo.month === firstRangeMonth - 1;
-    const isLastRangeMonth =
-      monthInfo.year === lastRangeYear && monthInfo.month === lastRangeMonth - 1;
-    const firstDay = isFirstRangeMonth ? firstRangeDay : 1;
-    const lastDay = isLastRangeMonth ? lastRangeDay : daysInMonth;
-    const firstWeekday = new Date(
-      Date.UTC(monthInfo.year, monthInfo.month, firstDay),
-    ).getUTCDay();
+    const firstWeekday = new Date(Date.UTC(monthInfo.year, monthInfo.month, 1)).getUTCDay();
     const leading = (firstWeekday + 6) % 7;
     const showYear = !previousMonth
       || previousMonth.year !== monthInfo.year
@@ -166,7 +153,7 @@ export function GroupActivityCalendar({
       cells.push(<span key={`leading-${i}`} className={styles.spacer} />);
     }
 
-    for (let day = firstDay; day <= lastDay; day += 1) {
+    for (let day = 1; day <= daysInMonth; day += 1) {
       const key = dayKey(monthInfo.year, monthInfo.month, day);
       const weekday = new Date(Date.UTC(monthInfo.year, monthInfo.month, day)).getUTCDay();
       const isWeekend = weekday === 0 || weekday === 6;
@@ -182,7 +169,7 @@ export function GroupActivityCalendar({
           className={[
             styles.dot,
             styles[`level${level}`],
-            key === todayKey ? styles.today : '',
+            key === todayKey && lastMessageKey && todayKey <= lastMessageKey ? styles.today : '',
           ].filter(Boolean).join(' ')}
           aria-label={t('rightSidebar.activityDayAria', { date: key, count })}
           onPointerEnter={(event) => showTooltip(event.clientX, event.clientY, key, count)}
