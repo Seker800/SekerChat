@@ -19,5 +19,6 @@ any additional high/critical vulnerability appears.
 - Review by: 2026-11-21, or immediately when upgrading Prisma.
 - The existing audit gate remains restricted to this exact chain; Markdown and Vite advisories are fixed by compatible patch upgrades rather than added to the exception.
 - 2026-10-23 release preparation: upgraded the locked DOMPurify dependency from 3.4.13 to 3.4.17, the upstream patch for the newly reported sanitization advisories. No additional audit exception was added.
+- 2026-11-25 release preparation: added a root npm override for `effect@3.22.1`, the upstream patch for GHSA-7589-6fvf-x4pw (ReDoS in `Schema.TemplateLiteral`). The lockfile now resolves the Prisma CLI chain to 3.22.1 and the audit gate again accepts only GHSA-ggr8-5vv4-36mx.
 
 Reference: [GitHub Advisory GHSA-ggr8-5vv4-36mx](https://github.com/advisories/GHSA-ggr8-5vv4-36mx)
