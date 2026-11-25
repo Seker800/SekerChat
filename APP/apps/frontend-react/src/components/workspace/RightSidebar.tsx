@@ -541,7 +541,6 @@ export function RightSidebar({
                 <div className={styles.divider} />
                 <GroupActivityCalendar
                   groupId={group.id}
-                  groupCreatedAt={group.createdAt}
                   accessToken={resolvedAccessToken}
                   isActive={!isOverlay || isOpen}
                 />

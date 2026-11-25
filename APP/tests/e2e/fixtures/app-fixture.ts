@@ -859,7 +859,15 @@ export async function installAuthenticatedAppWithOptions(
 
     const activityMatch = /^\/api\/groups\/([^/]+)\/messages\/activity$/.exec(pathname);
     if (activityMatch) {
-      await json(route, { days: [] });
+      await json(route, {
+        days:
+          activityMatch[1] === 'group-1'
+            ? [
+                { date: '2026-03-30', count: 5 },
+                { date: '2026-04-02', count: 12 },
+              ]
+            : [],
+      });
       return;
     }
 

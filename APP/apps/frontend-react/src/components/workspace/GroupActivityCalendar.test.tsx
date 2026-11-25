@@ -11,7 +11,11 @@ vi.mock('../../lib/activity-api', () => ({
 
 const mockedFetchGroupMessageActivity = vi.mocked(fetchGroupMessageActivity);
 
-function renderCalendar(groupCreatedAt: string) {
+function mockActivity(days: Array<{ date: string; count: number }>) {
+  mockedFetchGroupMessageActivity.mockResolvedValue({ days });
+}
+
+function renderCalendar() {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -22,11 +26,7 @@ function renderCalendar(groupCreatedAt: string) {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <GroupActivityCalendar
-        groupId="group-1"
-        groupCreatedAt={groupCreatedAt}
-        accessToken="token"
-      />
+      <GroupActivityCalendar groupId="group-1" accessToken="token" />
     </QueryClientProvider>,
   );
 }
@@ -35,12 +35,7 @@ describe('GroupActivityCalendar', () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date('2026-11-25T04:00:00.000Z'));
-    mockedFetchGroupMessageActivity.mockResolvedValue({
-      days: [
-        { date: '2026-11-01', count: 12 },
-        { date: '2026-11-02', count: 0 },
-      ],
-    });
+    mockActivity([{ date: '2026-11-01', count: 12 }]);
   });
 
   afterEach(() => {
@@ -49,7 +44,12 @@ describe('GroupActivityCalendar', () => {
   });
 
   it('shows every month when there are three or fewer', async () => {
-    const { container } = renderCalendar('2026-09-01T04:00:00.000Z');
+    mockActivity([
+      { date: '2026-09-01', count: 1 },
+      { date: '2026-10-01', count: 1 },
+      { date: '2026-11-01', count: 1 },
+    ]);
+    const { container } = renderCalendar();
 
     await waitFor(() => {
       expect(container.querySelectorAll('[data-month]')).toHaveLength(3);
@@ -59,7 +59,11 @@ describe('GroupActivityCalendar', () => {
   });
 
   it('caps the default at three months and reveals older months on demand', async () => {
-    const { container } = renderCalendar('2026-05-01T04:00:00.000Z');
+    mockActivity([
+      { date: '2026-05-01', count: 1 },
+      { date: '2026-11-01', count: 1 },
+    ]);
+    const { container } = renderCalendar();
 
     await waitFor(() => {
       expect(container.querySelectorAll('[data-month]')).toHaveLength(3);
@@ -72,7 +76,7 @@ describe('GroupActivityCalendar', () => {
   });
 
   it('refreshes the activity counts on the polling interval', async () => {
-    renderCalendar('2026-09-01T04:00:00.000Z');
+    renderCalendar();
 
     await waitFor(() => {
       expect(mockedFetchGroupMessageActivity).toHaveBeenCalledTimes(1);
@@ -85,8 +89,37 @@ describe('GroupActivityCalendar', () => {
     });
   });
 
+  it('starts the first month at the first message day without leading blank rows', async () => {
+    mockActivity([
+      { date: '2026-11-24', count: 1 },
+      { date: '2026-11-25', count: 2 },
+    ]);
+    const { container } = renderCalendar();
+
+    await waitFor(() => {
+      const grid = container.querySelector<HTMLElement>('[data-month="2026-11"] [data-grid]');
+      expect(grid).not.toBeNull();
+      expect(grid?.children).toHaveLength(3);
+    });
+  });
+
+  it('ends the last month at the last message day', async () => {
+    mockActivity([
+      { date: '2026-11-01', count: 1 },
+      { date: '2026-11-05', count: 2 },
+    ]);
+    const { container } = renderCalendar();
+
+    await waitFor(() => {
+      const grid = container.querySelector<HTMLElement>('[data-month="2026-11"] [data-grid]');
+      expect(grid).not.toBeNull();
+      expect(grid?.children).toHaveLength(11);
+    });
+    expect(container.querySelector('[data-date="2026-11-06"]')).toBeNull();
+  });
+
   it('renders one dot per day and applies the fixed intensity thresholds', async () => {
-    const { container } = renderCalendar('2026-09-01T04:00:00.000Z');
+    const { container } = renderCalendar();
 
     const dot = await waitFor(() => {
       const element = container.querySelector<HTMLElement>('[data-date="2026-11-01"]');
@@ -96,5 +129,15 @@ describe('GroupActivityCalendar', () => {
 
     expect(dot?.className).toContain('level2');
     expect(dot?.getAttribute('aria-label')).toContain('12');
+  });
+
+  it('shows an empty state when the channel has no messages', async () => {
+    mockActivity([]);
+    const { container } = renderCalendar();
+
+    await waitFor(() => {
+      expect(screen.getByText('暂无消息')).toBeInTheDocument();
+    });
+    expect(container.querySelector('[data-month]')).toBeNull();
   });
 });

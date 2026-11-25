@@ -17,7 +17,6 @@ interface MonthInfo {
 
 interface GroupActivityCalendarProps {
   groupId: string;
-  groupCreatedAt: string;
   accessToken: string;
   isActive?: boolean;
 }
@@ -41,14 +40,14 @@ function dayKey(year: number, month: number, day: number): string {
   return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-function listMonths(createdKey: string, todayKey: string): MonthInfo[] {
-  const [createdYear, createdMonth] = createdKey.split('-').map(Number);
-  const [todayYear, todayMonth] = todayKey.split('-').map(Number);
+function listMonths(firstKey: string, lastKey: string): MonthInfo[] {
+  const [firstYear, firstMonth] = firstKey.split('-').map(Number);
+  const [lastYear, lastMonth] = lastKey.split('-').map(Number);
   const months: MonthInfo[] = [];
-  let year = createdYear;
-  let month = createdMonth - 1;
+  let year = firstYear;
+  let month = firstMonth - 1;
 
-  while (year < todayYear || (year === todayYear && month <= todayMonth - 1)) {
+  while (year < lastYear || (year === lastYear && month <= lastMonth - 1)) {
     months.push({ year, month });
     month += 1;
     if (month > 11) {
@@ -70,7 +69,6 @@ function heatLevel(count: number): 0 | 1 | 2 | 3 | 4 {
 
 export function GroupActivityCalendar({
   groupId,
-  groupCreatedAt,
   accessToken,
   isActive = true,
 }: GroupActivityCalendarProps) {
@@ -100,9 +98,20 @@ export function GroupActivityCalendar({
     return map;
   }, [activityQuery.data]);
 
+  const activeDays = useMemo(
+    () =>
+      [...(activityQuery.data?.days ?? [])]
+        .filter((day) => day.count > 0)
+        .sort((left, right) => left.date.localeCompare(right.date)),
+    [activityQuery.data],
+  );
+  const firstMessageKey = activeDays[0]?.date ?? null;
+  const lastMessageKey = activeDays[activeDays.length - 1]?.date ?? null;
   const todayKey = dateKeyInShanghai(new Date());
-  const createdKey = dateKeyInShanghai(new Date(groupCreatedAt));
-  const months = useMemo(() => listMonths(createdKey, todayKey), [createdKey, todayKey]);
+  const months = useMemo(
+    () => (firstMessageKey && lastMessageKey ? listMonths(firstMessageKey, lastMessageKey) : []),
+    [firstMessageKey, lastMessageKey],
+  );
   const ordered = useMemo(() => [...months].reverse(), [months]);
   const visible = olderOpen ? ordered : ordered.slice(0, VISIBLE_MONTH_LIMIT);
   const olderCount = Math.max(0, ordered.length - VISIBLE_MONTH_LIMIT);
@@ -131,8 +140,21 @@ export function GroupActivityCalendar({
   };
 
   const renderMonth = (monthInfo: MonthInfo, previousMonth: MonthInfo | undefined) => {
+    if (!firstMessageKey || !lastMessageKey) return null;
     const daysInMonth = new Date(Date.UTC(monthInfo.year, monthInfo.month + 1, 0)).getUTCDate();
-    const firstWeekday = new Date(Date.UTC(monthInfo.year, monthInfo.month, 1)).getUTCDay();
+    const [firstRangeYear, firstRangeMonth, firstRangeDay] = firstMessageKey
+      .split('-')
+      .map(Number);
+    const [lastRangeYear, lastRangeMonth, lastRangeDay] = lastMessageKey.split('-').map(Number);
+    const isFirstRangeMonth =
+      monthInfo.year === firstRangeYear && monthInfo.month === firstRangeMonth - 1;
+    const isLastRangeMonth =
+      monthInfo.year === lastRangeYear && monthInfo.month === lastRangeMonth - 1;
+    const firstDay = isFirstRangeMonth ? firstRangeDay : 1;
+    const lastDay = isLastRangeMonth ? lastRangeDay : daysInMonth;
+    const firstWeekday = new Date(
+      Date.UTC(monthInfo.year, monthInfo.month, firstDay),
+    ).getUTCDay();
     const leading = (firstWeekday + 6) % 7;
     const showYear = !previousMonth
       || previousMonth.year !== monthInfo.year
@@ -143,13 +165,8 @@ export function GroupActivityCalendar({
       cells.push(<span key={`leading-${i}`} className={styles.spacer} />);
     }
 
-    for (let day = 1; day <= daysInMonth; day += 1) {
+    for (let day = firstDay; day <= lastDay; day += 1) {
       const key = dayKey(monthInfo.year, monthInfo.month, day);
-      if (key > todayKey) break;
-      if (key < createdKey) {
-        cells.push(<span key={`before-${day}`} className={styles.spacer} />);
-        continue;
-      }
 
       const count = counts.get(key) ?? 0;
       const level = heatLevel(count);
@@ -185,7 +202,7 @@ export function GroupActivityCalendar({
         <div className={styles.monthLabel}>
           {showYear ? `${monthInfo.year}年${monthInfo.month + 1}月` : `${monthInfo.month + 1}月`}
         </div>
-        <div className={styles.grid}>{cells}</div>
+        <div className={styles.grid} data-grid="">{cells}</div>
       </div>
     );
   };
@@ -230,6 +247,8 @@ export function GroupActivityCalendar({
           </div>
         ) : activityQuery.isLoading ? (
           <p className={styles.status}>{t('rightSidebar.activityLoading')}</p>
+        ) : !firstMessageKey ? (
+          <p className={styles.status}>{t('rightSidebar.activityEmpty')}</p>
         ) : (
           <>
             <div className={styles.weekdays} aria-hidden="true">
