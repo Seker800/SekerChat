@@ -27,8 +27,11 @@ export class AdminArtifactsController {
   constructor(private readonly artifactsService: ArtifactsService) {}
 
   private buildContentDisposition(originalName: string): string {
-    const fallbackName = originalName.replace(/[^\x20-\x7E]+/g, '_').replace(/["\\]/g, '_') || 'download';
-    const encodedName = encodeURIComponent(originalName).replace(/['()]/g, escape).replace(/\*/g, '%2A');
+    const fallbackName =
+      originalName.replace(/[^\x20-\x7E]+/g, '_').replace(/["\\]/g, '_') || 'download';
+    const encodedName = encodeURIComponent(originalName)
+      .replace(/['()]/g, escape)
+      .replace(/\*/g, '%2A');
     return `attachment; filename="${fallbackName}"; filename*=UTF-8''${encodedName}`;
   }
 
@@ -40,15 +43,28 @@ export class AdminArtifactsController {
     @Query('uploaderId') uploaderId?: string,
     @Query('groupWorkStatus') groupWorkStatus?: string,
     @Query('packedState') packedState?: 'packed' | 'unpacked',
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
   ) {
-    return this.artifactsService.listArtifactsForAdmin(user, { query, groupId, uploaderId, groupWorkStatus, packedState });
+    return this.artifactsService.listArtifactsForAdmin(user, {
+      query,
+      groupId,
+      uploaderId,
+      groupWorkStatus,
+      packedState,
+      limit: this.parsePageNumber(limit, 1, 200),
+      offset: this.parsePageNumber(offset, 0, 10_000),
+    });
+  }
+
+  private parsePageNumber(value: string | undefined, minimum: number, maximum: number) {
+    if (!value?.trim()) return undefined;
+    const parsed = Number.parseInt(value, 10);
+    return Number.isFinite(parsed) ? Math.max(minimum, Math.min(maximum, parsed)) : undefined;
   }
 
   @Get(':artifactId')
-  getMetadata(
-    @CurrentUser() user: AuthenticatedUser,
-    @Param('artifactId') artifactId: string,
-  ) {
+  getMetadata(@CurrentUser() user: AuthenticatedUser, @Param('artifactId') artifactId: string) {
     return this.artifactsService.getArtifactMetadataForAdmin(user, artifactId);
   }
 
@@ -58,7 +74,12 @@ export class AdminArtifactsController {
     @Param('artifactId') artifactId: string,
   ) {
     const result = await this.artifactsService.getArtifactDownloadUrlForAdmin(user, artifactId);
-    return { url: result.url, originalName: result.artifact.originalName, mimeType: result.artifact.mimeType, size: Number(result.artifact.size) };
+    return {
+      url: result.url,
+      originalName: result.artifact.originalName,
+      mimeType: result.artifact.mimeType,
+      size: Number(result.artifact.size),
+    };
   }
 
   @Get(':artifactId/content')
@@ -73,18 +94,17 @@ export class AdminArtifactsController {
       range = parseRangeHeader(rangeHeader);
     } catch {
       // Fetch metadata first so the 416 Content-Range carries the real artifact size.
-      const artifactMeta = await this.artifactsService.getArtifactMetadataForAdmin(user, artifactId);
+      const artifactMeta = await this.artifactsService.getArtifactMetadataForAdmin(
+        user,
+        artifactId,
+      );
       setRangeNotSatisfiableHeaders(response, Number(artifactMeta.size));
       return;
     }
 
     let result: Awaited<ReturnType<ArtifactsService['getArtifactStreamForAdmin']>>;
     try {
-      result = await this.artifactsService.getArtifactStreamForAdmin(
-        user,
-        artifactId,
-        range,
-      );
+      result = await this.artifactsService.getArtifactStreamForAdmin(user, artifactId, range);
     } catch (error) {
       if (error instanceof RangeNotSatisfiableException) {
         setRangeNotSatisfiableHeaders(response, error.fullSize);
@@ -96,10 +116,7 @@ export class AdminArtifactsController {
     const { artifact, stream, contentLength, contentRange } = result;
 
     response.setHeader('Content-Type', artifact.mimeType);
-    response.setHeader(
-      'Content-Disposition',
-      this.buildContentDisposition(artifact.originalName),
-    );
+    response.setHeader('Content-Disposition', this.buildContentDisposition(artifact.originalName));
     setPartialContentHeaders(response, range, contentRange, contentLength, Number(artifact.size));
 
     response.setHeader('Cache-Control', 'private, max-age=60');
@@ -108,10 +125,7 @@ export class AdminArtifactsController {
   }
 
   @Delete(':artifactId')
-  delete(
-    @CurrentUser() user: AuthenticatedUser,
-    @Param('artifactId') artifactId: string,
-  ) {
+  delete(@CurrentUser() user: AuthenticatedUser, @Param('artifactId') artifactId: string) {
     return this.artifactsService.deleteArtifactForAdmin(user, artifactId);
   }
 }

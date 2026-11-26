@@ -91,9 +91,20 @@ export class RetentionService {
     for (const file of orphans) {
       try {
         const external = /^external-(images|files)\//.test(file.storageKey ?? '');
-        if (await (external ? this.fileRetirement.retireExternal(file.id) : this.fileRetirement.retire(file.id))) retired++;
+        if (
+          await (external
+            ? this.fileRetirement.retireExternal(file.id)
+            : this.fileRetirement.retire(file.id))
+        )
+          retired++;
       } catch (error) {
-        this.logger.warn('file_retirement_failed', JSON.stringify({ fileId: file.id, error: error instanceof Error ? error.message : 'Unknown' }));
+        this.logger.warn(
+          'file_retirement_failed',
+          JSON.stringify({
+            fileId: file.id,
+            error: error instanceof Error ? error.message : 'Unknown',
+          }),
+        );
       }
     }
     this.logger.log(`Retired ${retired} unreferenced file records; object deletion is retryable.`);
@@ -120,28 +131,38 @@ export class RetentionService {
     const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
     const targetType = this.getMessageTypeForKind(kind);
 
+    // Keep each transaction bounded. A single `IN` for a large first-time
+    // retention run can exceed PostgreSQL's bind parameter limit.
+    let cursor: string | undefined;
+    let detached = 0;
+    while (true) {
     const messages = await this.prisma.message.findMany({
       where: {
         createdAt: { lt: cutoff },
         type: targetType,
         attachmentFileId: { not: null },
+          ...(cursor ? { id: { gt: cursor } } : {}),
       },
-      select: {
-        id: true,
-        attachmentFileId: true,
-      },
-      orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+        select: { id: true, attachmentFileId: true },
+        orderBy: [{ id: 'asc' }],
+        take: 500,
     });
-
-    if (!messages.length) return;
+      if (!messages.length) break;
 
     await this.detachAttachments(
       messages.map((message) => message.id),
       messages.flatMap((message) => (message.attachmentFileId ? [message.attachmentFileId] : [])),
     );
+      detached += messages.length;
+      cursor = messages[messages.length - 1]!.id;
+      if (messages.length < 500) break;
+    }
+
+    if (detached > 0) {
     this.logger.log(
-      `Retention (${kind} days=${days}): detached ${messages.length} attachments older than ${cutoff.toISOString()}`,
+        `Retention (${kind} days=${days}): detached ${detached} attachments older than ${cutoff.toISOString()}`,
     );
+  }
   }
 
   private async enforceAttachmentSizeRetention(kind: FileKind, sizeGB: number) {
@@ -187,11 +208,16 @@ export class RetentionService {
 
     if (!fileIdsToDetach.length) return;
 
-    const messageIds = await this.listMessageIdsByAttachmentFileIds(fileIdsToDetach, targetType);
-    await this.detachAttachments(messageIds, fileIdsToDetach);
+    let detachedMessages = 0;
+    for (let index = 0; index < fileIdsToDetach.length; index += 500) {
+      const fileChunk = fileIdsToDetach.slice(index, index + 500);
+      const messageIds = await this.listMessageIdsByAttachmentFileIds(fileChunk, targetType);
+      await this.detachAttachments(messageIds, fileChunk);
+      detachedMessages += messageIds.length;
+    }
 
     this.logger.log(
-      `Retention (${kind} sizeGB=${sizeGB}): detached ${fileIdsToDetach.length} file objects across ${messageIds.length} messages, freed ~${Number(freed / 1024n / 1024n)} MB`,
+      `Retention (${kind} sizeGB=${sizeGB}): detached ${fileIdsToDetach.length} file objects across ${detachedMessages} messages, freed ~${Number(freed / 1024n / 1024n)} MB`,
     );
   }
 
@@ -238,5 +264,4 @@ export class RetentionService {
       }
     });
   }
-
 }

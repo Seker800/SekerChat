@@ -49,4 +49,7 @@ export type AdminArtifactFilters = {
   uploaderId?: string;
   groupWorkStatus?: string;
   packedState?: 'packed' | 'unpacked';
+  /** Optional page size; omitted keeps the historical unfiltered list. */
+  limit?: number;
+  offset?: number;
 };

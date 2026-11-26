@@ -315,6 +315,7 @@ model Message {
   @@index([groupId, eventSequence])
   @@index([senderId, createdAt])
   @@index([attachmentFileId])
+  @@index([externalAvatarFileId])
   @@index([replyToMessageId])
   @@index([type, createdAt])
 }

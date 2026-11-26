@@ -79,12 +79,28 @@ export class ArtifactsService {
 
     const artifacts = await this.repository.listForAdmin(filters);
 
-    return Promise.all(
-      artifacts.map(async (artifact) => ({
-        ...this.serializeAdminArtifact(artifact),
-        fileExists: await this.checkArtifactExists(artifact),
-      })),
+    // Admin lists span channels: one prefix listing per channel beats one HEAD
+    // per artifact, while a LIST failure still falls back to exact probes.
+    const byGroup = new Map<string, typeof artifacts>();
+    for (const artifact of artifacts) {
+      const groupArtifacts = byGroup.get(artifact.groupId) ?? [];
+      groupArtifacts.push(artifact);
+      byGroup.set(artifact.groupId, groupArtifacts);
+    }
+    const existence = new Map<string, boolean>();
+    await Promise.all(
+      [...byGroup.values()].map(async (groupArtifacts) => {
+        const groupExistence = await this.resolveFileExistence(groupArtifacts);
+        for (const [artifactId, fileExists] of groupExistence) {
+          existence.set(artifactId, fileExists);
+        }
+      }),
     );
+
+    return artifacts.map((artifact) => ({
+      ...this.serializeAdminArtifact(artifact),
+      fileExists: existence.get(artifact.id) ?? true,
+    }));
   }
 
   async uploadArtifact(userId: string, groupId: string, file: UploadedArtifactFile) {
@@ -703,9 +719,7 @@ export class ArtifactsService {
    * round trips. Any listing failure falls back to the exact per-file probe so a
    * transient storage error never marks a healthy artifact as broken.
    */
-  private async resolveFileExistence(
-    artifacts: ArtifactRecord[],
-  ): Promise<Map<string, boolean>> {
+  private async resolveFileExistence(artifacts: ArtifactRecord[]): Promise<Map<string, boolean>> {
     const existence = new Map<string, boolean>();
     if (artifacts.length === 0) return existence;
 

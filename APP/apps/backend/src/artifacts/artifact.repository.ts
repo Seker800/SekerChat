@@ -51,6 +51,8 @@ export class ArtifactRepository {
     return this.prismaService.groupArtifact.findMany({
       where,
       orderBy: [{ createdAt: 'desc' }],
+      ...(filters.limit !== undefined ? { take: filters.limit } : {}),
+      ...(filters.offset !== undefined ? { skip: filters.offset } : {}),
       select: {
         ...artifactSelect,
         group: {
