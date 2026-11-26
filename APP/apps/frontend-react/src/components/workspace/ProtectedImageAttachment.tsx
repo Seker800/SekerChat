@@ -10,6 +10,7 @@ interface ProtectedImageAttachmentProps {
   accessToken?: string;
   viewerId?: string;
   src: string;
+  directSrc?: string;
   previewSrc?: string;
   alt: string;
   thumbnailStatus?: string;
@@ -71,6 +72,7 @@ export function ProtectedImageAttachment({
   accessToken,
   viewerId,
   src,
+  directSrc,
   previewSrc,
   alt,
   imageWidth,
@@ -94,13 +96,19 @@ export function ProtectedImageAttachment({
   } | null>(null);
   const thumbnail = useAttachmentThumbnail({
     src,
+    directSrc,
     contentUrl: previewSrc,
     status: thumbnailStatus,
     error: thumbnailError,
     accessToken,
     element: shellElement,
   });
-  const currentSource = thumbnail.src;
+  const [directFailed, setDirectFailed] = useState(false);
+  useEffect(() => {
+    setDirectFailed(false);
+  }, [directSrc]);
+  const currentSource =
+    directFailed && thumbnail.fallbackSrc ? thumbnail.fallbackSrc : thumbnail.src;
   const effectiveDimensions = useMemo(() => {
     if (hasIntrinsicDimensions(imageWidth, imageHeight)) {
       return { width: imageWidth, height: imageHeight };
@@ -234,6 +242,13 @@ export function ProtectedImageAttachment({
   }, [imageHeight, imageWidth, measuredDimensions, resolvedSrc]);
 
   function handleImageError() {
+    // A signed URL can expire or the object origin can be misconfigured; retry
+    // once through the authenticated same-origin thumbnail endpoint.
+    if (!directFailed && thumbnail.fallbackSrc && thumbnail.src !== thumbnail.fallbackSrc) {
+      setDirectFailed(true);
+      setLoadState('loading');
+      return;
+    }
     setResolvedSrc('');
     setLoadState('error');
   }

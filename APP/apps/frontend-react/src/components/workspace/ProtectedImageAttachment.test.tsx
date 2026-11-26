@@ -106,6 +106,50 @@ describe('ProtectedImageAttachment', () => {
     });
   });
 
+  it('prefers a direct signed thumbnail and falls back to the same-origin thumbnail on error', async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (String(url).endsWith('/thumbnail')) {
+        return new Response('small-thumbnail', {
+          status: 200,
+          headers: { 'Content-Type': 'image/jpeg' },
+        });
+      }
+      return new Response('', { status: 404 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: vi.fn(() => 'blob:fallback-thumbnail'),
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      configurable: true,
+      value: vi.fn(),
+    });
+
+    render(
+      <ProtectedImageAttachment
+        accessToken="token-1"
+        viewerId="user-1"
+        src="http://localhost:3000/api/groups/group-1/files/file-1/thumbnail"
+        directSrc="https://cdn.example.test/thumb.jpg"
+        previewSrc="http://localhost:3000/api/groups/group-1/files/file-1/content"
+        alt="evidence.png"
+        onPreview={() => undefined}
+      />,
+    );
+
+    const directImage = await screen.findByAltText('evidence.png');
+    expect(directImage).toHaveAttribute('src', 'https://cdn.example.test/thumb.jpg');
+    fireEvent.error(directImage);
+
+    await waitFor(() =>
+      expect(screen.getByAltText('evidence.png')).toHaveAttribute(
+        'src',
+        'blob:fallback-thumbnail',
+      ),
+    );
+  });
+
   it('downloads the stable thumbnail once and reuses it after remount', async () => {
     const fetchMock = vi.fn(async (url: string) => {
       if (url.endsWith('/thumbnail')) {

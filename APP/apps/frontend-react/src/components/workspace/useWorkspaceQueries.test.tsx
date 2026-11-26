@@ -257,7 +257,7 @@ describe('useWorkspaceQueries selection recovery', () => {
     expect(getGroupMock).not.toHaveBeenCalled();
   });
 
-  it('uses the list response as selected group cache without an immediate detail request', async () => {
+  it('uses the summary list as selected group cache and fetches member detail', async () => {
     getGroupMock.mockClear();
     const { result } = renderHook(
       () =>
@@ -277,8 +277,9 @@ describe('useWorkspaceQueries selection recovery', () => {
     await waitFor(() => {
       expect(result.current.selectedGroup?.id).toBe('group-1');
     });
-
-    expect(getGroupMock).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(getGroupMock).toHaveBeenCalledWith('token', 'group-1');
+    });
   });
 
   it('uses workspace bootstrap data before falling back to individual list requests', async () => {
@@ -338,10 +339,13 @@ describe('useWorkspaceQueries selection recovery', () => {
     expect(fetchWorkspaceBootstrapMock).toHaveBeenCalledWith('token', {
       mode: 'server',
       includeMessages: false,
+      view: 'summary',
     });
     expect(listGroupsMock).not.toHaveBeenCalled();
     expect(listDMsMock).not.toHaveBeenCalled();
-    expect(getGroupMock).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(getGroupMock).toHaveBeenCalledWith('token', 'group-bootstrap');
+    });
   });
 
   it('does not seed an unjoined requested group with a different bootstrap group', async () => {

@@ -20,6 +20,8 @@ export class MessageAttachmentResponseDto {
   uploaderId!: string;
   kind!: 'image' | 'file';
   thumbnailUrl!: string | null;
+  /** Browser-reachable signed thumbnail URL; absent when object storage is proxied. */
+  thumbnailDirectUrl?: string | null;
   thumbnailStatus?: string;
   thumbnailError?: string | null;
   isSharing?: boolean;

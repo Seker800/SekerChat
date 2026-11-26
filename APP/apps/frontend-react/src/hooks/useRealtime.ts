@@ -51,6 +51,9 @@ function patchPresenceInGroup(
   group: GroupResponse,
   payload: { userId: string; online: boolean; isDnd: boolean },
 ): GroupResponse {
+  // Summary list entries deliberately carry no member array; only the selected
+  // group's detail has members to patch.
+  if (group.members.length === 0) return group;
   return {
     ...group,
     members: group.members.map((member) =>

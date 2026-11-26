@@ -14,13 +14,14 @@ type ThumbnailState = {
 
 export function useAttachmentThumbnail(options: {
   src: string;
+  directSrc?: string;
   contentUrl?: string;
   status?: string;
   error?: string | null;
   accessToken?: string;
   element: HTMLElement | null;
 }) {
-  const { src, contentUrl, status, error, accessToken, element } = options;
+  const { src, directSrc, contentUrl, status, error, accessToken, element } = options;
   const [state, setState] = useState<ThumbnailState>({
     thumbnailUrl: src,
     thumbnailStatus: status,
@@ -105,8 +106,12 @@ export function useAttachmentThumbnail(options: {
       setRetryError('重试失败，请稍后再试；点击查看原图');
     }
   }
+  const fallbackSrc = state.thumbnailUrl ? resolveApiResourceUrl(state.thumbnailUrl) : '';
   return {
-    src: state.thumbnailUrl ? resolveApiResourceUrl(state.thumbnailUrl) : '',
+    // A signed direct URL is preferred; the same-origin thumbnail stays as a
+    // fallback for expired/misconfigured object storage or old cached bundles.
+    src: directSrc || fallbackSrc,
+    fallbackSrc,
     canRetry,
     message,
     retry,

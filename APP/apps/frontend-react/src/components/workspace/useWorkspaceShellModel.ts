@@ -211,7 +211,8 @@ export function useWorkspaceShellModel({
   });
   const dmSpecialPage = getDmSpecialPage(selectedGroupId);
   const isSelectedGroupMember = Boolean(
-    selectedGroup && selectedGroup.members.some((member) => member.userId === currentUser.id),
+    selectedGroup?.isMember
+    ?? selectedGroup?.members.some((member) => member.userId === currentUser.id),
   );
 
   const openServer = useCallback(

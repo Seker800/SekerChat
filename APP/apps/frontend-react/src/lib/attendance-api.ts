@@ -337,3 +337,12 @@ export async function updateAttendanceConfig(
   });
   return parseResponse<Record<string, string>>(response);
 }
+
+export async function fetchAttendanceRecomputeStatus(
+  accessToken: string,
+): Promise<{ running: boolean }> {
+  const response = await fetchApi(`${apiBaseUrl}/attendance/recompute`, {
+    headers: bearerHeader(accessToken),
+  });
+  return parseResponse<{ running: boolean }>(response);
+}

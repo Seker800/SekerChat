@@ -134,7 +134,7 @@ export class AttendanceController {
 
   @Get('recompute')
   async getRecomputeStatus(@CurrentUser() user: AuthenticatedUser) {
-    await this.ensureConfigAccess(user);
+    await this.ensureViewAccess(user);
     return this.attendanceService.getRecomputeStatus();
   }
 

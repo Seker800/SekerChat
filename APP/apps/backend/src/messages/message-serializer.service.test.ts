@@ -8,7 +8,7 @@ test('serializeMessage includes attachment image dimensions for root and reply a
     {
       createFileAccessUrl: () => 'http://backend.test/files/content',
       createThumbnailAccessUrl: () => 'http://backend.test/files/thumb',
-      createThumbnailViewUrl: async () => null,
+      createThumbnailViewUrl: async () => 'https://cdn.example.test/thumb.jpg',
       shouldExposeInlineThumbnail: (mimeType: string, thumbnailStorageKey: string | null) =>
         Boolean(thumbnailStorageKey) && mimeType !== 'image/gif',
       resolveRenderableImageDimensions: async (file: {
@@ -105,6 +105,8 @@ test('serializeMessage includes attachment image dimensions for root and reply a
   assert.equal(result.attachment?.uploaderId, 'user-1');
   assert.equal(result.attachment?.createdAt, createdAt);
   assert.equal(result.attachment?.isSharing, true);
+  assert.equal(result.attachment?.thumbnailUrl, 'http://backend.test/files/thumb');
+  assert.equal(result.attachment?.thumbnailDirectUrl, 'https://cdn.example.test/thumb.jpg');
   assert.equal(result.replyTo?.attachment?.width, 640);
   assert.equal(result.replyTo?.attachment?.height, 480);
   assert.equal(result.replyTo?.attachment?.uploaderId, 'user-2');
@@ -116,7 +118,7 @@ test('serializeMessage does not expose static thumbnails for gif attachments', a
     {
       createFileAccessUrl: () => 'http://backend.test/files/content',
       createThumbnailAccessUrl: () => 'http://backend.test/files/thumb',
-      createThumbnailViewUrl: async () => null,
+      createThumbnailViewUrl: async () => 'https://cdn.example.test/thumb.jpg',
       shouldExposeInlineThumbnail: (mimeType: string, thumbnailStorageKey: string | null) =>
         Boolean(thumbnailStorageKey) && mimeType !== 'image/gif',
       resolveRenderableImageDimensions: async (file: {

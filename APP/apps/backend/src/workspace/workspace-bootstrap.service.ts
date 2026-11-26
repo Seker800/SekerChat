@@ -16,6 +16,7 @@ export interface WorkspaceBootstrapOptions {
   dmId?: string;
   messageLimit?: number;
   includeMessages?: boolean;
+  groupView?: 'full' | 'summary';
 }
 
 @Injectable()
@@ -33,7 +34,7 @@ export class WorkspaceBootstrapService {
 
     const [systemConfig, groups, dms] = await Promise.all([
       this.systemConfigService.getVisibleConfig(user),
-      this.groupsService.listGroups(user.sub, user.role),
+      this.groupsService.listGroups(user.sub, user.role, options.groupView ?? 'full'),
       this.dmService.listDMs(user.sub),
     ]);
 

@@ -2724,6 +2724,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/attendance/recompute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AttendanceController_getRecomputeStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/attendance/config": {
         parameters: {
             query?: never;
@@ -2912,6 +2928,8 @@ export interface components {
             /** @enum {string} */
             kind: "file" | "image";
             thumbnailUrl: string | null;
+            /** @description Browser-reachable signed thumbnail URL; absent when object storage is proxied. */
+            thumbnailDirectUrl?: string | null;
             thumbnailStatus?: string;
             thumbnailError?: string | null;
             isSharing?: boolean;
@@ -3316,6 +3334,7 @@ export interface components {
             unreadCount: number;
             notificationsMuted?: boolean;
             memberCount?: number;
+            isMember?: boolean;
             members: components["schemas"]["GroupMemberResponseDto"][];
         };
         AdminDiscoverableCreatorResponseDto: {
@@ -3467,6 +3486,7 @@ export interface components {
         };
         QqBridgeOverviewResponseDto: {
             extension: components["schemas"]["QqBridgeInfoDto"];
+            featureEnabled?: boolean;
             connectors: components["schemas"]["QqBridgeConnectorResponseDto"][];
             bindings: components["schemas"]["QqBridgeBindingResponseDto"][];
             deliveries: components["schemas"]["QqBridgeTaskResponseDto"][];
@@ -3862,6 +3882,8 @@ export interface operations {
                 uploaderId?: string;
                 groupWorkStatus?: string;
                 packedState?: string;
+                limit?: string;
+                offset?: string;
             };
             header?: never;
             path?: never;
@@ -6125,7 +6147,9 @@ export interface operations {
     };
     GroupsController_listGroups: {
         parameters: {
-            query?: never;
+            query?: {
+                view?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -7926,6 +7950,23 @@ export interface operations {
             };
         };
     };
+    AttendanceController_getRecomputeStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     AttendanceController_updateAttendanceConfig: {
         parameters: {
             query?: never;
@@ -7980,6 +8021,7 @@ export interface operations {
                 dmId?: string;
                 messageLimit?: string;
                 includeMessages?: string;
+                view?: string;
             };
             header?: never;
             path?: never;

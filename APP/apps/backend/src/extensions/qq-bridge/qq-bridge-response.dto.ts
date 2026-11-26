@@ -42,6 +42,7 @@ export class QqBridgeInfoDto {
 }
 export class QqBridgeOverviewResponseDto {
   extension!: QqBridgeInfoDto;
+  featureEnabled?: boolean;
   connectors!: QqBridgeConnectorResponseDto[];
   bindings!: QqBridgeBindingResponseDto[];
   deliveries!: QqBridgeTaskResponseDto[];

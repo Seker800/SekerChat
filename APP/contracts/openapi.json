@@ -113,6 +113,22 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {
@@ -3235,7 +3251,16 @@
       },
       "get": {
         "operationId": "GroupsController_listGroups",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "view",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -5783,6 +5808,20 @@
         ]
       }
     },
+    "/api/attendance/recompute": {
+      "get": {
+        "operationId": "AttendanceController_getRecomputeStatus",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "Attendance"
+        ]
+      }
+    },
     "/api/attendance/config": {
       "patch": {
         "operationId": "AttendanceController_updateAttendanceConfig",
@@ -5885,6 +5924,14 @@
           },
           {
             "name": "includeMessages",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "view",
             "required": false,
             "in": "query",
             "schema": {
@@ -6385,6 +6432,11 @@
           "thumbnailUrl": {
             "type": "string",
             "nullable": true
+          },
+          "thumbnailDirectUrl": {
+            "type": "string",
+            "nullable": true,
+            "description": "Browser-reachable signed thumbnail URL; absent when object storage is proxied."
           },
           "thumbnailStatus": {
             "type": "string"
@@ -8044,6 +8096,9 @@
           "memberCount": {
             "type": "number"
           },
+          "isMember": {
+            "type": "boolean"
+          },
           "members": {
             "type": "array",
             "items": {
@@ -8657,6 +8712,9 @@
         "properties": {
           "extension": {
             "$ref": "#/components/schemas/QqBridgeInfoDto"
+          },
+          "featureEnabled": {
+            "type": "boolean"
           },
           "connectors": {
             "type": "array",

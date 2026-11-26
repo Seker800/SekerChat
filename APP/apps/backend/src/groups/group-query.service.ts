@@ -7,7 +7,13 @@ import {
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService } from '../system-config/permission.service';
-import { groupWithMembersSelect, type GroupWithMembers } from './group-types';
+import {
+  groupSummarySelect,
+  groupWithMembersSelect,
+  type GroupListItem,
+  type GroupSummaryRecord,
+  type GroupWithMembers,
+} from './group-types';
 import { GroupMembershipService } from './group-membership.service';
 import { GroupPresenter } from './group-presenter.service';
 import { loadLatestMessage, loadLatestMessages } from './group-latest-message';
@@ -21,8 +27,12 @@ export class GroupQueryService {
     private readonly permissionService: PermissionService,
   ) {}
 
-  async listGroups(userId: string, canViewArchived: boolean) {
-    const groups = (await this.prismaService.group.findMany({
+  async listGroups(
+    userId: string,
+    canViewArchived: boolean,
+    view: 'full' | 'summary' = 'full',
+  ) {
+    const rawGroups = await this.prismaService.group.findMany({
       where: {
         isDM: false,
         members: {
@@ -34,8 +44,18 @@ export class GroupQueryService {
         AND: [{ OR: [{ serverId: null }, { server: { hiddenAt: null } }] }],
       },
       orderBy: [{ archivedAt: 'asc' }, { updatedAt: 'desc' }],
-      select: groupWithMembersSelect,
-    })) as GroupWithMembers[];
+      select: view === 'summary' ? groupSummarySelect(userId) : groupWithMembersSelect,
+    });
+
+    const groups: GroupListItem[] = view === 'summary'
+      ? (rawGroups as GroupSummaryRecord[]).map((group) => ({
+          ...group,
+          members: [],
+          memberCount: group._count.members,
+          currentUserMembership: group.members[0] ?? null,
+          isMember: Boolean(group.members[0]),
+        }))
+      : (rawGroups as GroupWithMembers[]);
 
     const groupIds = groups.map((group) => group.id);
     const [unreadCounts, latestMessages, prefetch] = await Promise.all([

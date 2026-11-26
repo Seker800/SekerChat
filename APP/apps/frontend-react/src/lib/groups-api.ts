@@ -8,7 +8,7 @@ export type GroupArtifactConfirmationSummaryResponse =
   ApiSchemas['GroupArtifactConfirmationResponseDto'];
 export type UserOptionResponse = ApiSchemas['UserOptionResponseDto'];
 export type GroupMessagePreview = ApiSchemas['GroupMessagePreviewResponseDto'];
-export type GroupResponse = ApiSchemas['GroupResponseDto'];
+export type GroupResponse = ApiSchemas['GroupResponseDto'] & { isMember?: boolean };
 export type GroupNotificationPreference = ApiSchemas['GroupNotificationPreferenceResponseDto'];
 export type LeaveGroupResponse = ApiSchemas['LeaveGroupResponseDto'];
 export type ServerResponse = ApiSchemas['ServerResponseDto'];
@@ -23,8 +23,12 @@ export type AdminGroupDiscoveryScope = 'all' | 'archived' | 'former';
 
 export type AdminDiscoverableGroupResponse = ApiSchemas['AdminDiscoverableGroupResponseDto'];
 
-export async function listGroups(accessToken: string): Promise<GroupResponse[]> {
-  const response = await fetchApi(`${apiBaseUrl}/groups`, {
+export async function listGroups(
+  accessToken: string,
+  options?: { view?: 'summary' },
+): Promise<GroupResponse[]> {
+  const query = options?.view === 'summary' ? '?view=summary' : '';
+  const response = await fetchApi(`${apiBaseUrl}/groups${query}`, {
     headers: bearerHeader(accessToken),
   });
 

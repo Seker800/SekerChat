@@ -1,4 +1,5 @@
 import {
+  Optional,
   BadRequestException,
   ConflictException,
   ForbiddenException,
@@ -9,6 +10,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { QqBridgeConnector, Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PermissionService } from '../../system-config/permission.service';
+import { QqBridgeAvailabilityService } from './qq-bridge-availability.service';
 import { AuthenticatedUser } from '../../auth/types/authenticated-user.type';
 import { BindingDto, ToggleBindingDto } from './qq-bridge.dto';
 
@@ -21,6 +23,7 @@ export class QqBridgeAccessService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly permissions: PermissionService,
+    @Optional() private readonly availability?: QqBridgeAvailabilityService,
   ) {}
 
   async assertAdmin(actor: { role: string }) {
@@ -277,6 +280,7 @@ export class QqBridgeAccessService {
     ]);
     return {
       extension: { id: 'qq-bridge', name: 'QQ 群同步', version: 1 },
+      featureEnabled: this.availability?.isEnabled() ?? true,
       connectors,
       bindings,
       deliveries,

@@ -68,8 +68,12 @@ export class GroupsController {
 
   @Get()
   @ApiOkResponse({ type: GroupResponseDto, isArray: true })
-  listGroups(@CurrentUser() user: AuthenticatedUser) {
-    return this.groupsService.listGroups(user.sub, user.role);
+  listGroups(@CurrentUser() user: AuthenticatedUser, @Query('view') view?: string) {
+    return this.groupsService.listGroups(
+      user.sub,
+      user.role,
+      view?.trim() === 'summary' ? 'summary' : 'full',
+    );
   }
 
   @Get('admin/discovery')

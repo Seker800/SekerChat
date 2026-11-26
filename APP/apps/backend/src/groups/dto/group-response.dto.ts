@@ -56,6 +56,7 @@ export class GroupResponseDto {
   unreadCount!: number;
   notificationsMuted?: boolean;
   memberCount?: number;
+  isMember?: boolean;
   members!: GroupMemberResponseDto[];
 }
 

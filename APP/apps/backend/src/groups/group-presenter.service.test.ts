@@ -352,3 +352,22 @@ test('serializeGroup suppresses dnd badge for offline members', async () => {
   assert.equal(result.members[0]!.isOnline, false);
   assert.equal(result.members[0]!.isDnd, false);
 });
+
+test('serializeGroup uses the summary count and membership without member rows', async () => {
+  const presenter = makePresenter();
+  const summary = {
+    ...makeBasicGroup(),
+    members: [],
+    memberCount: 3,
+    isMember: true,
+    currentUserMembership: { role: 'MEMBER' as const, notificationsMuted: true },
+  };
+
+  const result = await presenter.serializeGroup(summary as never, 'user-1');
+
+  assert.equal(result.memberCount, 3);
+  assert.equal(result.isMember, true);
+  assert.equal(result.notificationsMuted, true);
+  assert.equal(result.currentUserRole, 'MEMBER');
+  assert.deepEqual(result.members, []);
+});

@@ -114,6 +114,10 @@ export const MessageItem = memo(function MessageItem({
       item.attachment?.thumbnailUrl ? resolveApiResourceUrl(item.attachment.thumbnailUrl) : '',
     [item.attachment?.thumbnailUrl],
   );
+  const attachmentDirectThumbnailUrl = useMemo(
+    () => item.attachment?.thumbnailDirectUrl ?? '',
+    [item.attachment?.thumbnailDirectUrl],
+  );
   const replyAttachmentContentUrl = useMemo(
     () =>
       item.replyTo?.attachment ? resolveApiResourceUrl(item.replyTo.attachment.contentUrl) : '',
@@ -125,6 +129,10 @@ export const MessageItem = memo(function MessageItem({
         ? resolveApiResourceUrl(item.replyTo.attachment.thumbnailUrl)
         : '',
     [item.replyTo?.attachment?.thumbnailUrl],
+  );
+  const replyAttachmentDirectThumbnailUrl = useMemo(
+    () => item.replyTo?.attachment?.thumbnailDirectUrl ?? '',
+    [item.replyTo?.attachment?.thumbnailDirectUrl],
   );
 
   const articleClassName = useMemo(
@@ -296,6 +304,7 @@ export const MessageItem = memo(function MessageItem({
                             accessToken={accessToken}
                             viewerId={currentUserId}
                             src={replyAttachmentThumbnailUrl}
+                            directSrc={replyAttachmentDirectThumbnailUrl}
                             thumbnailStatus={item.replyTo.attachment.thumbnailStatus}
                             thumbnailError={item.replyTo.attachment.thumbnailError}
                             previewSrc={replyAttachmentContentUrl}
@@ -419,6 +428,7 @@ export const MessageItem = memo(function MessageItem({
                           accessToken={accessToken}
                           viewerId={currentUserId}
                           src={attachmentThumbnailUrl}
+                          directSrc={attachmentDirectThumbnailUrl}
                           thumbnailStatus={item.attachment.thumbnailStatus}
                           thumbnailError={item.attachment.thumbnailError}
                           previewSrc={attachmentContentUrl}

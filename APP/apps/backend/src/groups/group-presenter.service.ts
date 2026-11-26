@@ -5,7 +5,7 @@ import { AvatarsService } from '../avatars/avatars.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { GroupRealtimePublisher } from '../realtime/group-realtime-publisher.service';
 import { resolveGroupUserName } from './group-name';
-import { GroupWithMembers } from './group-types';
+import { GroupListItem } from './group-types';
 
 export interface GroupSerializePrefetch {
   /** category name → avatarStorageKey */
@@ -43,7 +43,7 @@ export class GroupPresenter {
   }
 
   async serializeGroup(
-    group: GroupWithMembers,
+    group: GroupListItem,
     membershipOrUserId: GroupMemberRole | string,
     maybeUserId?: string,
     unreadCount?: number,
@@ -51,10 +51,12 @@ export class GroupPresenter {
   ) {
     const onlineIds = this.browserOnlineIds();
     const currentUserId = maybeUserId ?? membershipOrUserId;
+    const membership =
+      group.currentUserMembership
+      ?? group.members.find((member) => member.user.id === currentUserId)
+      ?? null;
     const currentUserRole =
-      maybeUserId === undefined
-        ? group.members.find((member) => member.user.id === currentUserId)?.role
-        : membershipOrUserId;
+      maybeUserId === undefined ? membership?.role : membershipOrUserId;
 
     const categoryRow = prefetch
       ? null
@@ -135,9 +137,9 @@ export class GroupPresenter {
         ? this.avatarsService.buildServerAvatarUrl(group.server.id, categoryAvatarKey)
         : this.avatarsService.buildLegacyServerAvatarUrl(group.category, categoryAvatarKey),
       currentUserRole,
-      notificationsMuted:
-        group.members.find((member) => member.user.id === currentUserId)?.notificationsMuted ??
-        false,
+      isMember: group.isMember ?? Boolean(membership),
+      memberCount: group.memberCount ?? group.members.length,
+      notificationsMuted: membership?.notificationsMuted ?? false,
       unreadCount: unreadCount ?? 0,
       members: group.members.map((member) => {
         const isOnline = onlineIds.has(member.user.id);

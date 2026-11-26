@@ -37,10 +37,10 @@ export class GroupsService {
     return this.channelService.createGroup(actor, name, server);
   }
 
-  async listGroups(userId: string, role?: string) {
+  async listGroups(userId: string, role?: string, view: 'full' | 'summary' = 'full') {
     const rp = await this.permissionConfigService.getRolePermissions();
     const canViewArchived = (rp[role ?? 'MEMBER'] ?? []).includes('view_archived_channels');
-    return this.queryService.listGroups(userId, canViewArchived);
+    return this.queryService.listGroups(userId, canViewArchived, view);
   }
 
   async listInviteCandidates(actor: AuthenticatedActor, groupId: string) {

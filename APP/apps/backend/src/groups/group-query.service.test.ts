@@ -346,3 +346,49 @@ test('listGroups excludes channels whose Server is hidden while keeping legacy u
     AND: [{ OR: [{ serverId: null }, { server: { hiddenAt: null } }] }],
   });
 });
+
+test('summary view selects a count and the current membership without member rows', async () => {
+  let capturedSelect: any;
+  let presented: any;
+  const service = new GroupQueryService(
+    {
+      group: {
+        findMany: async ({ select }: any) => {
+          capturedSelect = select;
+          return [
+            {
+              id: 'group-1',
+              category: '研发',
+              artifactsConfirmedByUserId: null,
+              _count: { members: 3 },
+              members: [{ role: 'MEMBER', notificationsMuted: false }],
+            },
+          ];
+        },
+      },
+      category: { findMany: async () => [] },
+      user: { findMany: async () => [] },
+      groupMember: { findMany: async () => [] },
+      $queryRaw: async () => [],
+    } as any,
+    {} as GroupMembershipService,
+    {
+      serializeGroup: async (group: any) => {
+        presented = group;
+        return { id: group.id };
+      },
+    } as unknown as GroupPresenter,
+    { hasPermission: async () => false } as never,
+  );
+
+  await service.listGroups('user-1', false, 'summary');
+
+  assert.equal(capturedSelect._count.select.members, true);
+  assert.deepEqual(capturedSelect.members.where, { userId: 'user-1' });
+  assert.deepEqual(presented.members, []);
+  assert.equal(presented.memberCount, 3);
+  assert.deepEqual(presented.currentUserMembership, {
+    role: 'MEMBER',
+    notificationsMuted: false,
+  });
+});

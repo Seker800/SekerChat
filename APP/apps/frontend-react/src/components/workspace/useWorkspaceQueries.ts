@@ -61,6 +61,7 @@ export function useWorkspaceQueries({
       fetchWorkspaceBootstrap(accessToken, {
         mode,
         includeMessages: false,
+        view: 'summary',
       }),
     staleTime: 60 * 1000,
   });
@@ -69,7 +70,7 @@ export function useWorkspaceQueries({
 
   const serversQuery = useQuery({
     queryKey: ['groups'],
-    queryFn: () => listGroups(accessToken),
+    queryFn: () => listGroups(accessToken, { view: 'summary' }),
     staleTime: 30 * 1000,
     enabled: !isBootstrapPending,
     initialData: bootstrapData?.groups,
@@ -125,32 +126,26 @@ export function useWorkspaceQueries({
     () => groups.find((group) => group.id === selectedGroupId),
     [groups, selectedGroupId],
   );
-  const isSelectedGroupMember = useMemo(
-    () =>
-      groups.some(
-        (group) =>
-          group.id === selectedGroupId &&
-          group.members.some((member) => member.userId === currentUserId),
-      ),
-    [currentUserId, groups, selectedGroupId],
-  );
-
-  const bootstrapSelectedGroup = bootstrapData?.selectedGroup;
-  const bootstrapGroupMatches = bootstrapSelectedGroup?.id === selectedGroupId;
   const selectedGroupQuery = useQuery({
     queryKey: ['group', selectedGroupId],
     queryFn: () => getGroup(accessToken, selectedGroupId),
+    // The list is a summary; member details always come from the detail endpoint.
     enabled:
-      Boolean(selectedGroupId) && !isDmSpecialPage && hasLoadedChannels && !fallbackSelectedGroup,
+      Boolean(selectedGroupId) &&
+      !isDmSpecialPage &&
+      hasLoadedChannels &&
+      !fallbackSelectedGroup?.isDM,
     staleTime: 30 * 1000,
-    initialData: bootstrapGroupMatches ? bootstrapSelectedGroup : fallbackSelectedGroup,
-    initialDataUpdatedAt: bootstrapGroupMatches
-      ? workspaceBootstrapQuery.dataUpdatedAt
-      : fallbackSelectedGroup
-        ? Date.now()
-        : undefined,
     placeholderData: fallbackSelectedGroup,
   });
+
+  const isSelectedGroupMember = useMemo(() => {
+    const group = selectedGroupQuery.data ?? fallbackSelectedGroup;
+    return Boolean(
+      group?.isMember
+      ?? group?.members.some((member) => member.userId === currentUserId),
+    );
+  }, [currentUserId, fallbackSelectedGroup, selectedGroupQuery.data]);
 
   const workStateQuery = useQuery({
     queryKey: ['work-state', selectedGroupId],
@@ -160,7 +155,7 @@ export function useWorkspaceQueries({
   });
 
   // DMs never carry artifacts; fetching them costs a request per conversation.
-  const selectedGroupIsDm = Boolean(fallbackSelectedGroup?.isDM);
+  const selectedGroupIsDm = Boolean((selectedGroupQuery.data ?? fallbackSelectedGroup)?.isDM);
   const artifactsQuery = useQuery({
     queryKey: ['artifacts', selectedGroupId],
     queryFn: () => listGroupArtifacts(accessToken, selectedGroupId),
@@ -182,7 +177,9 @@ export function useWorkspaceQueries({
 
   // Prefer fallbackSelectedGroup (refreshed by ['groups'] invalidation on presence.changed)
   // over selectedGroupQuery.data (stale when the query is disabled due to fallback existing).
-  const selectedGroup = isDmSpecialPage ? null : (fallbackSelectedGroup ?? selectedGroupQuery.data);
+  const selectedGroup = isDmSpecialPage
+    ? null
+    : (selectedGroupQuery.data ?? fallbackSelectedGroup);
   const invitableUsers = useMemo(() => {
     if (mode !== 'server') {
       return [];

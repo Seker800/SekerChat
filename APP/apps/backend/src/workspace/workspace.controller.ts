@@ -18,6 +18,7 @@ export class WorkspaceController {
     @Query('dmId') dmId?: string,
     @Query('messageLimit') messageLimit?: string,
     @Query('includeMessages') includeMessages?: string,
+    @Query('view') view?: string,
   ) {
     if (includeMessages !== undefined && !['true', 'false'].includes(includeMessages)) {
       throw new BadRequestException('includeMessages must be true or false.');
@@ -28,6 +29,7 @@ export class WorkspaceController {
       groupId,
       dmId,
       messageLimit: this.parseMessageLimit(messageLimit),
+      groupView: view?.trim() === 'summary' ? 'summary' : 'full',
     });
   }
 

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useResolvedAccessToken } from '../../auth/AuthContext';
 import {
+  fetchAttendanceRecomputeStatus,
   fetchAttendanceUsersAverages,
   type UserAttendanceAveragesItem,
 } from '../../lib/attendance-api';
@@ -35,6 +36,7 @@ export function AttendanceSection({ accessToken: providedAccessToken }: Props = 
   const [averagesItems, setAveragesItems] = useState<UserAttendanceAveragesItem[]>([]);
   const [averagesError, setAveragesError] = useState('');
   const [reloading, setReloading] = useState(false);
+  const [recomputeRunning, setRecomputeRunning] = useState(false);
 
   const [checkInSortKey, setCheckInSortKey] = useState<SortKey>('name');
   const [checkInSortDir, setCheckInSortDir] = useState<SortDirection>('asc');
@@ -66,6 +68,26 @@ export function AttendanceSection({ accessToken: providedAccessToken }: Props = 
 
   useEffect(() => {
     void loadAverages();
+  }, [accessToken]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const check = async () => {
+      try {
+        const status = await fetchAttendanceRecomputeStatus(accessToken);
+        if (cancelled) return;
+        setRecomputeRunning(status.running);
+        if (status.running) timer = setTimeout(check, 3000);
+      } catch {
+        if (!cancelled) timer = setTimeout(check, 15000);
+      }
+    };
+    void check();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }, [accessToken]);
 
   function renderSortHeader(
@@ -144,6 +166,11 @@ export function AttendanceSection({ accessToken: providedAccessToken }: Props = 
       </div>
 
       {averagesError ? <p className={styles.errorText}>{averagesError}</p> : null}
+      {recomputeRunning ? (
+        <p className={styles.subtle} role="status">
+          配置已变更，出勤数据正在后台重算；完成后刷新即可看到最新结果。
+        </p>
+      ) : null}
       {reloading ? <p className={styles.subtle}>正在刷新出勤数据...</p> : null}
 
       {renderTable('签到', 'checkIn', sortedCheckIn, checkInSortKey, checkInSortDir, (key) => {

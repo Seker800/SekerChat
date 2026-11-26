@@ -1,6 +1,6 @@
 import { MessageType, Prisma } from '@prisma/client';
 
-export const groupWithMembersSelect = {
+const groupBaseSelect = {
   id: true,
   name: true,
   category: true,
@@ -28,6 +28,10 @@ export const groupWithMembersSelect = {
       updatedAt: true,
     },
   },
+} satisfies Prisma.GroupSelect;
+
+export const groupWithMembersSelect = {
+  ...groupBaseSelect,
   members: {
     orderBy: [{ role: 'desc' }, { joinedAt: 'asc' }],
     select: {
@@ -47,6 +51,18 @@ export const groupWithMembersSelect = {
   },
 } satisfies Prisma.GroupSelect;
 
+/** The list view needs a count and the caller's membership, not every member. */
+export function groupSummarySelect(userId: string) {
+  return {
+    ...groupBaseSelect,
+    _count: { select: { members: true } },
+    members: {
+      where: { userId },
+      select: { role: true, notificationsMuted: true },
+    },
+  } satisfies Prisma.GroupSelect;
+}
+
 export type LatestMessageSummary = {
   text: string | null;
   senderId: string;
@@ -56,5 +72,15 @@ export type LatestMessageSummary = {
 export type GroupWithMembers = Prisma.GroupGetPayload<{
   select: typeof groupWithMembersSelect;
 }> & { latestMessage?: LatestMessageSummary | null };
+
+export type GroupSummaryRecord = Prisma.GroupGetPayload<{
+  select: ReturnType<typeof groupSummarySelect>;
+}>;
+
+export type GroupListItem = GroupWithMembers & {
+  memberCount?: number;
+  currentUserMembership?: { role: 'ADMIN' | 'MEMBER'; notificationsMuted: boolean } | null;
+  isMember?: boolean;
+};
 export type AdminGroupDiscoveryScope = 'all' | 'archived' | 'former';
 export type AuthenticatedActor = { sub: string; role: string };

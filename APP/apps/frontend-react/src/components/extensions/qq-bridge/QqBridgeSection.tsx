@@ -74,6 +74,12 @@ export function QqBridgeSection() {
         新连接器与绑定默认关闭，只接收启用后的新消息。开启双向后，群里的普通成员消息将通过桥接 QQ
         账号发出。
       </p>
+      {data.featureEnabled === false ? (
+        <p className={styles.hint} role="status">
+          服务端已全局停用 QQ 桥接：连接器接口会返回 410，消息写入也不会再登记桥接投递。恢复需要把
+          后端环境变量 QQ_BRIDGE_ENABLED 设为 true 并重启，再启动外部连接器。
+        </p>
+      ) : null}
       <AdminNotice
         notice={error ? { type: 'error', message: error } : null}
         onDismiss={() => setError('')}

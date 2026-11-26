@@ -115,12 +115,13 @@ export class MessageSerializerService {
       thumbnailError: attachmentFile.previewJob?.lastError
         ? '缩略图生成失败，可重试或点击查看原图。'
         : null,
-      thumbnailUrl: directThumbnailUrl ?? (inlineThumbnail
+      thumbnailUrl: inlineThumbnail
         ? this.filesService.createThumbnailAccessUrl({
             id: attachmentFile.id,
             groupId: attachmentFile.groupId,
           })
-        : null),
+        : null,
+      thumbnailDirectUrl: directThumbnailUrl,
       isSharing:
         share !== null && share !== undefined
           ? resolveFileShareStatus({
