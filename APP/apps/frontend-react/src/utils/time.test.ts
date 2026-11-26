@@ -20,7 +20,7 @@ describe('date formatter reuse', () => {
       for (let i = 0; i < 500; i++) {
         expect(formatTimestamp(value, 'en')).toBe(expected);
         const message = { createdAt: value } as MessageResponse;
-        expect(isSameCalendarDay(message, message, 'en')).toBe(true);
+        expect(isSameCalendarDay(message, message)).toBe(true);
         formatDayDivider(value, 'en');
       }
       expect(spy.mock.calls.length).toBeLessThanOrEqual(3);

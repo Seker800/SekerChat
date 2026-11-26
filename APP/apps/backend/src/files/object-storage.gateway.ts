@@ -11,6 +11,7 @@ import {
   GetObjectCommand,
   HeadBucketCommand,
   HeadObjectCommand,
+  ListObjectsV2Command,
   ListPartsCommand,
   PutObjectCommand,
   S3Client,
@@ -196,6 +197,33 @@ export class ObjectStorageGateway {
       }
       throw error;
     }
+  }
+
+  /** One paginated listing replaces an existence round trip per object. */
+  async listKeys(prefix: string): Promise<string[]> {
+    const keys: string[] = [];
+    let continuationToken: string | undefined;
+    do {
+      const page = await this.observe('ListObjectsV2', () =>
+        this.internalClient.send(
+          new ListObjectsV2Command({
+            Bucket: this.bucket,
+            Prefix: prefix,
+            ContinuationToken: continuationToken,
+          }),
+        ),
+      );
+      for (const object of page.Contents ?? []) {
+        if (object.Key) keys.push(object.Key);
+      }
+      continuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+      if (!continuationToken) break;
+      // A runaway prefix must not stall a request; callers treat truncation as unknown.
+      if (keys.length >= 10_000) {
+        throw new Error('Object listing exceeded the safety limit.');
+      }
+    } while (continuationToken);
+    return keys;
   }
 
   createViewUrl(storageKey: string, mimeType: string, expiresInSeconds = 3600): Promise<string> {

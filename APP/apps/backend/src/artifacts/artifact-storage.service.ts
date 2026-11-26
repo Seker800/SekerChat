@@ -48,6 +48,10 @@ export class ArtifactStorageService {
     return this.filesService.hasS3Object(this.extractStorageKey(relativePath));
   }
 
+  listKeys(prefix: string) {
+    return this.filesService.listS3Keys(prefix);
+  }
+
   getStream(relativePath: string, range?: string) {
     return this.filesService.getStreamFromS3(this.extractStorageKey(relativePath), range);
   }

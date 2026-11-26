@@ -56,10 +56,15 @@ function createFilesDouble() {
   const deletedKeys: string[] = [];
   const copiedObjects: Array<{ sourceKey: string; destinationKey: string; mimeType: string }> = [];
 
+  let listCalls = 0;
+  let existsCalls = 0;
+
   return {
     uploadedObjects,
     deletedKeys,
     copiedObjects,
+    listCalls: () => listCalls,
+    existsCalls: () => existsCalls,
     files: {
       uploadBufferToS3: async (storageKey: string, buffer: Buffer, mimeType: string) => {
         uploadedObjects.set(storageKey, { body: Buffer.from(buffer), mimeType });
@@ -68,7 +73,14 @@ function createFilesDouble() {
         deletedKeys.push(storageKey);
         return uploadedObjects.delete(storageKey);
       },
-      hasS3Object: async (storageKey: string) => uploadedObjects.has(storageKey),
+      hasS3Object: async (storageKey: string) => {
+        existsCalls += 1;
+        return uploadedObjects.has(storageKey);
+      },
+      listS3Keys: async (prefix: string) => {
+        listCalls += 1;
+        return [...uploadedObjects.keys()].filter((key) => key.startsWith(prefix));
+      },
       getStreamFromS3: async (storageKey: string) => {
         const entry = uploadedObjects.get(storageKey);
         if (!entry) {
@@ -588,6 +600,50 @@ test('listArtifacts keeps object storage artifacts visible when S3 objects exist
 
   const artifacts = await service.listArtifacts('user-1', 'group-1');
   assert.equal(artifacts.find((artifact) => artifact.id === 'artifact-s3')?.fileExists, true);
+});
+
+test('listArtifacts resolves existence with one prefix listing', async () => {
+  const filesDouble = createFilesDouble();
+  filesDouble.uploadedObjects.set('artifacts/group-1/abc/report.md', {
+    body: Buffer.from('report'),
+    mimeType: 'text/markdown',
+  });
+  const prismaDouble = createPrismaDouble({
+    existingArtifactRecords: [
+      {
+        id: 'artifact-present',
+        groupId: 'group-1',
+        uploaderId: 'user-1',
+        originalName: 'report.md',
+        storedName: 'report.md',
+        relativePath: 's3:artifacts/group-1/abc/report.md',
+        mimeType: 'text/markdown',
+        size: 12,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: 'artifact-missing',
+        groupId: 'group-1',
+        uploaderId: 'user-1',
+        originalName: 'gone.md',
+        storedName: 'gone.md',
+        relativePath: 's3:artifacts/group-1/def/gone.md',
+        mimeType: 'text/markdown',
+        size: 12,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ],
+  });
+
+  const service = createArtifactsService(prismaDouble.prisma, filesDouble.files);
+  const artifacts = await service.listArtifacts('user-1', 'group-1');
+
+  assert.equal(artifacts.find((artifact) => artifact.id === 'artifact-present')?.fileExists, true);
+  assert.equal(artifacts.find((artifact) => artifact.id === 'artifact-missing')?.fileExists, false);
+  assert.equal(filesDouble.listCalls(), 1);
+  assert.equal(filesDouble.existsCalls(), 0);
 });
 
 test('deleteArtifact removes the object storage file and database record', async (t) => {

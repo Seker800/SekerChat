@@ -43,6 +43,27 @@ describe('message timeline', () => {
       patchTimelineMessage(current, 'a', { ...msg('1', '1'), text: 'edited' })?.items[0],
     ).toMatchObject({ text: 'edited', clientKey: 'local' });
   });
+  it('keeps a known read receipt when a realtime update omits it', () => {
+    const receipt = {
+      totalRecipients: 2,
+      readCount: 1,
+      unreadCount: 1,
+      readBy: [{ userId: 'u2', email: 'u2@example.com', displayName: 'U2', avatarUrl: '/a' }],
+      unreadBy: [{ userId: 'u3', email: 'u3@example.com', displayName: 'U3', avatarUrl: '/b' }],
+    };
+    const current = {
+      groupId: 'a',
+      items: [{ ...msg('1', '1'), readReceipt: receipt }],
+      nextCursor: null,
+    };
+    const next = receiveCreatedMessage(current, 'a', {
+      ...msg('1', '1'),
+      text: 'edited',
+      readReceipt: null,
+    });
+    expect(next?.items[0]?.text).toBe('edited');
+    expect(next?.items[0]?.readReceipt).toEqual(receipt);
+  });
   it('deduplicates overlapping pages and retains the oldest cursor', () => {
     const current = { groupId: 'a', items: [msg('2', '2'), msg('3', '3')], nextCursor: 'cursor' };
     const next = mergeOlderMessagePage(current, {

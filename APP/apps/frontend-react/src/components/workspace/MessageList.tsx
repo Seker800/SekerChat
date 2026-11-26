@@ -17,7 +17,7 @@ import { MessageItem } from './MessageItem';
 import {
   formatDayDivider,
   isCompactWithPrevious,
-  isSameCalendarDay,
+  messageDayKey,
   messageDisplayTime,
 } from './messagePaneUtils';
 import styles from './message-stream.module.css';
@@ -179,15 +179,18 @@ export function MessageList({
     const result: Array<{ key: string; kind: 'history' | 'day' | 'message'; index: number }> = [
       { key: 'history', kind: 'history', index: -1 },
     ];
+    let previousDayKey: string | null = null;
     messages.forEach((message, index) => {
       const key = message.clientKey ?? message.id;
-      if (!isSameCalendarDay(messages[index - 1], message, language)) {
+      const dayKey = messageDayKey(message);
+      if (dayKey !== previousDayKey) {
         result.push({ key: `day:${key}`, kind: 'day', index });
+        previousDayKey = dayKey;
       }
       result.push({ key, kind: 'message', index });
     });
     return result;
-  }, [messages, language]);
+  }, [messages]);
   const getItemKey = useCallback((index: number) => rows[index]!.key, [rows]);
   const [restoration, setRestoration] = useState<{
     messageId: string | null;

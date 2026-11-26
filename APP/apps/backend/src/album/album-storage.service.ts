@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { createHash, randomUUID } from 'node:crypto';
 import { FilesService } from '../files/files.service';
 import { ObjectStorageGateway } from '../files/object-storage.gateway';
-import { withStoredImage } from '../files/stored-image-processing';
+import { withStoredImage, withStoredImageDigest } from '../files/stored-image-processing';
 import {
   assertWithinImageDecodeBudget,
   createImageProcessor,
@@ -57,6 +57,19 @@ export class AlbumStorageService {
     const hash = createHash('sha256');
     for await (const chunk of stream) hash.update(chunk);
     return hash.digest('hex');
+  }
+
+  /**
+   * Album completion needs the checksum and the pixel size of the same object.
+   * Both come from one download so a 20 MB photo is not pulled three times.
+   */
+  async inspectImage(storageKey: string) {
+    return withStoredImageDigest(this.objects, storageKey, async (filename) => {
+      const header = await readImageHeaderMetadata(filename);
+      return header.width && header.height
+        ? { width: header.width, height: header.height }
+        : null;
+    });
   }
   async hashPhotoContent(photoId: string) {
     const photo = await this.prisma.albumPhoto.findUnique({

@@ -103,11 +103,12 @@ export function useComposer({
     maxBytes: chatAttachmentMaxBytes,
     replyToMessageId,
     onMessage: (message, groupId) => {
+      // The confirmed message is already in the timeline cache; a refetch here
+      // only re-downloads the page the client just wrote.
       trackLocallySentMessage(message.id);
       queryClient.setQueryData<MessageTimeline>(['messages', groupId], current =>
         receiveCreatedMessage(current, groupId, message),
       );
-      void queryClient.invalidateQueries({ queryKey: ['messages', groupId] });
     },
   });
 
@@ -310,10 +311,14 @@ export function useComposer({
         const batch = entries.slice(i, i + 3).map((entry) => runUploadEntry(targetGroupId, entry));
         await Promise.all(batch);
       }
-
-      refetchMessages();
     },
-    [refetchMessages, replyToMessageId, runUploadEntry, selectedGroupId, setReplyToMessageId, updatePendingUploadsForGroup],
+    [
+      replyToMessageId,
+      runUploadEntry,
+      selectedGroupId,
+      setReplyToMessageId,
+      updatePendingUploadsForGroup,
+    ],
   );
 
   const clearPendingError = useCallback((localId: string) => {
@@ -365,8 +370,8 @@ export function useComposer({
     if (!entry?.file || !selectedGroupId || activeUploads.current.has(localId)) return;
     updatePendingUploadsForGroup(selectedGroupId, (current) => current.map((item) => item.localId === localId
       ? { ...item, error: undefined, status: entry.uploadedFile ? 'creating-message' : 'uploading' } : item));
-    void runUploadEntry(selectedGroupId, entry).finally(refetchMessages);
-  }, [pendingUploads, refetchMessages, runUploadEntry, selectedGroupId, updatePendingUploadsForGroup]);
+    void runUploadEntry(selectedGroupId, entry);
+  }, [pendingUploads, runUploadEntry, selectedGroupId, updatePendingUploadsForGroup]);
 
   return {
     composer: {

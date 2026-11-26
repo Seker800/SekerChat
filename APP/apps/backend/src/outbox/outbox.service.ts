@@ -24,8 +24,23 @@ export class OutboxService {
     return event !== null;
   }
 
-  async claimNext(): Promise<ClaimedOutboxEvent | null> {
+  /**
+   * Delivery bookkeeping is at-least-once by contract: a lost claim or a lost
+   * PROCESSED mark only causes a redelivery that consumers dedupe by event id.
+   * Keeping those two commits off the WAL fsync path frees the disk queue for
+   * business writes; the message row itself still commits synchronously.
+   */
+  private relaxedCommit<T>(
+    work: (transaction: Prisma.TransactionClient) => Promise<T>,
+  ): Promise<T> {
     return this.prismaService.$transaction(async (transaction) => {
+      await transaction.$executeRaw`SET LOCAL synchronous_commit = off`;
+      return work(transaction);
+    });
+  }
+
+  async claimNext(): Promise<ClaimedOutboxEvent | null> {
+    return this.relaxedCommit(async (transaction) => {
       const [candidate] = await transaction.$queryRaw<ClaimedOutboxEvent[]>(Prisma.sql`
         SELECT *
         FROM "OutboxEvent"
@@ -52,15 +67,17 @@ export class OutboxService {
   }
 
   markProcessed(eventId: string) {
-    return this.prismaService.outboxEvent.update({
-      where: { id: eventId },
-      data: {
-        status: OutboxEventStatus.PROCESSED,
-        processedAt: new Date(),
-        lockedAt: null,
-        lastError: null,
-      },
-    });
+    return this.relaxedCommit((transaction) =>
+      transaction.outboxEvent.update({
+        where: { id: eventId },
+        data: {
+          status: OutboxEventStatus.PROCESSED,
+          processedAt: new Date(),
+          lockedAt: null,
+          lastError: null,
+        },
+      }),
+    );
   }
 
   markFailed(event: ClaimedOutboxEvent, error: unknown) {

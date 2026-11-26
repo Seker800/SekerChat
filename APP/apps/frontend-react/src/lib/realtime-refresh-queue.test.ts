@@ -63,3 +63,27 @@ it('retains hidden-window changes even when an older HTTP read completes afterwa
   queue.dispose();
   client.clear();
 });
+
+it('merges scheduled low-urgency refreshes into one read per window', async () => {
+  vi.useFakeTimers();
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const read = vi.fn().mockResolvedValue(1);
+  const observer = new QueryObserver(client, { queryKey: ['activity', 'g'], queryFn: read });
+  const unsubscribe = observer.subscribe(() => {});
+  const queue = new RealtimeRefreshQueue(client, () => true);
+  await client.getQueryCache().find({ queryKey: ['activity', 'g'] })?.promise;
+  read.mockClear();
+
+  queue.schedule({ queryKey: ['activity', 'g'] }, 30_000);
+  queue.schedule({ queryKey: ['activity', 'g'] }, 30_000);
+  queue.schedule({ queryKey: ['activity', 'g'] }, 30_000);
+  expect(read).not.toHaveBeenCalled();
+
+  await vi.advanceTimersByTimeAsync(30_000);
+  expect(read).toHaveBeenCalledTimes(1);
+
+  unsubscribe();
+  queue.dispose();
+  client.clear();
+  vi.useRealTimers();
+});

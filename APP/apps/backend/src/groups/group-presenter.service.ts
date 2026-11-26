@@ -18,11 +18,29 @@ export interface GroupSerializePrefetch {
 
 @Injectable()
 export class GroupPresenter {
+  /**
+   * A group list serializes every group, so rebuilding the online-user set per
+   * group is pure duplication. One snapshot per request burst is enough: presence
+   * changes still reach clients through their own realtime event.
+   */
+  private onlineSnapshot: { takenAt: number; ids: Set<string> } | null = null;
+
   constructor(
     private readonly prismaService: PrismaService,
     private readonly avatarsService: AvatarsService,
     private readonly realtimePublisher: GroupRealtimePublisher,
   ) {}
+
+  private browserOnlineIds(): Set<string> {
+    const now = Date.now();
+    if (this.onlineSnapshot && now - this.onlineSnapshot.takenAt < 250) {
+      return this.onlineSnapshot.ids;
+    }
+
+    const ids = this.realtimePublisher.getBrowserOnlineUserIds();
+    this.onlineSnapshot = { takenAt: now, ids };
+    return ids;
+  }
 
   async serializeGroup(
     group: GroupWithMembers,
@@ -31,7 +49,7 @@ export class GroupPresenter {
     unreadCount?: number,
     prefetch?: GroupSerializePrefetch,
   ) {
-    const onlineIds = this.realtimePublisher.getBrowserOnlineUserIds();
+    const onlineIds = this.browserOnlineIds();
     const currentUserId = maybeUserId ?? membershipOrUserId;
     const currentUserRole =
       maybeUserId === undefined

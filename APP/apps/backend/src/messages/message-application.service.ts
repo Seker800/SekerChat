@@ -25,10 +25,13 @@ export class MessageApplicationService {
     group: MessageGroup;
     message: SerializedMessage;
   }): Promise<void> {
-    const receiptMembers = await this.readReceiptService.listMessageReceiptMembers(input.group.id);
+    // Read receipts are meaningful to the sender only and already travel with the
+    // HTTP response. Broadcast a receipt-free payload instead of shipping an
+    // O(members) unread list to every connection for every message.
     const serializedMessage = await this.serializerService.serializeMessage(
       input.message,
-      receiptMembers,
+      [],
+      false,
     );
     if (input.message.externalAuthor && input.message.revokedAt) {
       await this.realtimePublisher.publishUpdated(

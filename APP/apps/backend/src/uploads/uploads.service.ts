@@ -493,12 +493,33 @@ export class UploadsService {
         : null;
     let albumSha256: string | null = null;
     let videoMetadata = null;
+    let imageDimensions: { width: number; height: number } | null = null;
     if (session.kind === UploadKind.ALBUM_PHOTO) {
       try {
         if (session.mimeType === 'video/mp4') {
           const video = await this.albumVideoService!.inspectAndHash(session.objectKey);
           albumSha256 = video.sha256;
           videoMetadata = video;
+        } else if (this.isAlbumImageMimeType(session.mimeType)) {
+          // Checksum and pixel size come from the same download.
+          const inspection = await this.albumStorageService!
+            .inspectImage(session.objectKey)
+            .catch((error) => {
+              this.logger.warn(
+                'image_metadata_extraction_failed_in_complete_upload',
+                JSON.stringify({
+                  objectKey: session.objectKey,
+                  error: error instanceof Error ? error.message : 'Unknown',
+                }),
+              );
+              return null;
+            });
+          if (inspection) {
+            albumSha256 = inspection.sha256;
+            imageDimensions = inspection.value;
+          } else {
+            albumSha256 = await this.albumStorageService!.computeSha256(session.objectKey);
+          }
         } else {
           albumSha256 = await this.albumStorageService!.computeSha256(session.objectKey);
         }
@@ -521,23 +542,6 @@ export class UploadsService {
         throw error;
       }
     }
-    const imageDimensions =
-      session.kind === UploadKind.ALBUM_PHOTO &&
-      session.mimeType.startsWith('image/') &&
-      session.mimeType !== 'image/svg+xml'
-        ? await this.filesService
-            .getImageDimensionsFromS3Object(session.objectKey, session.mimeType)
-            .catch((error) => {
-              this.logger.warn(
-                'image_metadata_extraction_failed_in_complete_upload',
-                JSON.stringify({
-                  objectKey: session.objectKey,
-                  error: error instanceof Error ? error.message : 'Unknown',
-                }),
-              );
-              return null;
-            })
-        : null;
     if (session.kind === UploadKind.ALBUM_PHOTO && !imageDimensions && !videoMetadata) {
       await this.prismaService.uploadSession.updateMany({
         where: { id: session.id, status: UploadSessionStatus.ASSEMBLED },
@@ -1388,6 +1392,11 @@ export class UploadsService {
       createdAt: photo.createdAt,
       contentUrl: this.albumStorageService!.contentUrl(photo.id),
     };
+  }
+
+  /** Static album images are inspected once for checksum and pixel size. */
+  private isAlbumImageMimeType(mimeType: string): boolean {
+    return mimeType.startsWith('image/') && mimeType !== 'image/svg+xml';
   }
 
   private parseCompletionParts(value: Prisma.JsonValue | null) {

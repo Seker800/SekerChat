@@ -161,6 +161,7 @@ describe('useComposer pending uploads', () => {
     });
 
     const refetchMessages = vi.fn();
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const { result } = renderHook(
       () =>
         useComposer({
@@ -180,7 +181,7 @@ describe('useComposer pending uploads', () => {
           groupMembers: [],
         }),
       {
-        wrapper: createWrapper(),
+        wrapper: createWrapper(queryClient),
       },
     );
 
@@ -221,7 +222,14 @@ describe('useComposer pending uploads', () => {
         attachment: { fileId: 'file-1' },
       }),
     );
-    expect(refetchMessages).toHaveBeenCalled();
+    // The confirmed message is patched into the timeline cache, so a full page
+    // refetch would only re-download what the client just wrote.
+    expect(refetchMessages).not.toHaveBeenCalled();
+    expect(
+      queryClient
+        .getQueryData<{ items: MessageResponse[] }>(['messages', 'group-1'])
+        ?.items.some((item) => item.id === 'message-file-1'),
+    ).toBe(true);
   });
 
   it('still sends text messages while a file upload is pending', async () => {

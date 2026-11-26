@@ -455,6 +455,10 @@ export class FilesService {
     return this.objectStorage.exists(storageKey);
   }
 
+  async listS3Keys(prefix: string): Promise<string[]> {
+    return this.objectStorage.listKeys(prefix);
+  }
+
   async createPresignedViewUrl(
     storageKey: string,
     mimeType: string,

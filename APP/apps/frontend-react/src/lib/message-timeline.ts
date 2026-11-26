@@ -11,24 +11,44 @@ function isLocal(message: MessageResponse): boolean {
   return Boolean(message.isSending || message.sendError);
 }
 
+/** Decimal sequences are positive integers; length then lexicographic order is numeric order. */
+function compareSequences(left: string, right: string): number {
+  if (left.length !== right.length) return left.length - right.length;
+  return left < right ? -1 : left > right ? 1 : 0;
+}
+
 function compareMessages(left: MessageResponse, right: MessageResponse): number {
   if (isLocal(left) || isLocal(right)) return Number(isLocal(left)) - Number(isLocal(right));
   if (left.eventSequence && right.eventSequence) {
-    const a = BigInt(left.eventSequence);
-    const b = BigInt(right.eventSequence);
-    return a < b ? -1 : a > b ? 1 : 0;
+    return compareSequences(left.eventSequence, right.eventSequence);
   }
   return Date.parse(left.createdAt) - Date.parse(right.createdAt);
 }
 
-function mergeItems(current: MessageResponse[], incoming: MessageResponse[]): MessageResponse[] {
+interface MergeOptions {
+  /**
+   * Realtime broadcasts omit the read receipt (it is only meaningful to the sender
+   * and travels with the HTTP response), so a realtime update must not erase a
+   * receipt the client already holds.
+   */
+  preserveReceipt?: boolean;
+}
+
+function mergeItems(
+  current: MessageResponse[],
+  incoming: MessageResponse[],
+  options: MergeOptions = {},
+): MessageResponse[] {
   const items = new Map(current.map((message) => [message.id, message]));
   for (const message of incoming) {
     const existing = items.get(message.id);
     // A delayed HTTP read must not undo a newer realtime edit/revocation.
     const existingRevision = existing?.revokedAt ?? existing?.editedAt ?? '';
     const incomingRevision = message.revokedAt ?? message.editedAt ?? '';
-    const next = existingRevision > incomingRevision ? existing! : message;
+    let next = existingRevision > incomingRevision ? existing! : message;
+    if (options.preserveReceipt && !next.readReceipt && existing?.readReceipt) {
+      next = { ...next, readReceipt: existing.readReceipt };
+    }
     items.set(message.id, existing?.clientKey ? { ...next, clientKey: existing.clientKey } : next);
   }
   return [...items.values()].sort(compareMessages);
@@ -67,7 +87,7 @@ export function receiveCreatedMessage(
 ): MessageTimeline | undefined {
   // An event is not an initial page: it carries neither history nor a cursor.
   if (!current || current.groupId !== groupId || message.groupId !== groupId) return current;
-  return { ...current, items: mergeItems(current.items, [message]) };
+  return { ...current, items: mergeItems(current.items, [message], { preserveReceipt: true }) };
 }
 
 export function patchTimelineMessage(

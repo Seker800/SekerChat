@@ -184,25 +184,18 @@ export function isCompactWithPrevious(
   return currentAt >= previousAt && currentAt - previousAt < COMPACT_MESSAGE_WINDOW_MS;
 }
 
+/** Local calendar day key; comparing keys avoids constructing two formatters per message. */
+export function messageDayKey(message: MessageResponse): string {
+  const date = new Date(messageDisplayTime(message));
+  return `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+}
+
 export function isSameCalendarDay(
   previous: MessageResponse | undefined,
   current: MessageResponse,
-  locale = 'zh-CN',
 ): boolean {
   if (!previous) return false;
-
-  return (
-    dateFormatter(locale, {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).format(new Date(messageDisplayTime(previous))) ===
-    dateFormatter(locale, {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).format(new Date(messageDisplayTime(current)))
-  );
+  return messageDayKey(previous) === messageDayKey(current);
 }
 
 export function formatDayDivider(value: string, locale = 'zh-CN'): string {

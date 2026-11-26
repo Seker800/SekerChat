@@ -30,6 +30,9 @@ FROM node:22.23.5-bookworm-slim@sha256:be979e5523c76fa4d5ca4ebd3099078f220aa47ec
 WORKDIR /app
 ENV NODE_ENV=production
 ENV MALLOC_ARENA_MAX=2
+# The container is capped at 1 GiB, but V8 sizes its heap from host memory.
+# Without a cap the process is OOM-killed instead of collecting earlier.
+ENV NODE_OPTIONS=--max-old-space-size=768
 
 RUN apt-get update -y \
   && apt-get upgrade -y --no-install-recommends \

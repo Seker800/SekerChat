@@ -159,10 +159,12 @@ export function useWorkspaceQueries({
     staleTime: 30 * 1000,
   });
 
+  // DMs never carry artifacts; fetching them costs a request per conversation.
+  const selectedGroupIsDm = Boolean(fallbackSelectedGroup?.isDM);
   const artifactsQuery = useQuery({
     queryKey: ['artifacts', selectedGroupId],
     queryFn: () => listGroupArtifacts(accessToken, selectedGroupId),
-    enabled: Boolean(selectedGroupId) && !isDmSpecialPage,
+    enabled: Boolean(selectedGroupId) && !isDmSpecialPage && !selectedGroupIsDm,
     staleTime: 30 * 1000,
   });
 

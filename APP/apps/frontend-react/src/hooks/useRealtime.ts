@@ -15,6 +15,8 @@ import { hasPendingSends } from './localMessageTracker';
 
 const REALTIME_UNAUTHORIZED_CLOSE_CODE = 4401;
 const RECENT_REALTIME_EVENT_LIMIT = 2_000;
+/** Activity is shown per day, so a burst of messages may share one refresh. */
+const ACTIVITY_REFRESH_DELAY_MS = 30_000;
 
 export interface MessageCreatedEvent {
   groupId: string;
@@ -253,7 +255,12 @@ export function useRealtime(
                   : undefined);
               return receiveCreatedMessage(timeline, data.groupId, messagePayload);
             });
-            invalidate({ queryKey: ['group-message-activity', data.groupId] });
+            // A day-granularity calendar does not need a full-history aggregate
+            // per message; one trailing read per window is enough.
+            refreshQueue.schedule(
+              { queryKey: ['group-message-activity', data.groupId] },
+              ACTIVITY_REFRESH_DELAY_MS,
+            );
             if (messagePayload.type === 'system') {
               invalidate({ queryKey: ['artifacts', data.groupId] });
             }
@@ -273,7 +280,10 @@ export function useRealtime(
                 data.payload as unknown as MessageResponse,
               ),
             );
-            invalidate({ queryKey: ['group-message-activity', data.groupId] });
+            refreshQueue.schedule(
+              { queryKey: ['group-message-activity', data.groupId] },
+              ACTIVITY_REFRESH_DELAY_MS,
+            );
           }
           if (data.type === 'message.read-cursor.changed.v1') {
             queryClient.setQueryData<MessageListResponse>(['messages', data.groupId], (current) =>

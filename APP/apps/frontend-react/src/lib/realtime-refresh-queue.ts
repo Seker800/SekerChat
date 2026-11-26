@@ -4,12 +4,31 @@ import type { InvalidateQueryFilters, QueryClient } from '@tanstack/react-query'
 export class RealtimeRefreshQueue {
   private readonly deferred = new Map<string, InvalidateQueryFilters>();
   private readonly trailing = new Map<string, Promise<void>>();
+  private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
   private stopped = false;
 
   constructor(
     private readonly client: QueryClient,
     private readonly visible: () => boolean,
   ) {}
+
+  /**
+   * Coalesce low-urgency invalidation (for example a day-granularity calendar)
+   * into one read per window instead of one per incoming event.
+   */
+  schedule(filters: InvalidateQueryFilters, delayMs: number): void {
+    if (this.stopped) return;
+    const key = JSON.stringify(filters.queryKey);
+    const existing = this.timers.get(key);
+    if (existing) clearTimeout(existing);
+    this.timers.set(
+      key,
+      setTimeout(() => {
+        this.timers.delete(key);
+        void this.invalidate(filters);
+      }, delayMs),
+    );
+  }
 
   invalidate(filters: InvalidateQueryFilters): Promise<void> {
     if (this.stopped) return Promise.resolve();
@@ -43,6 +62,8 @@ export class RealtimeRefreshQueue {
 
   dispose(): void {
     this.stopped = true;
+    for (const timer of this.timers.values()) clearTimeout(timer);
+    this.timers.clear();
     this.deferred.clear();
   }
 }

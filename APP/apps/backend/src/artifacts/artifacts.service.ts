@@ -66,16 +66,12 @@ export class ArtifactsService {
     await this.getReadableGroupOrThrow(groupId, userId);
 
     const artifacts = await this.repository.listByGroup(groupId);
+    const fileExistence = await this.resolveFileExistence(artifacts);
 
-    const results = await Promise.all(
-      artifacts.map(async (artifact) => {
-        const serialized = this.serializeArtifact(artifact);
-        const fileExists = await this.checkArtifactExists(artifact);
-        return { ...serialized, fileExists };
-      }),
-    );
-
-    return results;
+    return artifacts.map((artifact) => ({
+      ...this.serializeArtifact(artifact),
+      fileExists: fileExistence.get(artifact.id) ?? true,
+    }));
   }
 
   async listArtifactsForAdmin(actor: AuthenticatedUser, filters: AdminArtifactFilters = {}) {
@@ -699,6 +695,47 @@ export class ArtifactsService {
     }
 
     return sanitized;
+  }
+
+  /**
+   * One prefix listing answers "which of these objects still exist" for the whole
+   * channel. A per-file HeadObject would turn one channel switch into N storage
+   * round trips. Any listing failure falls back to the exact per-file probe so a
+   * transient storage error never marks a healthy artifact as broken.
+   */
+  private async resolveFileExistence(
+    artifacts: ArtifactRecord[],
+  ): Promise<Map<string, boolean>> {
+    const existence = new Map<string, boolean>();
+    if (artifacts.length === 0) return existence;
+
+    let availableKeys: Set<string> | null = null;
+    try {
+      const keys = await this.storageService.listKeys(`artifacts/${artifacts[0]!.groupId}/`);
+      availableKeys = new Set(keys);
+    } catch {
+      availableKeys = null;
+    }
+
+    if (availableKeys) {
+      for (const artifact of artifacts) {
+        let present = false;
+        try {
+          present = availableKeys.has(this.storageService.extractStorageKey(artifact.relativePath));
+        } catch {
+          present = false;
+        }
+        existence.set(artifact.id, present);
+      }
+      return existence;
+    }
+
+    await Promise.all(
+      artifacts.map(async (artifact) => {
+        existence.set(artifact.id, await this.checkArtifactExists(artifact));
+      }),
+    );
+    return existence;
   }
 
   private async checkArtifactExists(artifact: ArtifactRecord) {

@@ -58,8 +58,14 @@ export function useMessageList({
         void queryClient.invalidateQueries({ queryKey: ['dms'] });
         void queryClient.invalidateQueries({ queryKey: ['group', groupId] });
       },
+      { coalesceMs: 2_500 },
     );
   }
+
+  useEffect(() => {
+    const coordinator = readCursorCoordinatorRef.current;
+    return () => coordinator?.cancel();
+  }, []);
 
   const messagesQuery = useQuery({
     queryKey: ['messages', selectedGroupId],
@@ -148,6 +154,11 @@ export function useMessageList({
     if (typeof window === 'undefined' || typeof document === 'undefined') return;
 
     const handleVisibilityOrFocus = () => {
+      if (document.visibilityState === 'hidden') {
+        // Leaving the page must not swallow a cursor still inside its window.
+        readCursorCoordinatorRef.current?.flush();
+        return;
+      }
       markSelectedGroupRead();
     };
 

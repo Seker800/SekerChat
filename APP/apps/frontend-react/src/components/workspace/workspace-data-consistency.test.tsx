@@ -369,12 +369,26 @@ it('advances only visible confirmed messages and refreshes unread state after cu
   act(() => result.current.handleVisibleLatestMessage());
   expect(mocks.advanceCursor).not.toHaveBeenCalled();
   visible.mockReturnValue('visible');
-  await act(async () => result.current.handleVisibleLatestMessage());
-  await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ['group', 'a'] }));
-  act(() => window.dispatchEvent(new Event('focus')));
-  await waitFor(() => expect(mocks.advanceCursor).toHaveBeenCalledTimes(2));
-  expect(mocks.advanceCursor).toHaveBeenLastCalledWith('token', 'a', '5');
-  expect(client.getQueryData<GroupResponse[]>(['groups'])?.[0]?.unreadCount).toBe(0);
+  vi.useFakeTimers();
+  try {
+    act(() => result.current.handleVisibleLatestMessage());
+    // Cursor writes are coalesced, so nothing leaves before the window closes.
+    expect(mocks.advanceCursor).not.toHaveBeenCalled();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_500);
+    });
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['group', 'a'] });
+
+    act(() => window.dispatchEvent(new Event('focus')));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_500);
+    });
+    expect(mocks.advanceCursor).toHaveBeenCalledTimes(2);
+    expect(mocks.advanceCursor).toHaveBeenLastCalledWith('token', 'a', '5');
+    expect(client.getQueryData<GroupResponse[]>(['groups'])?.[0]?.unreadCount).toBe(0);
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 it('keeps work-state responses and edited fields scoped to their submitted group', async () => {

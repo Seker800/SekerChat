@@ -67,6 +67,9 @@ export class MessagesService {
 
     const limit = this.normalizePullLimit(options?.limit ?? 50);
     const cursor = options?.cursor?.trim() ? this.parseCursor(options.cursor) : undefined;
+    // Older pages can never contain the viewer's latest message, so the receipt
+    // probe only belongs on the newest page.
+    const isNewestPage = cursor === undefined;
     const [messagesDesc, latestOwnMessage] = await Promise.all([
       this.prismaService.message.findMany({
         where: {
@@ -77,15 +80,17 @@ export class MessagesService {
         take: limit + 1,
         select: messageSelect,
       }),
-      this.prismaService.message.findFirst({
-        where: {
-          groupId,
-          senderId: userId,
-          type: { not: MessageType.SYSTEM },
-        },
-        orderBy: { eventSequence: 'desc' },
-        select: { eventSequence: true },
-      }),
+      isNewestPage
+        ? this.prismaService.message.findFirst({
+            where: {
+              groupId,
+              senderId: userId,
+              type: { not: MessageType.SYSTEM },
+            },
+            orderBy: { eventSequence: 'desc' },
+            select: { eventSequence: true },
+          })
+        : Promise.resolve(null),
     ]);
     const hasMore = messagesDesc.length > limit;
     const page = hasMore ? messagesDesc.slice(0, limit) : messagesDesc;

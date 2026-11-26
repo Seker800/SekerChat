@@ -12,7 +12,9 @@ export class AttendanceMonthlyReportScheduler implements OnApplicationBootstrap 
     void this.generateMissingReports();
   }
 
-  @Cron('0 5 * * * *', {
+  // Reports cover closed months, so a daily pass is enough; the bootstrap run
+  // covers deploys and the existence check makes repeats cheap.
+  @Cron('0 5 5 * * *', {
     name: 'attendance-monthly-reports',
     timeZone: 'Asia/Shanghai',
     waitForCompletion: true,

@@ -32,6 +32,39 @@ describe('ReadCursorCoordinator', () => {
     expect(send).toHaveBeenNthCalledWith(2, 'group-1', '12');
   });
 
+  it('merges a burst of observations into one request inside the coalesce window', async () => {
+    vi.useFakeTimers();
+    const send = vi.fn().mockResolvedValue(undefined);
+    const coordinator = new ReadCursorCoordinator(send, undefined, { coalesceMs: 2_500 });
+
+    coordinator.observe('group-1', '10');
+    coordinator.observe('group-1', '11');
+    coordinator.observe('group-1', '12');
+    expect(send).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(2_500);
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledWith('group-1', '12');
+    coordinator.dispose();
+    vi.useRealTimers();
+  });
+
+  it('flushes a pending window on demand', async () => {
+    vi.useFakeTimers();
+    const send = vi.fn().mockResolvedValue(undefined);
+    const coordinator = new ReadCursorCoordinator(send, undefined, { coalesceMs: 2_500 });
+
+    coordinator.observe('group-1', '7');
+    expect(send).not.toHaveBeenCalled();
+    coordinator.flush();
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send).toHaveBeenCalledWith('group-1', '7');
+    coordinator.dispose();
+    vi.useRealTimers();
+  });
+
   it('does not resend an acknowledged cursor', async () => {
     const send = vi.fn().mockResolvedValue(undefined);
     const coordinator = new ReadCursorCoordinator(send);

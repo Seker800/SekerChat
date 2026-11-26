@@ -742,6 +742,10 @@ test('completeUpload ignores an album photo with an existing SHA-256 hash', asyn
     {} as never,
     {
       computeSha256: async () => 'same-sha256',
+      inspectImage: async () => ({
+        sha256: 'same-sha256',
+        value: { width: 1200, height: 800 },
+      }),
       contentUrl: (id: string) => `/content/${id}`,
       thumbnailUrl: (id: string) => `/thumbnail/${id}`,
     } as never,
@@ -813,6 +817,10 @@ test('completeUpload reloads the winning album session after concurrent finaliza
     {} as never,
     {
       computeSha256: async () => 'same-sha256',
+      inspectImage: async () => ({
+        sha256: 'same-sha256',
+        value: { width: 1200, height: 800 },
+      }),
       contentUrl: (id: string) => `/content/${id}`,
       thumbnailUrl: (id: string) => `/thumbnail/${id}`,
     } as never,
