@@ -20,6 +20,8 @@ function previousMonth(month: string): string {
 
 @Injectable()
 export class AttendanceMonthlyReportService {
+  private running: Promise<number> | null = null;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly attendance: AttendanceService,
@@ -68,7 +70,22 @@ export class AttendanceMonthlyReportService {
     };
   }
 
-  async generateMissingReports(maxHistoricalReports = 50, now = new Date()): Promise<number> {
+  /**
+   * Bootstrap and the daily cron share one in-flight run. The work is idempotent,
+   * but two concurrent passes would duplicate the per-month calculations.
+   */
+  generateMissingReports(maxHistoricalReports = 50, now = new Date()): Promise<number> {
+    if (this.running) return Promise.resolve(0);
+    this.running = this.generateMissingReportsOnce(maxHistoricalReports, now).finally(() => {
+      this.running = null;
+    });
+    return this.running;
+  }
+
+  private async generateMissingReportsOnce(
+    maxHistoricalReports: number,
+    now: Date,
+  ): Promise<number> {
     const { timezone } = parseAttendanceConfig(await this.config.getRawConfig());
     const currentMonth = zonedDateParts(now, timezone).dateKey.slice(0, 7);
     const lastClosedMonth = previousMonth(currentMonth);
@@ -93,7 +110,7 @@ export class AttendanceMonthlyReportService {
       const key = `${userId}:${month}`;
       if (existingKeys.has(key)) return 0;
       const snapshot = {
-        ...await this.attendance.calculateClosedMonthlyReport(userId, month),
+        ...(await this.attendance.calculateClosedMonthlyReport(userId, month)),
         displayName: reportOwnerName(user),
       };
       const result = await this.prisma.attendanceMonthlyReport.createMany({

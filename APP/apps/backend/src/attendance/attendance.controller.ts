@@ -75,22 +75,13 @@ export class AttendanceController {
   }
 
   @Get('me/stats')
-  async getOwnStats(
-    @CurrentUser() user: AuthenticatedUser,
-    @Query('workDate') workDate?: string,
-  ) {
+  async getOwnStats(@CurrentUser() user: AuthenticatedUser, @Query('workDate') workDate?: string) {
     return this.attendanceService.getOwnStats(user, workDate);
   }
 
   @Get('me/panel')
-  async getOwnPanel(
-    @CurrentUser() user: AuthenticatedUser,
-    @Query('days') days?: string,
-  ) {
-    return this.attendanceService.getOwnPanel(
-      user,
-      days ? Number.parseInt(days, 10) : undefined,
-    );
+  async getOwnPanel(@CurrentUser() user: AuthenticatedUser, @Query('days') days?: string) {
+    return this.attendanceService.getOwnPanel(user, days ? Number.parseInt(days, 10) : undefined);
   }
 
   @Get('me/monthly')
@@ -99,10 +90,7 @@ export class AttendanceController {
   }
 
   @Get('me/monthly/:month')
-  async getOwnMonthlyReport(
-    @CurrentUser() user: AuthenticatedUser,
-    @Param('month') month: string,
-  ) {
+  async getOwnMonthlyReport(@CurrentUser() user: AuthenticatedUser, @Param('month') month: string) {
     return this.monthlyReports.getOwnReport(user, month);
   }
 
@@ -127,10 +115,7 @@ export class AttendanceController {
   }
 
   @Get('me/checkin/panel')
-  async getOwnCheckInPanel(
-    @CurrentUser() user: AuthenticatedUser,
-    @Query('days') days?: string,
-  ) {
+  async getOwnCheckInPanel(@CurrentUser() user: AuthenticatedUser, @Query('days') days?: string) {
     return this.attendanceService.getOwnCheckInPanel(
       user,
       days ? Number.parseInt(days, 10) : undefined,
@@ -147,6 +132,12 @@ export class AttendanceController {
     return this.attendanceService.getUserStats(userId, workDate);
   }
 
+  @Get('recompute')
+  async getRecomputeStatus(@CurrentUser() user: AuthenticatedUser) {
+    await this.ensureConfigAccess(user);
+    return this.attendanceService.getRecomputeStatus();
+  }
+
   @Patch('config')
   async updateAttendanceConfig(
     @CurrentUser() user: AuthenticatedUser,
@@ -155,11 +146,12 @@ export class AttendanceController {
     await this.ensureConfigAccess(user);
     await this.attendanceConfigService.updateFromDto(dto);
     const shouldRecomputeAttendance =
-      dto.attendanceTimezone !== undefined ||
-      dto.attendanceActiveWindowMinutes !== undefined;
+      dto.attendanceTimezone !== undefined || dto.attendanceActiveWindowMinutes !== undefined;
 
     if (shouldRecomputeAttendance) {
-      await this.attendanceService.recomputeAllUsers();
+      // Derived rows may lag by a few seconds; do not hold the admin request on
+      // hundreds of write commits.
+      this.attendanceService.scheduleRecomputeAllUsers();
     }
 
     return this.attendanceConfigService.getRawConfig();

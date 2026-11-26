@@ -9,7 +9,12 @@ import { CheckInCommandService } from './check-in-command.service';
 import { AttendanceActionRecorder } from './attendance-action-recorder.service';
 import { AttendanceProjectionService } from './attendance-projection.service';
 import { AttendanceQueryService } from './attendance-query.service';
-import { clampDailyWorkedMinutes, computeActiveWindowWorkedMinutes, computeWorkedMinutes } from './attendance.utils';
+import {
+  clampDailyWorkedMinutes,
+  computeActiveWindowWorkedMinutes,
+  computeWorkedMinutes,
+  zonedDateParts,
+} from './attendance.utils';
 
 test('scheduled attendance subtracts configured break minutes', () => {
   const clockInAt = new Date('2026-05-12T01:00:00.000Z');
@@ -186,12 +191,16 @@ test('getOwnCheckInPanel includes previous-year days without changing current-ye
   const service = createAttendanceService({
     checkInSessions: [
       {
-        id: 'previous-year', userId: 'user-1', workDate: '2025-12-31',
+        id: 'previous-year',
+        userId: 'user-1',
+        workDate: '2025-12-31',
         checkInAt: new Date('2025-12-31T01:00:00.000Z'),
         checkOutAt: new Date('2025-12-31T03:00:00.000Z'),
       },
       {
-        id: 'current-year', userId: 'user-1', workDate: '2026-01-02',
+        id: 'current-year',
+        userId: 'user-1',
+        workDate: '2026-01-02',
         checkInAt: new Date('2026-01-02T01:00:00.000Z'),
         checkOutAt: new Date('2026-01-02T02:00:00.000Z'),
       },
@@ -202,7 +211,10 @@ test('getOwnCheckInPanel includes previous-year days without changing current-ye
   );
 
   assert.equal(panel.range.days, 365);
-  assert.equal(panel.checkInSeries.find((day) => day.workDate === '2025-12-31')?.checkInMinutes, 120);
+  assert.equal(
+    panel.checkInSeries.find((day) => day.workDate === '2025-12-31')?.checkInMinutes,
+    120,
+  );
   assert.equal(panel.summary.averages.checkIn.totalAverageMinutes, 60);
 });
 
@@ -221,12 +233,16 @@ test('checkIn and checkOut allow multiple sessions in one day and accumulate min
 
   const actor = { sub: 'user-1', role: 'MEMBER' } as any;
 
-  const afterCheckIn = await withMockedNow('2026-07-01T04:00:00.000Z', () => service.checkIn(actor));
+  const afterCheckIn = await withMockedNow('2026-07-01T04:00:00.000Z', () =>
+    service.checkIn(actor),
+  );
   assert.equal(afterCheckIn.status, 'CHECKED_IN');
   assert.equal(afterCheckIn.checkInMinutes, 60);
   assert.equal(afterCheckIn.checkOutAt, null);
 
-  const afterCheckOut = await withMockedNow('2026-07-01T05:30:00.000Z', () => service.checkOut(actor));
+  const afterCheckOut = await withMockedNow('2026-07-01T05:30:00.000Z', () =>
+    service.checkOut(actor),
+  );
   assert.equal(afterCheckOut.status, 'CHECKED_OUT');
   assert.equal(afterCheckOut.checkInMinutes, 150);
   assert.equal(afterCheckOut.checkInAt, '2026-07-01T01:00:00.000Z');
@@ -265,10 +281,7 @@ test('concurrent check-in requests create at most one open session', async () =>
     Promise.all([service.checkIn(actor), service.checkIn(actor)]),
   );
 
-  assert.equal(
-    checkInSessions.filter((session) => session.checkOutAt === null).length,
-    1,
-  );
+  assert.equal(checkInSessions.filter((session) => session.checkOutAt === null).length, 1);
 });
 
 test('getOwnCheckInPanel aggregates multiple sessions from the same workday', async () => {
@@ -399,7 +412,10 @@ test('getOwnCheckInPanel loads a presence range in a bounded number of queries',
     service.getOwnCheckInPanel({ sub: 'user-1', role: 'MEMBER' } as any, 30),
   );
 
-  assert.ok(findFirstCalls <= 2, `expected at most 2 previous-state queries, received ${findFirstCalls}`);
+  assert.ok(
+    findFirstCalls <= 2,
+    `expected at most 2 previous-state queries, received ${findFirstCalls}`,
+  );
   assert.ok(findManyCalls <= 2, `expected at most 2 range queries, received ${findManyCalls}`);
 });
 
@@ -426,13 +442,20 @@ test('listDailySummaries paginates before loading presence ranges', async () => 
 
   assert.equal(result.items.length, 1);
   assert.equal(result.total, 10);
-  assert.ok(findFirstCalls <= 1, `expected at most 1 previous-state query, received ${findFirstCalls}`);
-  assert.ok(findManyCalls <= 2, `expected date discovery plus 1 range query, received ${findManyCalls}`);
+  assert.ok(
+    findFirstCalls <= 1,
+    `expected at most 1 previous-state query, received ${findFirstCalls}`,
+  );
+  assert.ok(
+    findManyCalls <= 2,
+    `expected date discovery plus 1 range query, received ${findManyCalls}`,
+  );
 });
 
 test('historical daily summary remains available after raw presence logs are compacted', async () => {
   const service = createAttendanceService({
-    presenceSummaries: [{
+    presenceSummaries: [
+      {
       userId: 'user-1',
       workDate: '2025-01-06',
       firstOnlineAt: new Date('2025-01-06T01:00:00.000Z'),
@@ -440,7 +463,8 @@ test('historical daily summary remains available after raw presence logs are com
       onlineWorkMinutes: 60,
       endIsOnline: false,
       endIsDnd: false,
-    }],
+      },
+    ],
   });
 
   const stats = await service.getUserStats('user-1', '2025-01-06');
@@ -451,16 +475,25 @@ test('historical daily summary remains available after raw presence logs are com
 
 test('a compacted day carries its final online state into the next live day', async () => {
   const service = createAttendanceService({
-    presenceSummaries: [{
-      userId: 'user-1', workDate: '2025-01-06',
+    presenceSummaries: [
+      {
+        userId: 'user-1',
+        workDate: '2025-01-06',
       firstOnlineAt: new Date('2025-01-06T01:00:00.000Z'),
       lastOnlineAt: new Date('2025-01-06T16:00:00.000Z'),
-      onlineWorkMinutes: 480, endIsOnline: true, endIsDnd: false,
-    }],
-    presenceLogs: [{
-      userId: 'user-1', createdAt: new Date('2025-01-06T18:00:00.000Z'),
-      isOnline: false, isDnd: false,
-    }],
+        onlineWorkMinutes: 480,
+        endIsOnline: true,
+        endIsDnd: false,
+      },
+    ],
+    presenceLogs: [
+      {
+        userId: 'user-1',
+        createdAt: new Date('2025-01-06T18:00:00.000Z'),
+        isOnline: false,
+        isDnd: false,
+      },
+    ],
   });
 
   const stats = await service.getUserStats('user-1', '2025-01-07');
@@ -471,17 +504,38 @@ test('personal monthly report combines capped workday completion and preserves d
   const service = createAttendanceService({
     userCreatedAt: new Date('2026-06-29T00:00:00.000Z'),
     presenceSummaries: [
-      { userId: 'user-1', workDate: '2026-06-29', firstOnlineAt: null, lastOnlineAt: null, onlineWorkMinutes: 480, endIsOnline: false, endIsDnd: false },
-      { userId: 'user-1', workDate: '2026-06-30', firstOnlineAt: null, lastOnlineAt: null, onlineWorkMinutes: 240, endIsOnline: false, endIsDnd: false },
+      {
+        userId: 'user-1',
+        workDate: '2026-06-29',
+        firstOnlineAt: null,
+        lastOnlineAt: null,
+        onlineWorkMinutes: 480,
+        endIsOnline: false,
+        endIsDnd: false,
+      },
+      {
+        userId: 'user-1',
+        workDate: '2026-06-30',
+        firstOnlineAt: null,
+        lastOnlineAt: null,
+        onlineWorkMinutes: 240,
+        endIsOnline: false,
+        endIsDnd: false,
+      },
     ],
-    checkInSessions: [{
-      id: 'session-1', userId: 'user-1', workDate: '2026-06-29',
+    checkInSessions: [
+      {
+        id: 'session-1',
+        userId: 'user-1',
+        workDate: '2026-06-29',
       checkInAt: new Date('2026-06-29T01:00:00.000Z'),
       checkOutAt: new Date('2026-06-29T11:00:00.000Z'),
-    }],
+      },
+    ],
   });
   const report = await withMockedNow('2026-07-02T12:00:00.000Z', () =>
-    service.calculateClosedMonthlyReport('user-1', '2026-06'));
+    service.calculateClosedMonthlyReport('user-1', '2026-06'),
+  );
 
   assert.equal(report.summary.expectedWorkDays, 2);
   assert.equal(report.summary.onlineCompletionPercent, 75);
@@ -490,11 +544,15 @@ test('personal monthly report combines capped workday completion and preserves d
   assert.equal(report.summary.checkInTotalMinutes, 480);
   assert.equal(report.days.length, 2);
   await assert.rejects(
-    withMockedNow('2026-07-02T12:00:00.000Z', () => service.calculateClosedMonthlyReport('user-1', '2026-13')),
+    withMockedNow('2026-07-02T12:00:00.000Z', () =>
+      service.calculateClosedMonthlyReport('user-1', '2026-13'),
+    ),
     /只能结算/,
   );
   await assert.rejects(
-    withMockedNow('2026-07-02T12:00:00.000Z', () => service.calculateClosedMonthlyReport('user-1', '2026-07')),
+    withMockedNow('2026-07-02T12:00:00.000Z', () =>
+      service.calculateClosedMonthlyReport('user-1', '2026-07'),
+    ),
     /只能结算/,
   );
 });
@@ -522,23 +580,75 @@ test('attendance migrations backfill historical presence and enforce one open se
   );
 });
 
-function createAttendanceService(overrides: {
+test('recomputeAllUsers writes one batched row per user-day', async () => {
+  let created: Array<Record<string, unknown>> = [];
+  const service = createAttendanceService({
+    attendanceActionEvents: [
+      { userId: 'user-1', occurredAt: new Date('2026-05-12T01:00:00.000Z') },
+      { userId: 'user-1', occurredAt: new Date('2026-05-12T02:00:00.000Z') },
+    ],
+    onDailyCreateMany: (rows) => {
+      created = rows;
+    },
+  });
+
+  await service.recomputeAllUsers();
+
+  assert.equal(created.length, 1);
+  assert.equal(created[0]?.workDate, '2026-05-12');
+  assert.equal(created[0]?.mode, AttendanceMode.FLEXIBLE);
+  assert.equal(created[0]?.workedMinutes, 180);
+});
+
+function createAttendanceService(
+  overrides: {
   userCreatedAt?: Date;
   presenceLogs?: Array<{ userId: string; createdAt: Date; isOnline: boolean; isDnd: boolean }>;
-  presenceSummaries?: Array<{ userId: string; workDate: string; firstOnlineAt: Date | null; lastOnlineAt: Date | null; onlineWorkMinutes: number; endIsOnline: boolean; endIsDnd: boolean }>;
-  checkInSessions?: Array<{ id: string; userId: string; workDate: string; checkInAt: Date | null; checkOutAt: Date | null }>;
+    presenceSummaries?: Array<{
+      userId: string;
+      workDate: string;
+      firstOnlineAt: Date | null;
+      lastOnlineAt: Date | null;
+      onlineWorkMinutes: number;
+      endIsOnline: boolean;
+      endIsDnd: boolean;
+    }>;
+    checkInSessions?: Array<{
+      id: string;
+      userId: string;
+      workDate: string;
+      checkInAt: Date | null;
+      checkOutAt: Date | null;
+    }>;
   enforceOpenSessionUniqueness?: boolean;
   beforeCheckInSessionLookup?: () => Promise<void> | void;
   onPresenceFindFirst?: () => void;
   onPresenceFindMany?: () => void;
-} = {}) {
+    attendanceActionEvents?: Array<{ userId: string; occurredAt: Date }>;
+    onDailyCreateMany?: (rows: Array<Record<string, unknown>>) => void;
+  } = {},
+) {
   const presenceLogs = overrides.presenceLogs ?? [];
   const presenceSummaries = overrides.presenceSummaries ?? [];
   const checkInSessions = overrides.checkInSessions ?? [];
   const prismaService = {
-    $transaction: async (callback: (transaction: any) => Promise<unknown>) => callback(prismaService),
+    $transaction: async (callback: (transaction: any) => Promise<unknown>) =>
+      callback(prismaService),
+    $executeRaw: async () => undefined,
+    $queryRaw: async (query: any) => {
+      const text = String(query?.sql ?? query?.strings ?? query);
+      if (text.includes('PresenceLog')) {
+        return [
+          ...new Set(
+            presenceLogs.map((log) => zonedDateParts(log.createdAt, 'Asia/Shanghai').dateKey),
+          ),
+        ].map((workDate) => ({ workDate }));
+      }
+      return [];
+    },
     user: {
-      findUnique: async ({ where }: any) => where.id === 'user-1'
+      findUnique: async ({ where }: any) =>
+        where.id === 'user-1'
         ? { createdAt: overrides.userCreatedAt ?? new Date('2026-01-01T00:00:00.000Z') }
         : null,
       findMany: async () => [
@@ -547,7 +657,8 @@ function createAttendanceService(overrides: {
     },
     attendanceActionEvent: {
       findFirst: async () => null,
-      findMany: async () => [],
+      findMany: async ({ where }: any = {}) => (overrides.attendanceActionEvents ?? [])
+        .filter((event) => !where?.userId || event.userId === where.userId),
       create: async () => undefined,
     },
     attendanceDaily: {
@@ -555,6 +666,10 @@ function createAttendanceService(overrides: {
       findUnique: async () => null,
       aggregate: async () => ({ _sum: { workedMinutes: null } }),
       findMany: async () => [],
+      createMany: async ({ data }: any) => {
+        overrides.onDailyCreateMany?.(data);
+        return { count: data.length };
+      },
       count: async () => 0,
       deleteMany: async () => undefined,
     },
@@ -564,16 +679,21 @@ function createAttendanceService(overrides: {
     checkInSession: {
       findFirst: async ({ where }: any = {}) => {
         await overrides.beforeCheckInSessionLookup?.();
-        return checkInSessions.find((item) =>
-          (!where?.userId || item.userId === where.userId)
-          && (!where?.workDate || item.workDate === where.workDate)
-          && (where?.checkOutAt !== null || item.checkOutAt === null),
-        ) ?? null;
+        return (
+          checkInSessions.find(
+            (item) =>
+              (!where?.userId || item.userId === where.userId) &&
+              (!where?.workDate || item.workDate === where.workDate) &&
+              (where?.checkOutAt !== null || item.checkOutAt === null),
+          ) ?? null
+        );
       },
       findMany: async ({ where, orderBy }: any = {}) => {
         await overrides.beforeCheckInSessionLookup?.();
         let items = [...checkInSessions];
-        if (where?.userId) {
+        if (where?.userId?.in) {
+          items = items.filter((item) => where.userId.in.includes(item.userId));
+        } else if (where?.userId) {
           items = items.filter((item) => item.userId === where.userId);
         }
         if (where?.workDate?.gte) {
@@ -591,11 +711,12 @@ function createAttendanceService(overrides: {
       },
       create: async ({ data }: any) => {
         if (
-          overrides.enforceOpenSessionUniqueness
-          && checkInSessions.some((session) =>
-            session.userId === data.userId
-            && session.workDate === data.workDate
-            && session.checkOutAt === null
+          overrides.enforceOpenSessionUniqueness &&
+          checkInSessions.some(
+            (session) =>
+              session.userId === data.userId &&
+              session.workDate === data.workDate &&
+              session.checkOutAt === null,
           )
         ) {
           throw Object.assign(new Error('unique constraint'), { code: 'P2002' });
@@ -632,14 +753,18 @@ function createAttendanceService(overrides: {
     presenceLog: {
       findFirst: async ({ where }: any) => {
         overrides.onPresenceFindFirst?.();
-        return presenceLogs
+        return (
+          presenceLogs
           .filter((item) => item.userId === where.userId && item.createdAt < where.createdAt.lt)
-          .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())[0] ?? null;
+            .sort((left, right) => right.createdAt.getTime() - left.createdAt.getTime())[0] ?? null
+        );
       },
       findMany: async ({ where, orderBy }: any = {}) => {
         overrides.onPresenceFindMany?.();
         let items = [...presenceLogs];
-        if (where?.userId) {
+        if (where?.userId?.in) {
+          items = items.filter((item) => where.userId.in.includes(item.userId));
+        } else if (where?.userId) {
           items = items.filter((item) => item.userId === where.userId);
         }
         if (where?.createdAt?.gte) {
@@ -657,14 +782,21 @@ function createAttendanceService(overrides: {
       },
     },
     presenceDailySummary: {
-      findFirst: async ({ where }: any) => presenceSummaries
+      findFirst: async ({ where }: any) =>
+        presenceSummaries
         .filter((item) => item.userId === where.userId && item.workDate < where.workDate.lt)
         .sort((left, right) => right.workDate.localeCompare(left.workDate))[0] ?? null,
-      findMany: async ({ where }: any = {}) => presenceSummaries.filter((item) =>
-        (!where?.userId || item.userId === where.userId) &&
+      findMany: async ({ where }: any = {}) =>
+        presenceSummaries.filter(
+          (item) =>
+            (!where?.userId ||
+              (where.userId.in
+                ? where.userId.in.includes(item.userId)
+                : item.userId === where.userId)) &&
         (!where?.workDate?.in || where.workDate.in.includes(item.workDate)) &&
         (!where?.workDate?.gte || item.workDate >= where.workDate.gte) &&
-        (!where?.workDate?.lte || item.workDate <= where.workDate.lte)),
+            (!where?.workDate?.lte || item.workDate <= where.workDate.lte),
+        ),
     },
   };
 
@@ -749,10 +881,18 @@ test('today refresh reads one day of presence and never rebuilds annual projecti
   const service = createAttendanceService();
   const ranges: Array<[string, string]> = [];
   const load = (service as any).loadDailyPresenceProjections.bind(service);
-  (service as any).loadDailyPresenceProjections = async (userId: string, start: string, end: string, timezone: string) => {
-    ranges.push([start, end]); return load(userId, start, end, timezone);
+  (service as any).loadDailyPresenceProjections = async (
+    userId: string,
+    start: string,
+    end: string,
+    timezone: string,
+  ) => {
+    ranges.push([start, end]);
+    return load(userId, start, end, timezone);
   };
-  const result = await withMockedNow('2026-11-01T12:00:00Z', () => service.getOwnCheckInToday({ sub: 'user-1' } as never));
+  const result = await withMockedNow('2026-11-01T12:00:00Z', () =>
+    service.getOwnCheckInToday({ sub: 'user-1' } as never),
+  );
   assert.deepEqual(ranges, [['2026-11-01', '2026-11-01']]);
   assert.ok(Array.isArray(result.todaySegments));
   assert.equal('checkInSeries' in result, false);

@@ -30,8 +30,14 @@ export function parseAttendanceConfig(raw: Record<string, string>): AttendanceCo
     clockOutStart: raw.attendanceClockOutStart || defaults.clockOutStart,
     clockOutEnd: raw.attendanceClockOutEnd || defaults.clockOutEnd,
     workDays: parseWorkDays(raw.attendanceWorkDays) ?? defaults.workDays,
-    scheduledBreakMinutes: parsePositiveInt(raw.attendanceScheduledBreakMinutes, defaults.scheduledBreakMinutes),
-    activeWindowMinutes: parsePositiveInt(raw.attendanceActiveWindowMinutes, defaults.activeWindowMinutes),
+    scheduledBreakMinutes: parsePositiveInt(
+      raw.attendanceScheduledBreakMinutes,
+      defaults.scheduledBreakMinutes,
+    ),
+    activeWindowMinutes: parsePositiveInt(
+      raw.attendanceActiveWindowMinutes,
+      defaults.activeWindowMinutes,
+    ),
   };
 }
 
@@ -53,17 +59,26 @@ export function parsePositiveInt(raw: string | undefined, fallback: number): num
   return Number.isFinite(value) && value >= 0 ? value : fallback;
 }
 
-export function zonedDateParts(date: Date, timeZone: string): {
-  year: number;
-  month: number;
-  day: number;
-  weekday: number;
-  hours: number;
-  minutes: number;
-  seconds: number;
-  dateKey: string;
-} {
-  const parts = new Intl.DateTimeFormat('en-CA', {
+const WEEKDAY_BY_NAME: Record<string, number> = {
+  Sun: 0,
+  Mon: 1,
+  Tue: 2,
+  Wed: 3,
+  Thu: 4,
+  Fri: 5,
+  Sat: 6,
+};
+
+// Timezone-aware formatting is a formatter construction per call if left inline.
+// Production has a handful of zones; keep the cache small and explicit.
+const DATE_TIME_FORMATTER_CACHE_LIMIT = 8;
+const dateTimeFormatters = new Map<string, Intl.DateTimeFormat>();
+
+function dateTimeFormatter(timeZone: string): Intl.DateTimeFormat {
+  const cached = dateTimeFormatters.get(timeZone);
+  if (cached) return cached;
+
+  const formatter = new Intl.DateTimeFormat('en-CA', {
     timeZone,
     year: 'numeric',
     month: '2-digit',
@@ -73,29 +88,76 @@ export function zonedDateParts(date: Date, timeZone: string): {
     second: '2-digit',
     hour12: false,
     weekday: 'short',
-  }).formatToParts(date);
+  });
+  if (dateTimeFormatters.size >= DATE_TIME_FORMATTER_CACHE_LIMIT) {
+    const oldest = dateTimeFormatters.keys().next().value;
+    if (oldest !== undefined) dateTimeFormatters.delete(oldest);
+  }
+  dateTimeFormatters.set(timeZone, formatter);
+  return formatter;
+}
 
-  const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  const year = Number(map.year);
-  const month = Number(map.month);
-  const day = Number(map.day);
-  const hours = Number(map.hour);
-  const minutes = Number(map.minute);
-  const seconds = Number(map.second);
-  const weekdayMap: Record<string, number> = {
-    Sun: 0,
-    Mon: 1,
-    Tue: 2,
-    Wed: 3,
-    Thu: 4,
-    Fri: 5,
-    Sat: 6,
-  };
+/** Weekday of a local calendar date. Independent of the timezone. */
+export function weekdayForDateKey(dateKey: string): number {
+  const [year, month, day] = dateKey.split('-').map((value) => Number.parseInt(value, 10));
+  return new Date(Date.UTC(year, month - 1, day)).getUTCDay();
+}
+
+export function zonedDateParts(
+  date: Date,
+  timeZone: string,
+): {
+  year: number;
+  month: number;
+  day: number;
+  weekday: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+  dateKey: string;
+} {
+  const parts = dateTimeFormatter(timeZone).formatToParts(date);
+  let year = 0;
+  let month = 0;
+  let day = 0;
+  let weekday = 0;
+  let hours = 0;
+  let minutes = 0;
+  let seconds = 0;
+
+  for (const part of parts) {
+    switch (part.type) {
+      case 'year':
+        year = Number(part.value);
+        break;
+      case 'month':
+        month = Number(part.value);
+        break;
+      case 'day':
+        day = Number(part.value);
+        break;
+      case 'weekday':
+        weekday = WEEKDAY_BY_NAME[part.value] ?? 0;
+        break;
+      case 'hour':
+        hours = Number(part.value);
+        break;
+      case 'minute':
+        minutes = Number(part.value);
+        break;
+      case 'second':
+        seconds = Number(part.value);
+        break;
+      default:
+        break;
+    }
+  }
+
   return {
     year,
     month,
     day,
-    weekday: weekdayMap[map.weekday] ?? 0,
+    weekday,
     hours,
     minutes,
     seconds,
@@ -105,7 +167,7 @@ export function zonedDateParts(date: Date, timeZone: string): {
 
 export function localMinutes(date: Date, timeZone: string): number {
   const parts = zonedDateParts(date, timeZone);
-  return (parts.hours * 60) + parts.minutes;
+  return parts.hours * 60 + parts.minutes;
 }
 
 export function shiftDateKey(dateKey: string, offsetDays: number): string {
@@ -114,9 +176,11 @@ export function shiftDateKey(dateKey: string, offsetDays: number): string {
   return `${shifted.getUTCFullYear()}-${String(shifted.getUTCMonth() + 1).padStart(2, '0')}-${String(shifted.getUTCDate()).padStart(2, '0')}`;
 }
 
-export function weekRangeForDateKey(dateKey: string, timeZone: string): { startDate: string; endDate: string } {
-  const parts = zonedDateParts(new Date(`${dateKey}T12:00:00.000Z`), timeZone);
-  const startDate = shiftDateKey(dateKey, -((parts.weekday + 6) % 7));
+export function weekRangeForDateKey(
+  dateKey: string,
+  _timeZone: string,
+): { startDate: string; endDate: string } {
+  const startDate = shiftDateKey(dateKey, -((weekdayForDateKey(dateKey) + 6) % 7));
   const endDate = shiftDateKey(startDate, 6);
   return { startDate, endDate };
 }
@@ -131,7 +195,7 @@ export function monthRangeForDateKey(dateKey: string): { startDate: string; endD
 
 export function timeStringToMinutes(value: string): number {
   const [hours, minutes] = value.split(':').map((part) => Number.parseInt(part, 10));
-  return (hours * 60) + minutes;
+  return hours * 60 + minutes;
 }
 
 export function computeActiveWindowWorkedMinutes(
@@ -179,7 +243,14 @@ export function getLocalDayBoundaryUtc(dateKey: string, timeZone: string): Date 
   const [year, month, day] = dateKey.split('-').map((value) => Number.parseInt(value, 10));
   const utcProbe = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
   const parts = zonedDateParts(utcProbe, timeZone);
-  const localAsUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hours, parts.minutes, parts.seconds);
+  const localAsUtc = Date.UTC(
+    parts.year,
+    parts.month - 1,
+    parts.day,
+    parts.hours,
+    parts.minutes,
+    parts.seconds,
+  );
   const desiredAsUtc = Date.UTC(year, month - 1, day, 0, 0, 0, 0);
   return new Date(utcProbe.getTime() + (desiredAsUtc - localAsUtc));
 }

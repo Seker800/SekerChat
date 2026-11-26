@@ -1,14 +1,17 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { AttendanceMode } from '@prisma/client';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import { AttendanceMode, Prisma } from '@prisma/client';
 import { hasSystemPermission } from '@sekerchat/shared';
 import { PrismaService } from '../prisma/prisma.service';
 import { AttendanceConfigService } from '../system-config/attendance-config.service';
 import { PermissionConfigService } from '../system-config/permission-config.service';
 import type { AuthenticatedUser } from '../auth/types/authenticated-user.type';
-import type {
-  AttendanceConfig,
-  AttendanceDailySummary,
-} from './attendance.types';
+import type { AttendanceConfig, AttendanceDailySummary } from './attendance.types';
 import { isCalendarWorkday } from './workday-calendar';
 import {
   clampDailyWorkedMinutes,
@@ -22,6 +25,7 @@ import {
   timeStringToMinutes,
   weekRangeForDateKey,
   shiftDateKey,
+  weekdayForDateKey,
   zonedDateParts,
 } from './attendance.utils';
 import { CheckInCommandService } from './check-in-command.service';
@@ -41,12 +45,13 @@ type CheckInSessionLike = {
   checkOutAt: Date | null;
 };
 
-const ATTENDANCE_PROJECTION_MODES = [
-  AttendanceMode.FLEXIBLE,
-] as const;
+const ATTENDANCE_PROJECTION_MODES = [AttendanceMode.FLEXIBLE] as const;
 
 @Injectable()
 export class AttendanceService {
+  private readonly logger = new Logger(AttendanceService.name);
+  private recomputeAllRun: Promise<void> | null = null;
+
   constructor(
     private readonly prismaService: PrismaService,
     private readonly attendanceConfigService: AttendanceConfigService,
@@ -76,8 +81,9 @@ export class AttendanceService {
 
     const config = await this.getAttendanceConfig();
     const users = await this.queries.listActiveHumanUsers();
-    const targetUsers = (options.userId ? users.filter((user) => user.id === options.userId) : users)
-      .sort((left, right) => left.id.localeCompare(right.id));
+    const targetUsers = (
+      options.userId ? users.filter((user) => user.id === options.userId) : users
+    ).sort((left, right) => left.id.localeCompare(right.id));
     const workDates = options.workDate
       ? [options.workDate]
       : await this.listPresenceWorkDates(config.timezone, options.userId);
@@ -119,7 +125,10 @@ export class AttendanceService {
         const liveDates = selectedDates.filter((date) => !projections.has(date));
         if (liveDates.length) {
           const live = await this.loadDailyPresenceProjections(
-            userId, liveDates[0], liveDates[liveDates.length - 1], config.timezone,
+            userId,
+            liveDates[0],
+            liveDates[liveDates.length - 1],
+            config.timezone,
           );
           for (const [date, projection] of live) projections.set(date, projection);
         }
@@ -180,8 +189,18 @@ export class AttendanceService {
     const weekRange = weekRangeForDateKey(anchorDate, config.timezone);
     const monthRange = monthRangeForDateKey(anchorDate);
     const previousDate = shiftDateKey(anchorDate, -1);
-    const monthElapsedWorkDays = this.countMatchingWorkDaysInclusive(monthRange.startDate, anchorDate, config.timezone, config.workDays);
-    const weekElapsedWorkDays = this.countMatchingWorkDaysInclusive(weekRange.startDate, anchorDate, config.timezone, config.workDays);
+    const monthElapsedWorkDays = this.countMatchingWorkDaysInclusive(
+      monthRange.startDate,
+      anchorDate,
+      config.timezone,
+      config.workDays,
+    );
+    const weekElapsedWorkDays = this.countMatchingWorkDaysInclusive(
+      weekRange.startDate,
+      anchorDate,
+      config.timezone,
+      config.workDays,
+    );
     const preferredMode = AttendanceMode.FLEXIBLE;
     const daily = dailyProjections.get(anchorDate) ?? this.projections.empty();
     const previousDaily = dailyProjections.get(previousDate) ?? this.projections.empty();
@@ -268,7 +287,8 @@ export class AttendanceService {
     const startDate = registeredDate > monthRange.startDate ? registeredDate : monthRange.startDate;
     const endDate = monthRange.endDate;
     const dateKeys = startDate <= endDate ? this.enumerateDateKeys(startDate, endDate) : [];
-    const [sessions, projections] = dateKeys.length > 0
+    const [sessions, projections] =
+      dateKeys.length > 0
       ? await Promise.all([
         this.prismaService.checkInSession.findMany({
           where: { userId, workDate: { gte: startDate, lte: endDate } },
@@ -290,18 +310,27 @@ export class AttendanceService {
     const targetMinutes = expectedWorkDays * MAX_DAILY_ACTIVE_WORKED_MINUTES;
     const onlineTotalMinutes = days.reduce((sum, day) => sum + day.onlineMinutes, 0);
     const checkInTotalMinutes = days.reduce((sum, day) => sum + day.checkInMinutes, 0);
-    const workdayOnlineMinutes = days.reduce((sum, day) =>
-      sum + (day.isWorkday ? clampDailyWorkedMinutes(day.onlineMinutes) : 0), 0);
-    const workdayCheckInMinutes = days.reduce((sum, day) =>
-      sum + (day.isWorkday ? clampDailyWorkedMinutes(day.checkInMinutes) : 0), 0);
-    const percent = (minutes: number) => targetMinutes > 0
-      ? Math.round((minutes / targetMinutes) * 100) : null;
+    const workdayOnlineMinutes = days.reduce(
+      (sum, day) => sum + (day.isWorkday ? clampDailyWorkedMinutes(day.onlineMinutes) : 0),
+      0,
+    );
+    const workdayCheckInMinutes = days.reduce(
+      (sum, day) => sum + (day.isWorkday ? clampDailyWorkedMinutes(day.checkInMinutes) : 0),
+      0,
+    );
+    const percent = (minutes: number) =>
+      targetMinutes > 0 ? Math.round((minutes / targetMinutes) * 100) : null;
 
     return {
       month,
       timezone: config.timezone,
       targetDailyMinutes: MAX_DAILY_ACTIVE_WORKED_MINUTES,
-      range: { startDate: monthRange.startDate, endDate: monthRange.endDate, effectiveStartDate: startDate, effectiveEndDate: endDate },
+      range: {
+        startDate: monthRange.startDate,
+        endDate: monthRange.endDate,
+        effectiveStartDate: startDate,
+        effectiveEndDate: endDate,
+      },
       summary: {
         expectedWorkDays,
         targetMinutes,
@@ -347,7 +376,13 @@ export class AttendanceService {
     const workDate = zonedDateParts(now, config.timezone).dateKey;
     const result = await this.checkInCommands.checkOut(actor.sub, workDate, now);
     if (result.unchangedSessions) {
-      return this.getCheckInDayState(actor.sub, workDate, config.timezone, result.unchangedSessions, now);
+      return this.getCheckInDayState(
+        actor.sub,
+        workDate,
+        config.timezone,
+        result.unchangedSessions,
+        now,
+      );
     }
 
     return this.getCheckInDayState(actor.sub, workDate, config.timezone);
@@ -372,12 +407,7 @@ export class AttendanceService {
           },
         },
       }),
-      this.loadDailyPresenceProjections(
-        actor.sub,
-        recordStartDate,
-        today,
-        config.timezone,
-      ),
+      this.loadDailyPresenceProjections(actor.sub, recordStartDate, today, config.timezone),
     ]);
     const records = panelRecords.filter((record) => record.workDate >= startDate);
     const yearRecords = panelRecords.filter((record) => record.workDate >= currentYearStartDate);
@@ -397,7 +427,10 @@ export class AttendanceService {
     }));
 
     const recordSessionMap = this.groupCheckInSessionsByWorkDate(records);
-    const statusSeries = dateKeys.map((workDate): {
+    const statusSeries = dateKeys.map(
+      (
+        workDate,
+      ): {
       workDate: string;
       status: 'NOT_CHECKED_IN' | 'CHECKED_IN' | 'CHECKED_OUT';
       checkInAt: string | null;
@@ -408,7 +441,8 @@ export class AttendanceService {
       return this.summarizeCheckInSessions(workDate, sessions, {
         now: workDate === today ? new Date() : null,
       });
-    });
+      },
+    );
 
     const checkedInDays = statusSeries.filter((item) => item.status !== 'NOT_CHECKED_IN').length;
     const completedDays = statusSeries.filter((item) => item.status === 'CHECKED_OUT').length;
@@ -421,7 +455,10 @@ export class AttendanceService {
       const sessions = yearSessionMap.get(workDate) ?? [];
       return {
         workDate,
-        checkInMinutes: this.calculateCheckInMinutes(sessions, workDate === today ? new Date() : null),
+        checkInMinutes: this.calculateCheckInMinutes(
+          sessions,
+          workDate === today ? new Date() : null,
+        ),
       };
     });
     const averages = {
@@ -432,7 +469,10 @@ export class AttendanceService {
         config.workDays,
       ),
       checkIn: this.buildProjectedWorkdayAverages(
-        yearCheckInSeries.map((item) => ({ workDate: item.workDate, minutes: item.checkInMinutes })),
+        yearCheckInSeries.map((item) => ({
+          workDate: item.workDate,
+          minutes: item.checkInMinutes,
+        })),
         today,
         config.timezone,
         config.workDays,
@@ -444,7 +484,9 @@ export class AttendanceService {
       summary: {
         checkedInDays,
         completedDays,
-        completionRate: statusSeries.length ? Math.round((completedDays / statusSeries.length) * 100) : 0,
+        completionRate: statusSeries.length
+          ? Math.round((completedDays / statusSeries.length) * 100)
+          : 0,
         consecutiveCheckInDays: this.countTrailingCheckInDays(statusSeries),
         onlineTodayMinutes: ownStats.dayWorkedMinutes ?? 0,
         averages,
@@ -463,12 +505,23 @@ export class AttendanceService {
 
   async listUserStats(actor: AuthenticatedUser, dateKey?: string) {
     const users = await this.queries.listActiveHumanUsers();
-    const entries = await Promise.all(
-      users.map(async (user) => ({
-        user,
-        stats: await this.getUserStats(user.id, dateKey),
-      })),
+    const config = await this.getAttendanceConfig();
+    const anchorDate = dateKey || zonedDateParts(new Date(), config.timezone).dateKey;
+    const requiredRange = this.getStatsPresenceRange(anchorDate, config.timezone);
+    const projectionsByUser = await this.loadDailyPresenceProjectionsForUsers(
+      users.map((user) => user.id),
+      requiredRange.startDate,
+      anchorDate,
+      config.timezone,
     );
+    const entries = users.map((user) => ({
+      user,
+      stats: this.buildUserStats(
+        anchorDate,
+        config,
+        projectionsByUser.get(user.id) ?? new Map<string, DailyPresenceProjection>(),
+      ),
+    }));
     return {
       items: entries,
       total: entries.length,
@@ -480,44 +533,46 @@ export class AttendanceService {
     const today = zonedDateParts(new Date(), config.timezone).dateKey;
     const yearStart = `${today.slice(0, 4)}-01-01`;
     const users = await this.queries.listActiveHumanUsers();
+    const userIds = users.map((user) => user.id);
+    const [projectionsByUser, checkInSessions] = await Promise.all([
+      this.loadDailyPresenceProjectionsForUsers(userIds, yearStart, today, config.timezone),
+      this.prismaService.checkInSession.findMany({
+        where: {
+          userId: { in: userIds },
+          workDate: { gte: yearStart, lte: today },
+        },
+        select: { userId: true, workDate: true, checkInAt: true, checkOutAt: true },
+      }),
+    ]);
+    const checkInsByUser = new Map<string, typeof checkInSessions>();
+    for (const session of checkInSessions) {
+      const sessions = checkInsByUser.get(session.userId) ?? [];
+      sessions.push(session);
+      checkInsByUser.set(session.userId, sessions);
+    }
+    const dateKeys = this.enumerateDateKeys(yearStart, today);
 
-    const items = await Promise.all(
-      users.map(async (user) => {
-        const dailyProjections = await this.loadDailyPresenceProjections(
-          user.id,
-          yearStart,
-          today,
-          config.timezone,
-        );
+    const items = users.map((user) => {
+      const dailyProjections =
+        projectionsByUser.get(user.id) ?? new Map<string, DailyPresenceProjection>();
         const onlineDailyMap = new Map(
           [...dailyProjections].map(([workDate, projection]) => [
             workDate,
             projection.onlineWorkMinutes,
           ]),
         );
-
-        const checkInSessions = await this.prismaService.checkInSession.findMany({
-          where: {
-            userId: user.id,
-            workDate: { gte: yearStart, lte: today },
-          },
-          select: { workDate: true, checkInAt: true, checkOutAt: true },
-        });
-
-        const sessionMap = this.groupCheckInSessionsByWorkDate(checkInSessions);
-
-        const dateKeys = this.enumerateDateKeys(yearStart, today);
-
+      const sessionMap = this.groupCheckInSessionsByWorkDate(checkInsByUser.get(user.id) ?? []);
         const onlineSeries = dateKeys.map((dateKey) => ({
           workDate: dateKey,
           minutes: onlineDailyMap.get(dateKey) ?? 0,
         }));
-
-        const checkInSeries = dateKeys.map((dateKey) => {
-          const minutes = this.calculateCheckInMinutes(sessionMap.get(dateKey) ?? [], dateKey === today ? new Date() : null);
-          return { workDate: dateKey, minutes };
-        });
-
+      const checkInSeries = dateKeys.map((dateKey) => ({
+        workDate: dateKey,
+        minutes: this.calculateCheckInMinutes(
+          sessionMap.get(dateKey) ?? [],
+          dateKey === today ? new Date() : null,
+        ),
+      }));
         const onlineAverages = this.buildProjectedWorkdayAverages(
           onlineSeries,
           today,
@@ -530,26 +585,20 @@ export class AttendanceService {
           config.timezone,
           config.workDays,
         );
-
-        const todayOnline = onlineDailyMap.get(today) ?? 0;
-        const todayCheckIn =
-          checkInSeries.find((s) => s.workDate === today)?.minutes ?? 0;
-
         return {
           user,
           online: {
-            todayMinutes: todayOnline,
+          todayMinutes: onlineDailyMap.get(today) ?? 0,
             monthAverageMinutes: onlineAverages.monthAverageMinutes,
             totalAverageMinutes: onlineAverages.totalAverageMinutes,
           },
           checkIn: {
-            todayMinutes: todayCheckIn,
+          todayMinutes: checkInSeries.find((item) => item.workDate === today)?.minutes ?? 0,
             monthAverageMinutes: checkInAverages.monthAverageMinutes,
             totalAverageMinutes: checkInAverages.totalAverageMinutes,
           },
         };
-      }),
-    );
+    });
 
     return { items, total: items.length };
   }
@@ -585,12 +634,37 @@ export class AttendanceService {
     }
   }
 
+  /**
+   * Start the full rebuild without blocking the config request.
+   *
+   * Derived attendance rows are allowed to lag behind the config by a few
+   * seconds; a second request joins the in-flight run instead of duplicating it.
+   */
+  scheduleRecomputeAllUsers(): { started: boolean } {
+    if (this.recomputeAllRun) return { started: false };
+    this.recomputeAllRun = this.recomputeAllUsers()
+      .catch((error: unknown) => {
+        this.logger.error(
+          'attendance_recompute_failed',
+          error instanceof Error ? (error.stack ?? error.message) : String(error),
+        );
+      })
+      .finally(() => {
+        this.recomputeAllRun = null;
+      });
+    return { started: true };
+  }
+
+  getRecomputeStatus(): { running: boolean } {
+    return { running: this.recomputeAllRun !== null };
+  }
+
   async recomputeRecentDays(): Promise<void> {
     const config = await this.getAttendanceConfig();
     const recentEvents = await this.prismaService.attendanceActionEvent.findMany({
       where: {
         occurredAt: {
-          gte: new Date(Date.now() - (3 * 24 * 60 * 60 * 1000)),
+          gte: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
         },
       },
       select: {
@@ -600,20 +674,26 @@ export class AttendanceService {
       orderBy: { occurredAt: 'desc' },
     });
 
-    const pairs = new Set<string>();
+    const datesByUser = new Map<string, Set<string>>();
+    const addDate = (userId: string, dateKey: string) => {
+      const dates = datesByUser.get(userId) ?? new Set<string>();
+      dates.add(dateKey);
+      datesByUser.set(userId, dates);
+    };
     for (const event of recentEvents) {
       const dateKey = zonedDateParts(event.occurredAt, config.timezone).dateKey;
-      pairs.add(`${event.userId}::${dateKey}`);
-      const activeWindowEnd = new Date(event.occurredAt.getTime() + (config.activeWindowMinutes * 60_000));
+      addDate(event.userId, dateKey);
+      const activeWindowEnd = new Date(
+        event.occurredAt.getTime() + config.activeWindowMinutes * 60_000,
+      );
       const activeWindowEndDateKey = zonedDateParts(activeWindowEnd, config.timezone).dateKey;
       if (activeWindowEndDateKey !== dateKey) {
-        pairs.add(`${event.userId}::${activeWindowEndDateKey}`);
+        addDate(event.userId, activeWindowEndDateKey);
       }
     }
 
-    for (const pair of pairs) {
-      const [userId, dateKey] = pair.split('::');
-      await this.recomputeUserDayProjections(userId, dateKey, config);
+    for (const [userId, dates] of datesByUser) {
+      await this.recomputeUserDates(userId, [...dates].sort(), config, { pruneStale: false });
     }
   }
 
@@ -634,7 +714,9 @@ export class AttendanceService {
     for (const event of events) {
       const dateKey = zonedDateParts(event.occurredAt, config.timezone).dateKey;
       dateKeys.add(dateKey);
-      const activeWindowEnd = new Date(event.occurredAt.getTime() + (config.activeWindowMinutes * 60_000));
+      const activeWindowEnd = new Date(
+        event.occurredAt.getTime() + config.activeWindowMinutes * 60_000,
+      );
       const activeWindowEndDateKey = zonedDateParts(activeWindowEnd, config.timezone).dateKey;
       if (activeWindowEndDateKey !== dateKey) {
         dateKeys.add(activeWindowEndDateKey);
@@ -646,70 +728,115 @@ export class AttendanceService {
       return;
     }
 
-    const existingRows = await this.prismaService.attendanceDaily.findMany({
-      where: { userId },
-      select: { workDate: true },
-    });
-    const existingDates = new Set(existingRows.map((row) => row.workDate));
+    await this.recomputeUserDates(userId, [...dateKeys].sort(), config);
+  }
 
-    for (const dateKey of dateKeys) {
-      await this.recomputeUserDayProjections(userId, dateKey, config);
+  /**
+   * Rebuild a set of dates for one user in one transaction.
+   *
+   * The old path issued a range query and an upsert per user-day. Loading the
+   * events once and replacing the derived rows in bulk keeps the write count
+   * proportional to the number of dates, not the number of SQL round trips.
+   */
+  private async recomputeUserDates(
+    userId: string,
+    dateKeys: string[],
+    config: AttendanceConfig,
+    options: { pruneStale?: boolean } = {},
+  ): Promise<void> {
+    if (dateKeys.length === 0) {
+      if (options.pruneStale !== false) {
+        await this.prismaService.attendanceDaily.deleteMany({ where: { userId } });
+      }
+      return;
     }
 
-    const staleDates = [...existingDates].filter((dateKey) => !dateKeys.has(dateKey));
-    if (staleDates.length) {
-      await this.prismaService.attendanceDaily.deleteMany({
+    const minDate = dateKeys[0]!;
+    const maxDate = dateKeys[dateKeys.length - 1]!;
+    const [existingRows, events] = await Promise.all([
+      this.prismaService.attendanceDaily.findMany({
+        where: { userId },
+        select: { workDate: true },
+      }),
+      this.prismaService.attendanceActionEvent.findMany({
         where: {
           userId,
-          workDate: { in: staleDates },
+          occurredAt: {
+            gte: getLocalDayBoundaryUtc(shiftDateKey(minDate, -2), config.timezone),
+            lt: getLocalDayBoundaryUtc(shiftDateKey(maxDate, 3), config.timezone),
         },
-      });
+        },
+        orderBy: { occurredAt: 'asc' },
+        select: { occurredAt: true },
+      }),
+    ]);
+
+    const wanted = new Set(dateKeys);
+    const eventsByDate = new Map<string, Date[]>();
+    for (const event of events) {
+      const eventDateKey = zonedDateParts(event.occurredAt, config.timezone).dateKey;
+      if (wanted.has(eventDateKey)) {
+        const dates = eventsByDate.get(eventDateKey) ?? [];
+        dates.push(event.occurredAt);
+        eventsByDate.set(eventDateKey, dates);
+      }
+      const activeWindowEnd = new Date(
+        event.occurredAt.getTime() + config.activeWindowMinutes * 60_000,
+      );
+      const activeWindowEndDateKey = zonedDateParts(activeWindowEnd, config.timezone).dateKey;
+      if (activeWindowEndDateKey !== eventDateKey && wanted.has(activeWindowEndDateKey)) {
+        const dates = eventsByDate.get(activeWindowEndDateKey) ?? [];
+        dates.push(event.occurredAt);
+        eventsByDate.set(activeWindowEndDateKey, dates);
     }
   }
 
-  private async recomputeUserDayProjections(
-    userId: string,
-    workDate: string,
-    config: AttendanceConfig,
-    dayEventDates?: Date[],
-  ): Promise<void> {
-    const normalizedDayEventDates = dayEventDates ?? await this.loadDayEventDates(userId, workDate, config);
-    await Promise.all(
-      ATTENDANCE_PROJECTION_MODES.map((mode) => this.recomputeUserDayProjection(
-        userId,
-        workDate,
-        config,
-        normalizedDayEventDates,
-        mode,
-      )),
+    const summaries: AttendanceDailySummary[] = [];
+    for (const workDate of dateKeys) {
+      const dayEvents = (eventsByDate.get(workDate) ?? []).sort(
+        (left, right) => left.getTime() - right.getTime(),
     );
+      for (const mode of ATTENDANCE_PROJECTION_MODES) {
+        summaries.push(this.buildDailySummary(userId, workDate, config, dayEvents, mode));
+      }
   }
 
-  private async recomputeUserDayProjection(
+    const existingDates = new Set(existingRows.map((row) => row.workDate));
+    const staleDates =
+      options.pruneStale === false
+        ? []
+        : [...existingDates].filter((dateKey) => !wanted.has(dateKey));
+
+    await this.prismaService.$transaction(async (transaction) => {
+      await transaction.$executeRaw`SET LOCAL synchronous_commit = off`;
+      await transaction.attendanceDaily.deleteMany({
+        where: { userId, workDate: { in: dateKeys } },
+      });
+      if (summaries.length > 0) {
+        await transaction.attendanceDaily.createMany({ data: summaries });
+      }
+      if (staleDates.length > 0) {
+        await transaction.attendanceDaily.deleteMany({
+          where: { userId, workDate: { in: staleDates } },
+        });
+      }
+    });
+  }
+
+  private buildDailySummary(
     userId: string,
     workDate: string,
     config: AttendanceConfig,
-    normalizedDayEventDates: Date[],
+    dayEventDates: Date[],
     mode: AttendanceMode,
-  ): Promise<void> {
-    const dayEvents = normalizedDayEventDates.map((occurredAt) => ({ occurredAt }));
-    const parts = dayEvents[0]
-      ? zonedDateParts(dayEvents[0].occurredAt, config.timezone)
-      : this.parseWorkDate(workDate, config.timezone);
-
-    const isWorkDay = config.workDays.includes(parts.weekday);
-
-    let summary: AttendanceDailySummary;
-    if (mode === AttendanceMode.FLEXIBLE) {
+  ): AttendanceDailySummary {
+    const dayEvents = dayEventDates.map((occurredAt) => ({ occurredAt }));
+    const isWorkDay = config.workDays.includes(weekdayForDateKey(workDate));
       const first = dayEvents[0] ?? null;
       const last = dayEvents[dayEvents.length - 1] ?? null;
-      const workedMinutes = computeActiveWindowWorkedMinutes(
-        normalizedDayEventDates,
-        workDate,
-        config.timezone,
-        config.activeWindowMinutes,
-      );
-      summary = {
+
+    if (mode === AttendanceMode.FLEXIBLE) {
+      return {
         userId,
         workDate,
         mode,
@@ -719,11 +846,18 @@ export class AttendanceService {
         clockOutSource: last ? 'manual_action' : null,
         clockInMissing: !first,
         clockOutMissing: !last,
-        workedMinutes,
+        workedMinutes: computeActiveWindowWorkedMinutes(
+          dayEventDates,
+          workDate,
+          config.timezone,
+          config.activeWindowMinutes,
+        ),
         computedAt: new Date(),
       };
-    } else if (!isWorkDay) {
-      summary = {
+    }
+
+    if (!isWorkDay) {
+      return {
         userId,
         workDate,
         mode,
@@ -736,7 +870,8 @@ export class AttendanceService {
         workedMinutes: null,
         computedAt: new Date(),
       };
-    } else {
+    }
+
       const clockInStart = timeStringToMinutes(config.clockInStart);
       const clockInEnd = timeStringToMinutes(config.clockInEnd);
       const clockOutStart = timeStringToMinutes(config.clockOutStart);
@@ -749,94 +884,40 @@ export class AttendanceService {
         const minutes = localMinutes(event.occurredAt, config.timezone);
         return minutes >= clockOutStart && minutes <= clockOutEnd;
       });
-      const first = inEvents[0] ?? null;
-      const last = outEvents[outEvents.length - 1] ?? null;
-      summary = {
+    const firstIn = inEvents[0] ?? null;
+    const lastOut = outEvents[outEvents.length - 1] ?? null;
+    return {
         userId,
         workDate,
         mode,
-        clockInAt: first?.occurredAt ?? null,
-        clockOutAt: last?.occurredAt ?? null,
-        clockInSource: first ? 'manual_action' : null,
-        clockOutSource: last ? 'manual_action' : null,
-        clockInMissing: !first,
-        clockOutMissing: !last,
-        workedMinutes: computeWorkedMinutes(mode, first?.occurredAt ?? null, last?.occurredAt ?? null, config.scheduledBreakMinutes),
+      clockInAt: firstIn?.occurredAt ?? null,
+      clockOutAt: lastOut?.occurredAt ?? null,
+      clockInSource: firstIn ? 'manual_action' : null,
+      clockOutSource: lastOut ? 'manual_action' : null,
+      clockInMissing: !firstIn,
+      clockOutMissing: !lastOut,
+      workedMinutes: computeWorkedMinutes(
+        mode,
+        firstIn?.occurredAt ?? null,
+        lastOut?.occurredAt ?? null,
+        config.scheduledBreakMinutes,
+      ),
         computedAt: new Date(),
       };
     }
 
-    await this.prismaService.attendanceDaily.upsert({
-      where: {
-        userId_workDate_mode: {
-          userId,
-          workDate,
-          mode,
-        },
-      },
-      create: {
-        userId: summary.userId,
-        workDate: summary.workDate,
-        mode: summary.mode,
-        clockInAt: summary.clockInAt,
-        clockOutAt: summary.clockOutAt,
-        clockInSource: summary.clockInSource,
-        clockOutSource: summary.clockOutSource,
-        clockInMissing: summary.clockInMissing,
-        clockOutMissing: summary.clockOutMissing,
-        workedMinutes: summary.workedMinutes,
-        computedAt: summary.computedAt,
-      },
-      update: {
-        mode: summary.mode,
-        clockInAt: summary.clockInAt,
-        clockOutAt: summary.clockOutAt,
-        clockInSource: summary.clockInSource,
-        clockOutSource: summary.clockOutSource,
-        clockInMissing: summary.clockInMissing,
-        clockOutMissing: summary.clockOutMissing,
-        workedMinutes: summary.workedMinutes,
-        computedAt: summary.computedAt,
-      },
-    });
-  }
-
-  private async loadDayEventDates(userId: string, workDate: string, config: AttendanceConfig): Promise<Date[]> {
-    const previousDate = shiftDateKey(workDate, -1);
-    const nextDate = shiftDateKey(workDate, 1);
-    const [previousYear, previousMonth, previousDay] = previousDate.split('-').map((value) => Number.parseInt(value, 10));
-    const [nextYear, nextMonth, nextDay] = nextDate.split('-').map((value) => Number.parseInt(value, 10));
-    const dayEvents = await this.prismaService.attendanceActionEvent.findMany({
-      where: {
-        userId,
-        occurredAt: {
-          gte: new Date(Date.UTC(previousYear, previousMonth - 1, previousDay - 1, 0, 0, 0, 0)),
-          lt: new Date(Date.UTC(nextYear, nextMonth - 1, nextDay + 1, 23, 59, 59, 999)),
-        },
-      },
-      orderBy: { occurredAt: 'asc' },
-      select: { occurredAt: true },
-    });
-
-    return dayEvents
-      .map((event) => event.occurredAt)
-      .filter((occurredAt) => {
-        const eventDateKey = zonedDateParts(occurredAt, config.timezone).dateKey;
-        const activeWindowEnd = new Date(occurredAt.getTime() + (config.activeWindowMinutes * 60_000));
-        const activeWindowEndDateKey = zonedDateParts(activeWindowEnd, config.timezone).dateKey;
-        return eventDateKey === workDate || activeWindowEndDateKey === workDate;
-      });
-  }
-
-  private parseWorkDate(workDate: string, timeZone: string) {
-    const [year, month, day] = workDate.split('-').map((value) => Number.parseInt(value, 10));
-    const probe = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
-    return zonedDateParts(probe, timeZone);
+  /** Only the weekday is meaningful for a local date key; no timezone formatter needed. */
+  private parseWorkDate(workDate: string, _timeZone: string) {
+    return { weekday: weekdayForDateKey(workDate) };
   }
 
   private countInclusiveDays(startDate: string, endDate: string): number {
-    const [startYear, startMonth, startDay] = startDate.split('-').map((value) => Number.parseInt(value, 10));
-    const [endYear, endMonth, endDay] = endDate.split('-').map((value) => Number.parseInt(value, 10));
+    const [startYear, startMonth, startDay] = startDate
+      .split('-')
+      .map((value) => Number.parseInt(value, 10));
+    const [endYear, endMonth, endDay] = endDate
+      .split('-')
+      .map((value) => Number.parseInt(value, 10));
     const start = Date.UTC(startYear, startMonth - 1, startDay, 12, 0, 0, 0);
     const end = Date.UTC(endYear, endMonth - 1, endDay, 12, 0, 0, 0);
     return Math.max(1, Math.floor((end - start) / (24 * 60 * 60 * 1000)) + 1);
@@ -868,8 +949,12 @@ export class AttendanceService {
     workDays: number[],
   ) {
     const monthRange = monthRangeForDateKey(anchorDate);
-    const monthSeries = series.filter((item) => item.workDate >= monthRange.startDate && item.workDate <= anchorDate);
-    const yearSeries = series.filter((item) => item.workDate >= `${anchorDate.slice(0, 4)}-01-01` && item.workDate <= anchorDate);
+    const monthSeries = series.filter(
+      (item) => item.workDate >= monthRange.startDate && item.workDate <= anchorDate,
+    );
+    const yearSeries = series.filter(
+      (item) => item.workDate >= `${anchorDate.slice(0, 4)}-01-01` && item.workDate <= anchorDate,
+    );
 
     const firstMonthDataDate = monthSeries.find((item) => item.minutes > 0)?.workDate ?? null;
     const firstYearDataDate = yearSeries.find((item) => item.minutes > 0)?.workDate ?? null;
@@ -906,12 +991,14 @@ export class AttendanceService {
     prefetchedSessions?: ReadonlyArray<CheckInSessionLike>,
     now = new Date(),
   ) {
-    const sessions = prefetchedSessions ?? await this.prismaService.checkInSession.findMany({
+    const sessions =
+      prefetchedSessions ??
+      (await this.prismaService.checkInSession.findMany({
       where: {
         userId,
         workDate,
       },
-    });
+      }));
     const online = await this.computeOnlineDurationForUserDate(userId, workDate, timezone);
     const summary = this.summarizeCheckInSessions(workDate, sessions, { now });
 
@@ -937,7 +1024,9 @@ export class AttendanceService {
 
   private static readonly NO_CHECKOUT_MINUTES = 180; // 3h
 
-  private groupCheckInSessionsByWorkDate<T extends CheckInSessionLike>(sessions: ReadonlyArray<T>): Map<string, T[]> {
+  private groupCheckInSessionsByWorkDate<T extends CheckInSessionLike>(
+    sessions: ReadonlyArray<T>,
+  ): Map<string, T[]> {
     const grouped = new Map<string, T[]>();
     const sortedSessions = [...sessions].sort((left, right) => {
       if (left.workDate !== right.workDate) {
@@ -958,7 +1047,9 @@ export class AttendanceService {
     return grouped;
   }
 
-  private findLatestOpenSession<T extends CheckInSessionLike>(sessions: ReadonlyArray<T>): T | null {
+  private findLatestOpenSession<T extends CheckInSessionLike>(
+    sessions: ReadonlyArray<T>,
+  ): T | null {
     const sorted = [...sessions].sort((left, right) => {
       const leftTime = left.checkInAt?.getTime() ?? 0;
       const rightTime = right.checkInAt?.getTime() ?? 0;
@@ -979,7 +1070,9 @@ export class AttendanceService {
     checkOutAt: string | null;
     checkInMinutes: number;
   } {
-    const validSessions = sessions.filter((session) => session.checkInAt).sort((left, right) => {
+    const validSessions = sessions
+      .filter((session) => session.checkInAt)
+      .sort((left, right) => {
       const leftTime = left.checkInAt?.getTime() ?? 0;
       const rightTime = right.checkInAt?.getTime() ?? 0;
       return leftTime - rightTime;
@@ -996,15 +1089,18 @@ export class AttendanceService {
     }
 
     const openSession = this.findLatestOpenSession(validSessions);
-    const latestClosedSession = [...validSessions]
+    const latestClosedSession =
+      [...validSessions]
       .filter((session) => session.checkOutAt)
-      .sort((left, right) => (right.checkOutAt?.getTime() ?? 0) - (left.checkOutAt?.getTime() ?? 0))[0] ?? null;
+        .sort(
+          (left, right) => (right.checkOutAt?.getTime() ?? 0) - (left.checkOutAt?.getTime() ?? 0),
+        )[0] ?? null;
 
     return {
       workDate,
       status: openSession ? 'CHECKED_IN' : 'CHECKED_OUT',
       checkInAt: validSessions[0]?.checkInAt?.toISOString() ?? null,
-      checkOutAt: openSession ? null : latestClosedSession?.checkOutAt?.toISOString() ?? null,
+      checkOutAt: openSession ? null : (latestClosedSession?.checkOutAt?.toISOString() ?? null),
       checkInMinutes: this.calculateCheckInMinutes(validSessions, options?.now ?? null),
     };
   }
@@ -1031,16 +1127,27 @@ export class AttendanceService {
       return Math.max(0, Math.floor((now.getTime() - session.checkInAt.getTime()) / 60_000));
     }
 
-    return Math.max(0, Math.floor((session.checkOutAt.getTime() - session.checkInAt.getTime()) / 60_000));
+    return Math.max(
+      0,
+      Math.floor((session.checkOutAt.getTime() - session.checkInAt.getTime()) / 60_000),
+    );
   }
 
   private async listPresenceWorkDates(timezone: string, userId?: string): Promise<string[]> {
-    const [logs, summaries] = await Promise.all([
-      this.prismaService.presenceLog.findMany({
-        where: userId ? { userId } : undefined,
-        select: { createdAt: true },
-        orderBy: { createdAt: 'desc' },
-      }),
+    // Only distinct local dates are needed. Returning every log made this O(rows)
+    // in both SQL and JS just to discard all but a few hundred keys.
+    const [logDates, summaries] = await Promise.all([
+      this.prismaService.$queryRaw<Array<{ workDate: string }>>(
+        Prisma.sql`
+          SELECT DISTINCT
+            to_char(
+              (("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE ${timezone})::date,
+              'YYYY-MM-DD'
+            ) AS "workDate"
+          FROM "PresenceLog"
+          ${userId ? Prisma.sql`WHERE "userId" = ${userId}` : Prisma.empty}
+        `,
+      ),
       this.prismaService.presenceDailySummary.findMany({
         where: userId ? { userId } : undefined,
         select: { workDate: true },
@@ -1048,8 +1155,8 @@ export class AttendanceService {
     ]);
 
     const seen = new Set(summaries.map((summary) => summary.workDate));
-    for (const log of logs) {
-      seen.add(zonedDateParts(log.createdAt, timezone).dateKey);
+    for (const row of logDates) {
+      seen.add(row.workDate);
     }
 
     return [...seen].sort((left, right) => right.localeCompare(left));
@@ -1091,61 +1198,119 @@ export class AttendanceService {
     endDate: string,
     timezone: string,
   ): Promise<Map<string, DailyPresenceProjection>> {
+    const byUser = await this.loadDailyPresenceProjectionsForUsers(
+      [userId],
+      startDate,
+      endDate,
+      timezone,
+    );
+    return byUser.get(userId) ?? new Map<string, DailyPresenceProjection>();
+  }
+
+  /**
+   * Batch form of `loadDailyPresenceProjections`.
+   *
+   * The admin views need every user's year. Issuing four queries per user made
+   * the endpoint O(users) in round trips; one query per relation is enough.
+   */
+  private async loadDailyPresenceProjectionsForUsers(
+    userIds: string[],
+    startDate: string,
+    endDate: string,
+    timezone: string,
+  ): Promise<Map<string, Map<string, DailyPresenceProjection>>> {
+    const result = new Map<string, Map<string, DailyPresenceProjection>>();
+    if (userIds.length === 0) return result;
+
     const rangeStart = getLocalDayBoundaryUtc(startDate, timezone);
     const rangeEnd = getLocalDayBoundaryUtc(shiftDateKey(endDate, 1), timezone);
-    const [previousLog, previousSummary, rangeLogs, summaries] = await Promise.all([
+    const [previousLogs, previousSummaries, rangeLogs, summaries] = await Promise.all([
+      Promise.all(
+        userIds.map((userId) =>
       this.prismaService.presenceLog.findFirst({
-        where: {
-          userId,
-          createdAt: { lt: rangeStart },
-        },
+            where: { userId, createdAt: { lt: rangeStart } },
         orderBy: { createdAt: 'desc' },
-        select: {
-          createdAt: true,
-          isOnline: true,
-          isDnd: true,
-        },
+            select: { createdAt: true, isOnline: true, isDnd: true },
       }),
+        ),
+      ),
+      Promise.all(
+        userIds.map((userId) =>
       this.prismaService.presenceDailySummary.findFirst({
         where: { userId, workDate: { lt: startDate } },
         orderBy: { workDate: 'desc' },
         select: { endIsOnline: true, endIsDnd: true },
       }),
+        ),
+      ),
       this.prismaService.presenceLog.findMany({
         where: {
-          userId,
-          createdAt: {
-            gte: rangeStart,
-            lt: rangeEnd,
-          },
+          userId: { in: userIds },
+          createdAt: { gte: rangeStart, lt: rangeEnd },
         },
         orderBy: { createdAt: 'asc' },
-        select: {
-          createdAt: true,
-          isOnline: true,
-          isDnd: true,
-        },
+        select: { userId: true, createdAt: true, isOnline: true, isDnd: true },
       }),
       this.prismaService.presenceDailySummary.findMany({
-        where: { userId, workDate: { gte: startDate, lte: endDate } },
+        where: { userId: { in: userIds }, workDate: { gte: startDate, lte: endDate } },
         orderBy: { workDate: 'asc' },
       }),
     ]);
-    const previous = previousLog ?? (previousSummary ? {
+
+    const previousLogByUser = new Map<
+      string,
+      { createdAt: Date; isOnline: boolean; isDnd: boolean }
+    >();
+    const previousSummaryByUser = new Map<string, { endIsOnline: boolean; endIsDnd: boolean }>();
+    userIds.forEach((userId, index) => {
+      const previousLog = previousLogs[index];
+      if (previousLog) previousLogByUser.set(userId, previousLog);
+      const previousSummary = previousSummaries[index];
+      if (previousSummary) previousSummaryByUser.set(userId, previousSummary);
+    });
+    const logsByUser = new Map<
+      string,
+      Array<{ createdAt: Date; isOnline: boolean; isDnd: boolean }>
+    >();
+    for (const log of rangeLogs) {
+      const logs = logsByUser.get(log.userId) ?? [];
+      logs.push({ createdAt: log.createdAt, isOnline: log.isOnline, isDnd: log.isDnd });
+      logsByUser.set(log.userId, logs);
+    }
+    const summariesByUser = new Map<string, typeof summaries>();
+    for (const summary of summaries) {
+      const userSummaries = summariesByUser.get(summary.userId) ?? [];
+      userSummaries.push(summary);
+      summariesByUser.set(summary.userId, userSummaries);
+    }
+
+    for (const userId of userIds) {
+      const previousLog = previousLogByUser.get(userId);
+      const previousSummary = previousSummaryByUser.get(userId);
+      const previous =
+        previousLog ??
+        (previousSummary
+          ? {
       createdAt: new Date(rangeStart.getTime() - 1),
       isOnline: previousSummary.endIsOnline,
       isDnd: previousSummary.endIsDnd,
-    } : null);
-    const summaryBoundaries = summaries.map((summary) => ({
-      createdAt: new Date(getLocalDayBoundaryUtc(shiftDateKey(summary.workDate, 1), timezone).getTime() - 1),
+            }
+          : null);
+      const userSummaries = summariesByUser.get(userId) ?? [];
+      const summaryBoundaries = userSummaries.map((summary) => ({
+        createdAt: new Date(
+          getLocalDayBoundaryUtc(shiftDateKey(summary.workDate, 1), timezone).getTime() - 1,
+        ),
       isOnline: summary.endIsOnline,
       isDnd: summary.endIsDnd,
     }));
+      const userLogs = logsByUser.get(userId) ?? [];
     const logs = previous
-      ? [previous, ...rangeLogs, ...summaryBoundaries]
-      : [...rangeLogs, ...summaryBoundaries];
+        ? [previous, ...userLogs, ...summaryBoundaries]
+        : [...userLogs, ...summaryBoundaries];
+
     const projections = this.projections.projectDailyPresence(logs, startDate, endDate, timezone);
-    for (const summary of summaries) {
+      for (const summary of userSummaries) {
       projections.set(summary.workDate, {
         firstOnlineAt: summary.firstOnlineAt,
         lastOnlineAt: summary.lastOnlineAt,
@@ -1153,7 +1318,10 @@ export class AttendanceService {
         segments: [],
       });
     }
-    return projections;
+      result.set(userId, projections);
+    }
+
+    return result;
   }
 
   private getStatsPresenceRange(anchorDate: string, timezone: string): { startDate: string } {
@@ -1161,7 +1329,8 @@ export class AttendanceService {
     const monthRange = monthRangeForDateKey(anchorDate);
     const previousDate = shiftDateKey(anchorDate, -1);
     return {
-      startDate: [weekRange.startDate, monthRange.startDate, previousDate].sort()[0] ?? previousDate,
+      startDate:
+        [weekRange.startDate, monthRange.startDate, previousDate].sort()[0] ?? previousDate,
     };
   }
 
@@ -1195,5 +1364,4 @@ export class AttendanceService {
     }
     return Math.max(0, Math.trunc(offset ?? 0));
   }
-
 }
