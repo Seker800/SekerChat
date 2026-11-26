@@ -810,14 +810,22 @@ export class AttendanceService {
     await this.prismaService.$transaction(async (transaction) => {
       await transaction.$executeRaw`SET LOCAL synchronous_commit = off`;
       await transaction.attendanceDaily.deleteMany({
-        where: { userId, workDate: { in: dateKeys } },
+        where: {
+          userId,
+          workDate: { in: dateKeys },
+          mode: { in: [...ATTENDANCE_PROJECTION_MODES] },
+        },
       });
       if (summaries.length > 0) {
         await transaction.attendanceDaily.createMany({ data: summaries });
       }
       if (staleDates.length > 0) {
         await transaction.attendanceDaily.deleteMany({
-          where: { userId, workDate: { in: staleDates } },
+          where: {
+            userId,
+            workDate: { in: staleDates },
+            mode: { in: [...ATTENDANCE_PROJECTION_MODES] },
+          },
         });
       }
     });
