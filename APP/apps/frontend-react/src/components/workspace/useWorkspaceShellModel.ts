@@ -133,11 +133,9 @@ export function useWorkspaceShellModel({
   );
 
   const refreshGroupList = useCallback(() => {
-    const key = mode === 'dm' ? ['dms'] : ['groups'];
-    const updatedAt = queryClient.getQueryState(key)?.dataUpdatedAt ?? 0;
-    if (Date.now() - updatedAt < 30_000) return;
-    void queryClient.invalidateQueries({ queryKey: key });
-  }, [mode, queryClient]);
+    void groupsQuery.refetch();
+  }, [groupsQuery.refetch]);
+
 
   const loadError = serversQuery.isError
     ? {
