@@ -22,6 +22,18 @@ else
 fi
 export SEKERCHAT_CSP_OBJECT_SOURCE
 
+# Default to same-origin framing. Set this to an explicit origin (for example
+# `'self' https://portal.example.com`) when embedding the app in an internal
+# portal; never allow `*`.
+SEKERCHAT_CSP_FRAME_ANCESTORS=${SEKERCHAT_CSP_FRAME_ANCESTORS:-"'self'"}
+case "$SEKERCHAT_CSP_FRAME_ANCESTORS" in
+  *";"*|*'"'*)
+    printf '%s\n' 'SEKERCHAT_CSP_FRAME_ANCESTORS must not contain semicolons or double quotes.' >&2
+    exit 1
+    ;;
+esac
+export SEKERCHAT_CSP_FRAME_ANCESTORS
+
 # 删掉 index.html 里的 Vite CSP meta 标签
 sed -i '/<!-- Vite dev server CSP/,/\/>/d' /usr/share/nginx/html/index.html
 
