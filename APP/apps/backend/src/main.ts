@@ -25,7 +25,7 @@ async function bootstrap(): Promise<void> {
   }
   app.use(
     '/api/uploads/:sessionId/parts/:partNumber',
-    createUploadBodyBudget(),
+    createUploadBodyBudget({ total: 12, perClient: 8 }),
     raw({ type: '*/*', limit: `${UPLOAD_PART_SIZE_BYTES + 1024}b` }),
   );
   app.enableCors({

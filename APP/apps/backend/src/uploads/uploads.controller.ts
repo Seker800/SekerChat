@@ -1,6 +1,7 @@
 import { UploadResourceInterceptor } from './upload-resource.interceptor';
 import { Throttle } from '@nestjs/throttler';
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -19,6 +20,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthenticatedUser } from '../auth/types/authenticated-user.type';
 import { CompleteUploadDto } from './dto/complete-upload.dto';
+import { MAX_UPLOAD_PARTS } from './upload-limits';
 import { InitiateUploadDto } from './dto/initiate-upload.dto';
 import { UploadsService } from './uploads.service';
 import {
@@ -76,6 +78,9 @@ export class UploadsController {
     @Param('partNumber', ParseIntPipe) partNumber: number,
     @Req() request: RawBodyRequest<Request>,
   ) {
+    if (partNumber < 1 || partNumber > MAX_UPLOAD_PARTS) {
+      throw new BadRequestException(`partNumber must be between 1 and ${MAX_UPLOAD_PARTS}.`);
+    }
     const body = Buffer.isBuffer(request.body) ? request.body : Buffer.from(request.body ?? '');
     return this.uploadsService.uploadPart(user.sub, sessionId, partNumber, body);
   }
