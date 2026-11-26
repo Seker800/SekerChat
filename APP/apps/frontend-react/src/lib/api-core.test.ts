@@ -174,6 +174,11 @@ describe('resolveApiResourceUrl', () => {
     ).toBe(`${window.location.origin}/api/groups/group-1/files/file-1/content?download=1`);
   });
 
+  it('keeps signed object-storage URLs on their own origin', () => {
+    const signedUrl = 'https://cdn.example.test/sekerchat/thumb.jpg?X-Amz-Signature=abc';
+    expect(resolveApiResourceUrl(signedUrl)).toBe(signedUrl);
+  });
+
   it('keeps malformed resource URLs unchanged', () => {
     expect(resolveApiResourceUrl('not a url')).toBe('not a url');
   });

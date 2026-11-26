@@ -125,6 +125,13 @@ export function resolveApiResourceUrl(resourceUrl: string): string {
   try {
     const resolvedBaseUrl = new URL(apiBaseUrl);
     const originalUrl = new URL(resourceUrl);
+    // Signed object-storage URLs live outside the API namespace; rebasing them
+    // onto the API origin would break the signature. Same-origin reverse-proxy
+    // object URLs must be preserved too, so the path decides, not the origin.
+    if (!originalUrl.pathname.startsWith(`${resolvedBaseUrl.pathname}/`)
+      && originalUrl.pathname !== resolvedBaseUrl.pathname) {
+      return resourceUrl;
+    }
     return new URL(`${originalUrl.pathname}${originalUrl.search}`, resolvedBaseUrl).toString();
   } catch {
     return resourceUrl;

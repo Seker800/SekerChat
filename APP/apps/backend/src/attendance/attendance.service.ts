@@ -51,6 +51,7 @@ const ATTENDANCE_PROJECTION_MODES = [AttendanceMode.FLEXIBLE] as const;
 export class AttendanceService {
   private readonly logger = new Logger(AttendanceService.name);
   private recomputeAllRun: Promise<void> | null = null;
+  private recomputeRequestedWhileRunning = false;
 
   constructor(
     private readonly prismaService: PrismaService,
@@ -641,7 +642,12 @@ export class AttendanceService {
    * seconds; a second request joins the in-flight run instead of duplicating it.
    */
   scheduleRecomputeAllUsers(): { started: boolean } {
-    if (this.recomputeAllRun) return { started: false };
+    if (this.recomputeAllRun) {
+      // A config change during a run must not be lost behind the in-flight pass.
+      this.recomputeRequestedWhileRunning = true;
+      return { started: false };
+    }
+    this.recomputeRequestedWhileRunning = false;
     this.recomputeAllRun = this.recomputeAllUsers()
       .catch((error: unknown) => {
         this.logger.error(
@@ -651,6 +657,10 @@ export class AttendanceService {
       })
       .finally(() => {
         this.recomputeAllRun = null;
+        if (this.recomputeRequestedWhileRunning) {
+          this.recomputeRequestedWhileRunning = false;
+          this.scheduleRecomputeAllUsers();
+        }
       });
     return { started: true };
   }
@@ -1149,7 +1159,7 @@ export class AttendanceService {
         Prisma.sql`
           SELECT DISTINCT
             to_char(
-              (("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE ${timezone})::date,
+              ("createdAt" AT TIME ZONE ${timezone})::date,
               'YYYY-MM-DD'
             ) AS "workDate"
           FROM "PresenceLog"

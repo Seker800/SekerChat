@@ -220,7 +220,16 @@ export class FilesService {
     if (!file.thumbnailStorageKey || !this.objectStorage.isPublicEndpointConfigured()) {
       return null;
     }
-    return this.objectStorage.createViewUrl(file.thumbnailStorageKey, 'image/jpeg', 3600);
+    try {
+      return await this.objectStorage.createViewUrl(
+        file.thumbnailStorageKey,
+        'image/jpeg',
+        3600,
+      );
+    } catch {
+      // A direct URL is an optimization; fall back to the same-origin endpoint.
+      return null;
+    }
   }
 
   async getThumbnailStream(userId: string, groupId: string, fileId: string, ifNoneMatch?: string) {
