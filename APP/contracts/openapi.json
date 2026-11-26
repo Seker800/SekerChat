@@ -684,6 +684,14 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "if-none-match",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
           }
         ],
         "responses": {

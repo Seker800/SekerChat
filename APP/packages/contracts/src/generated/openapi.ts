@@ -4232,7 +4232,9 @@ export interface operations {
     FilesController_getFileContent: {
         parameters: {
             query?: never;
-            header?: never;
+            header: {
+                "if-none-match": string;
+            };
             path: {
                 groupId: string;
                 fileId: string;
