@@ -92,13 +92,13 @@ describe('MessageMediaProvider', () => {
     vi.unstubAllGlobals();
   });
 
-  it('uses one observer and only prefetches the viewport above the message pane', async () => {
+  it('uses one observer and only prefetches half the viewport above the message pane', async () => {
     vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver);
     const started: string[] = [];
     render(<Harness started={started} />);
 
     expect(observerInstances).toHaveLength(1);
-    expect(observerInstances[0]!.options?.rootMargin).toBe('100% 0px 0px 0px');
+    expect(observerInstances[0]!.options?.rootMargin).toBe('50% 0px 0px 0px');
     observerInstances[0]!.emitIntersecting();
 
     await waitFor(() => {

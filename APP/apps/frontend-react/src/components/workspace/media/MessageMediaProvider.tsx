@@ -19,6 +19,10 @@ type ScheduleMediaLoad = (load: ScheduledMediaLoad) => () => void;
 
 const MessageMediaContext = createContext<ScheduleMediaLoad | null>(null);
 
+// Prefetch only half a viewport above the stream. A full viewport pulled in
+// extra offscreen thumbnails that were never seen before the user scrolled.
+const PREFETCH_VIEWPORT_RATIO = 0.5;
+
 interface MessageMediaProviderProps {
   children: ReactNode;
   rootRef: RefObject<HTMLElement | null>;
@@ -33,7 +37,8 @@ function getPriority(element: Element, root: HTMLElement): MediaLoadPriority | n
   }
 
   const rootHeight = rootRect.bottom - rootRect.top;
-  return elementRect.bottom >= rootRect.top - rootHeight && elementRect.top < rootRect.top
+  const prefetchDistance = rootHeight * PREFETCH_VIEWPORT_RATIO;
+  return elementRect.bottom >= rootRect.top - prefetchDistance && elementRect.top < rootRect.top
     ? 'prefetch'
     : null;
 }
@@ -100,7 +105,7 @@ export function MessageMediaProvider({ children, rootRef, scopeKey }: MessageMed
       }
     }, {
       root,
-      rootMargin: '100% 0px 0px 0px',
+      rootMargin: `${PREFETCH_VIEWPORT_RATIO * 100}% 0px 0px 0px`,
       threshold: 0,
     });
     observerRef.current = observer;
