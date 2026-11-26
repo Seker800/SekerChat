@@ -208,6 +208,39 @@ describe('useRealtime', () => {
     expect(onMessageCreated).toHaveBeenCalledTimes(1);
   });
 
+  it('does not double-count a redelivered message that arrives under a new event id', () => {
+    globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket;
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    queryClient.setQueryData(['groups'], [
+      { id: 'group-1', unreadCount: 0, latestMessage: null, members: [] },
+    ]);
+    queryClient.setQueryData(['messages', 'group-1'], { groupId: 'group-1', items: [] });
+    const onMessageCreated = vi.fn();
+    const wrapper = ({ children }: { children: ReactNode }) =>
+      createElement(QueryClientProvider, { client: queryClient }, children);
+
+    renderHook(() => useRealtime('', '', 'user-2', onMessageCreated), { wrapper });
+    const event = (eventId: string) =>
+      new MessageEvent('message', {
+        data: JSON.stringify({
+          eventVersion: 1,
+          eventId,
+          type: 'message.created.v1',
+          groupId: 'group-1',
+          occurredAt: '2026-08-12T10:00:00.000Z',
+          payload: message,
+        }),
+      });
+
+    act(() => {
+      MockWebSocket.instances[0]?.dispatchEvent(event('redelivery-a'));
+      MockWebSocket.instances[0]?.dispatchEvent(event('redelivery-b'));
+    });
+
+    expect(queryClient.getQueryData<any[]>(['groups'])?.[0]?.unreadCount).toBe(1);
+    expect(onMessageCreated).toHaveBeenCalledTimes(1);
+  });
+
   it('rejects malformed events before they can write to the query cache', () => {
     globalThis.WebSocket = MockWebSocket as unknown as typeof WebSocket;
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
