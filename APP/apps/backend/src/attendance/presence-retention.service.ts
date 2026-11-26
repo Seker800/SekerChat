@@ -137,7 +137,9 @@ export class PresenceRetentionService {
       await this.prisma.$transaction(async (tx) => {
         // Replace the day's summaries and raw events atomically. The summary is
         // the durable form; the raw rows are no longer needed after this commit.
-        await tx.presenceDailySummary.deleteMany({ where: { workDate } });
+        await tx.presenceDailySummary.deleteMany({
+          where: { workDate, userId: { in: userIds } },
+        });
         await tx.presenceDailySummary.createMany({ data: summaries, skipDuplicates: true });
         await tx.presenceLog.deleteMany({ where: { createdAt: { gte: start, lt: end } } });
       });
