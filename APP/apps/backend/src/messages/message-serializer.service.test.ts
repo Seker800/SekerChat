@@ -8,6 +8,7 @@ test('serializeMessage includes attachment image dimensions for root and reply a
     {
       createFileAccessUrl: () => 'http://backend.test/files/content',
       createThumbnailAccessUrl: () => 'http://backend.test/files/thumb',
+      createThumbnailViewUrl: async () => null,
       shouldExposeInlineThumbnail: (mimeType: string, thumbnailStorageKey: string | null) =>
         Boolean(thumbnailStorageKey) && mimeType !== 'image/gif',
       resolveRenderableImageDimensions: async (file: {
@@ -115,6 +116,7 @@ test('serializeMessage does not expose static thumbnails for gif attachments', a
     {
       createFileAccessUrl: () => 'http://backend.test/files/content',
       createThumbnailAccessUrl: () => 'http://backend.test/files/thumb',
+      createThumbnailViewUrl: async () => null,
       shouldExposeInlineThumbnail: (mimeType: string, thumbnailStorageKey: string | null) =>
         Boolean(thumbnailStorageKey) && mimeType !== 'image/gif',
       resolveRenderableImageDimensions: async (file: {

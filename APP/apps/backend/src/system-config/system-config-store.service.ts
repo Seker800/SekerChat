@@ -51,12 +51,20 @@ export class SystemConfigStoreService {
   }
 
   async upsertMany(values: Record<string, string | undefined>): Promise<void> {
-    for (const [key, value] of Object.entries(values)) {
-      if (value === undefined) {
-        continue;
-      }
+    const entries = Object.entries(values).filter(
+      (entry): entry is [string, string] => entry[1] !== undefined,
+    );
+    if (entries.length === 0) return;
 
-      await this.upsert(key, value);
-    }
+    // One transaction keeps a startup seed from paying one commit per key.
+    await this.prismaService.$transaction(
+      entries.map(([key, value]) =>
+        this.prismaService.systemConfig.upsert({
+          where: { key },
+          create: { key, value },
+          update: { value },
+        }),
+      ),
+    );
   }
 }

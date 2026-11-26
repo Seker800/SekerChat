@@ -12,6 +12,7 @@ import { HttpExceptionLoggingFilter } from './common/http-exception.filter';
 import { RequestLoggingInterceptor } from './common/request-logging.interceptor';
 import { RealtimeService } from './realtime/realtime.service';
 import { QqBridgeAvailabilityService } from './extensions/qq-bridge/qq-bridge-availability.service';
+import { preloadNetworkStatus } from './network/network-status';
 import { DndConfigService } from './system-config/dnd-config.service';
 import { UPLOAD_PART_SIZE_BYTES } from './uploads/upload-limits';
 import { resolveTrustedProxyCidrs } from './common/trusted-proxies';
@@ -87,7 +88,7 @@ async function bootstrap(): Promise<void> {
   app.useGlobalFilters(new HttpExceptionLoggingFilter());
 
   app.get(RealtimeService).attachServer(app.getHttpServer());
-  await app.get(DndConfigService).ensureDefaults();
+  await Promise.all([app.get(DndConfigService).ensureDefaults(), preloadNetworkStatus()]);
 
   const host = process.env.HOST ?? '0.0.0.0';
   const port = Number(process.env.PORT ?? 3000);

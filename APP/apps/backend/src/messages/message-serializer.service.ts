@@ -91,6 +91,13 @@ export class MessageSerializerService {
 
     const share = attachmentFile.share;
     const dimensions = await this.filesService.resolveRenderableImageDimensions(attachmentFile);
+    const directThumbnailUrl =
+      this.filesService.shouldExposeInlineThumbnail(
+        attachmentFile.mimeType,
+        attachmentFile.thumbnailStorageKey,
+      )
+        ? await this.filesService.createThumbnailViewUrl(attachmentFile)
+        : null;
 
     return {
       id: attachmentFile.id,
@@ -108,15 +115,17 @@ export class MessageSerializerService {
       thumbnailError: attachmentFile.previewJob?.lastError
         ? '缩略图生成失败，可重试或点击查看原图。'
         : null,
-      thumbnailUrl: this.filesService.shouldExposeInlineThumbnail(
-        attachmentFile.mimeType,
-        attachmentFile.thumbnailStorageKey,
-      )
-        ? this.filesService.createThumbnailAccessUrl({
-            id: attachmentFile.id,
-            groupId: attachmentFile.groupId,
-          })
-        : null,
+      thumbnailUrl: directThumbnailUrl ?? (
+        this.filesService.shouldExposeInlineThumbnail(
+          attachmentFile.mimeType,
+          attachmentFile.thumbnailStorageKey,
+        )
+          ? this.filesService.createThumbnailAccessUrl({
+              id: attachmentFile.id,
+              groupId: attachmentFile.groupId,
+            })
+          : null
+      ),
       isSharing:
         share !== null && share !== undefined
           ? resolveFileShareStatus({

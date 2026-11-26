@@ -36,6 +36,7 @@ export class ObjectStorageGateway {
   private readonly internalClient: S3Client;
   private readonly readinessClient: S3Client;
   private readonly publicClient: S3Client;
+  private readonly hasPublicEndpoint: boolean;
   private readonly bucket: string;
   private bucketEnsured: Promise<void> | null = null;
 
@@ -67,6 +68,7 @@ export class ObjectStorageGateway {
       }),
     });
     const publicEndpoint = config.get<string>('S3_PUBLIC_ENDPOINT')?.trim();
+    this.hasPublicEndpoint = Boolean(publicEndpoint);
     this.publicClient = publicEndpoint
       ? new S3Client({ region, endpoint: publicEndpoint, forcePathStyle, credentials })
       : this.internalClient;
@@ -224,6 +226,10 @@ export class ObjectStorageGateway {
       }
     } while (continuationToken);
     return keys;
+  }
+
+  isPublicEndpointConfigured(): boolean {
+    return this.hasPublicEndpoint;
   }
 
   createViewUrl(storageKey: string, mimeType: string, expiresInSeconds = 3600): Promise<string> {

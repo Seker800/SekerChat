@@ -1,10 +1,24 @@
 import { isIP } from 'node:net';
 import { readFileSync } from 'node:fs';
-import { gunzipSync } from 'node:zlib';
+import { readFile } from 'node:fs/promises';
+import { gunzip, gunzipSync } from 'node:zlib';
+import { promisify } from 'node:util';
 import { Reader, type CountryResponse } from 'mmdb-lib';
 import * as ipaddr from 'ipaddr.js';
 
 let countryReader: Reader<CountryResponse> | undefined;
+const gunzipAsync = promisify(gunzip);
+
+/** Warm the bundled snapshot before the first request instead of blocking it. */
+export async function preloadNetworkStatus(): Promise<void> {
+  if (countryReader) return;
+  try {
+    const compressed = await readFile(require.resolve('geolite2-country/GeoLite2-Country.mmdb.gz'));
+    countryReader = new Reader<CountryResponse>(await gunzipAsync(compressed));
+  } catch {
+    // A missing snapshot only disables the warning; the app must still start.
+  }
+}
 
 export function getNetworkStatus(ip: string | undefined): { showWarning: boolean } {
   try {

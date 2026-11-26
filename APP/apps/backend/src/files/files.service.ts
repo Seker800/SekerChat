@@ -208,6 +208,21 @@ export class FilesService {
     return this.fileUrls.thumbnail(file);
   }
 
+  /**
+   * When a browser-reachable object-storage origin exists, a short-lived signed
+   * thumbnail URL avoids proxying every image through Node. Callers keep the
+   * same-origin thumbnail endpoint as the fallback.
+   */
+  async createThumbnailViewUrl(file: {
+    thumbnailStorageKey: string | null;
+    mimeType: string;
+  }): Promise<string | null> {
+    if (!file.thumbnailStorageKey || !this.objectStorage.isPublicEndpointConfigured()) {
+      return null;
+    }
+    return this.objectStorage.createViewUrl(file.thumbnailStorageKey, 'image/jpeg', 3600);
+  }
+
   async getThumbnailStream(userId: string, groupId: string, fileId: string, ifNoneMatch?: string) {
     const file = await this.getReadableFileOrThrow(groupId, fileId, userId);
 

@@ -31,12 +31,15 @@ export class DndConfigService {
 
   async ensureDefaults(): Promise<void> {
     const current = await this.getRawConfig();
+    const missing: Record<string, string> = {};
 
-    await this.store.upsertMany({
-      dndOn1: current.dndOn1 ?? DND_DEFAULTS.dndOn1,
-      dndOff1: current.dndOff1 ?? DND_DEFAULTS.dndOff1,
-      dndOn2: current.dndOn2 ?? DND_DEFAULTS.dndOn2,
-      dndOff2: current.dndOff2 ?? DND_DEFAULTS.dndOff2,
-    });
+    // A normal restart must not write defaults that already exist.
+    if (current.dndOn1 === undefined) missing.dndOn1 = DND_DEFAULTS.dndOn1;
+    if (current.dndOff1 === undefined) missing.dndOff1 = DND_DEFAULTS.dndOff1;
+    if (current.dndOn2 === undefined) missing.dndOn2 = DND_DEFAULTS.dndOn2;
+    if (current.dndOff2 === undefined) missing.dndOff2 = DND_DEFAULTS.dndOff2;
+    if (Object.keys(missing).length === 0) return;
+
+    await this.store.upsertMany(missing);
   }
 }
