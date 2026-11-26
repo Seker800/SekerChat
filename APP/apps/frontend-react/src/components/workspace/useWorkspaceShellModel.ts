@@ -132,6 +132,13 @@ export function useWorkspaceShellModel({
     [servers, workspaceQueries.dms],
   );
 
+  const refreshGroupList = useCallback(() => {
+    const key = mode === 'dm' ? ['dms'] : ['groups'];
+    const updatedAt = queryClient.getQueryState(key)?.dataUpdatedAt ?? 0;
+    if (Date.now() - updatedAt < 30_000) return;
+    void queryClient.invalidateQueries({ queryKey: key });
+  }, [mode, queryClient]);
+
   const loadError = serversQuery.isError
     ? {
         source: 'servers' as const,
@@ -178,7 +185,7 @@ export function useWorkspaceShellModel({
     queryFn: () =>
       listAdminDiscoverableGroups(accessToken, { scope: 'former', serverId: selectedServerId }),
     enabled: hasFullAccess && mode === 'server' && Boolean(selectedServerId),
-    staleTime: 0,
+    staleTime: 30_000,
   });
 
   const joinGroupMutation = useMutation({
@@ -657,9 +664,7 @@ export function useWorkspaceShellModel({
       }
     },
     isServerGroupsLoading: workspaceBootstrapQuery.isPending || serversQuery.isPending,
-    refreshGroupList: () => {
-      void groupsQuery.refetch();
-    },
+    refreshGroupList,
     refreshServerList: () => {
       void serversQuery.refetch();
       void serverDirectoryQuery.refetch();

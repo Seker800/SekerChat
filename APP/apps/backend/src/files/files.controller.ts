@@ -170,7 +170,8 @@ export class FilesController {
     const etag = `"${file.id}"`;
 
     response.setHeader('ETag', etag);
-    if (ifNoneMatch?.split(',').some((value) => value.trim() === etag)) {
+    response.setHeader('Cache-Control', 'private, max-age=300');
+    if (!rangeHeader && ifNoneMatch?.split(',').some((value) => value.trim() === etag)) {
       response.status(304).end();
       return;
     }
@@ -185,8 +186,6 @@ export class FilesController {
       ),
     );
     setPartialContentHeaders(response, range, contentRange, contentLength, Number(file.size));
-
-    response.setHeader('Cache-Control', 'private, max-age=3600');
 
     return new StreamableFile(stream);
   }

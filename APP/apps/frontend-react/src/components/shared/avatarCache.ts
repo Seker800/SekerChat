@@ -16,6 +16,7 @@ export interface AvatarLease {
 const MAX_ENTRIES = 64;
 const MAX_BYTES = 8 * 1024 * 1024;
 const cache = new Map<string, AvatarEntry>();
+let generation = 0;
 
 function cacheKey(viewerKey: string, url: string): string {
   return `${viewerKey}\u0000${url}`;
@@ -73,6 +74,7 @@ export async function acquireAvatar(url: string, viewerKey: string): Promise<Ava
   }
 
   const entry: AvatarEntry = { refs: 0, bytes: 0, lastUsed: Date.now() };
+  const startGeneration = generation;
   cache.set(key, entry);
   entry.pending = (async () => {
     const response = await fetchApi(url, {
@@ -84,6 +86,10 @@ export async function acquireAvatar(url: string, viewerKey: string): Promise<Ava
     }
     const blob = await response.blob();
     const src = URL.createObjectURL(blob);
+    if (generation !== startGeneration) {
+      URL.revokeObjectURL(src);
+      throw new DOMException('Avatar cache was cleared.', 'AbortError');
+    }
     entry.src = src;
     entry.bytes = blob.size;
     entry.lastUsed = Date.now();
@@ -106,6 +112,7 @@ export function getCachedAvatar(url: string, viewerKey: string): string | null {
 }
 
 export function clearAvatarCache(): void {
+  generation += 1;
   for (const entry of cache.values()) {
     if (entry.src) URL.revokeObjectURL(entry.src);
   }

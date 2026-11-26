@@ -171,6 +171,7 @@ export function useRealtime(
         invalidate({ queryKey: ['work-state', selectedGroupRef.current] });
         invalidate({ queryKey: ['artifacts', selectedGroupRef.current] });
         invalidate({ queryKey: ['tasks', selectedGroupRef.current] });
+        invalidate({ queryKey: ['group-message-activity', selectedGroupRef.current] });
       }
       invalidate({ queryKey: ['groups'] });
       invalidate({ queryKey: ['dms'] });
@@ -199,6 +200,7 @@ export function useRealtime(
           invalidate({ queryKey: ['work-state', selectedGroupRef.current] });
           invalidate({ queryKey: ['artifacts', selectedGroupRef.current] });
           invalidate({ queryKey: ['tasks', selectedGroupRef.current] });
+          invalidate({ queryKey: ['group-message-activity', selectedGroupRef.current] });
         }
         invalidate({ queryKey: ['groups'] });
         invalidate({ queryKey: ['dms'] });

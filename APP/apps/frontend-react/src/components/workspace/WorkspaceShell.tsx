@@ -11,7 +11,6 @@ import { ChannelSidebar } from './ChannelSidebar';
 import type { AttendanceReminderRequest } from './useAttendanceDock';
 import { MessagePane } from './MessagePane';
 import { GroupMuteButton } from './GroupMuteButton';
-import { canManageAttachmentShare } from './fileShareCapabilities';
 import { Composer } from './Composer';
 import { RightSidebar } from './RightSidebar';
 import { StartDMDialog } from './StartDMDialog';
@@ -167,9 +166,11 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
     ],
   );
 
+  const hasSelectedGroup = Boolean(model.selectedGroup);
+  const selectedGroupArchived = Boolean(model.selectedGroup?.archivedAt);
   const canManageFileShare = useCallback(
-    () => model.isSelectedGroupMember && canManageAttachmentShare(model.selectedGroup),
-    [model.isSelectedGroupMember, model.selectedGroup],
+    () => model.isSelectedGroupMember && hasSelectedGroup && !selectedGroupArchived,
+    [model.isSelectedGroupMember, hasSelectedGroup, selectedGroupArchived],
   );
 
   const setReplyToMessageId = model.setReplyToMessageId;

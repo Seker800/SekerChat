@@ -41,6 +41,7 @@ export function TaskSection({ group, accessToken, currentUserId, isActive = true
     queryKey: ['tasks', group.id],
     queryFn: () => listTasks(resolvedAccessToken, group.id),
     enabled: isActive && !group.archivedAt,
+    staleTime: 30_000,
   });
 
   const createMutation = useMutation({
