@@ -143,8 +143,23 @@ test('public registration cannot set a password on an existing OIDC-only account
   let updated = false;
   const service = new PasswordAuthService({ user: {
     findUnique: async () => ({ id: 'owner', email: 'owner@example.com', passwordHash: null, disabledAt: null }),
+    count: async () => 2,
     update: async () => { updated = true; return { id: 'owner' }; },
-  } } as never, { get: () => undefined } as never, {} as never, {} as never);
+  } } as never, { get: () => undefined } as never, {} as never,
+  { getRegistrationConfig: async () => ({ registrationOpen: 'true' }) } as never);
   await assert.rejects(() => service.register('owner@example.com', 'Attacker123'), ConflictException);
   assert.equal(updated, false);
+});
+
+test('registration checks the whitelist before revealing that an email exists', async () => {
+  const service = new PasswordAuthService({ user: {
+    findUnique: async () => ({ id: 'owner', email: 'owner@example.com', passwordHash: 'hash', disabledAt: null }),
+    count: async () => 2,
+  } } as never, { get: () => undefined } as never, {} as never,
+  { getRegistrationConfig: async () => ({ registrationOpen: 'true', emailWhitelist: 'other@example.com' }) } as never);
+
+  await assert.rejects(
+    () => service.register('owner@example.com', 'Attacker123'),
+    ForbiddenException,
+  );
 });

@@ -13,6 +13,9 @@ import { LoginRiskService } from '../login-risk/login-risk.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { resolveBootstrapRole } from './user-role-policy';
 
+const EMAIL_CODE_DELIVERY_HINT =
+  '验证码已生成。当前接口不再返回原始验证码，请通过受信通道获取验证码。';
+
 @Injectable()
 export class EmailCodeAuthService {
   private readonly logger = new Logger(EmailCodeAuthService.name);
@@ -41,8 +44,18 @@ export class EmailCodeAuthService {
 
   async requestEmailCode(email: string): Promise<{ deliveryHint: string }> {
     const normalizedEmail = this.normalizeEmail(email);
-    if (!(await this.prismaService.user.findUnique({ where: { email: normalizedEmail } }))) {
-      await this.assertNewAccountAllowed(normalizedEmail);
+    const existingUser = await this.prismaService.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+    if (!existingUser) {
+      try {
+        await this.assertNewAccountAllowed(normalizedEmail);
+      } catch (error) {
+        if (!(error instanceof ForbiddenException)) throw error;
+        // Return the same hint as a successful request so this endpoint cannot
+        // be used to enumerate registered emails. No unusable code is stored.
+        return { deliveryHint: EMAIL_CODE_DELIVERY_HINT };
+      }
     }
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
     const code = this.generateEmailCode();
@@ -55,9 +68,7 @@ export class EmailCodeAuthService {
       },
     });
 
-    return {
-      deliveryHint: '验证码已生成。当前接口不再返回原始验证码，请通过受信通道获取验证码。',
-    };
+    return { deliveryHint: EMAIL_CODE_DELIVERY_HINT };
   }
 
   async consumeEmailCode(email: string, code: string, ip: string): Promise<User> {

@@ -32,13 +32,6 @@ export class PasswordAuthService {
     const existing = await this.prismaService.user.findUnique({
       where: { email: normalizedEmail },
     });
-
-    if (existing?.disabledAt) {
-      throw new ForbiddenException('该账号已停用，请联系管理员');
-    }
-
-    if (existing) throw new ConflictException('该邮箱已注册，请直接登录或通过受信流程设置密码。');
-
     const totalUsers = await this.prismaService.user.count();
 
     if (totalUsers === 0) {
@@ -59,8 +52,20 @@ export class PasswordAuthService {
       return user;
     }
 
+    // Check the registration policy before revealing whether an email exists.
+    // Existing but non-whitelisted emails must look identical to unknown ones.
     const registrationConfig = await this.registrationConfigService.getRegistrationConfig();
-    assertRegistrationAllowed(normalizedEmail, registrationConfig, this.configService.get<string>('EMAIL_WHITELIST')?.trim());
+    assertRegistrationAllowed(
+      normalizedEmail,
+      registrationConfig,
+      this.configService.get<string>('EMAIL_WHITELIST')?.trim(),
+    );
+
+    if (existing?.disabledAt) {
+      throw new ForbiddenException('该账号已停用，请联系管理员');
+    }
+
+    if (existing) throw new ConflictException('该邮箱已注册，请直接登录或通过受信流程设置密码。');
 
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await this.prismaService.user.create({

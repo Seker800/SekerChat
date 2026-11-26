@@ -232,3 +232,26 @@ test('requestEmailCode stores a hashed code and does not return the raw value', 
   assert.notEqual((createCalls[0]?.data as any)?.code, '123456');
   assert.equal(typeof (createCalls[0]?.data as any)?.code, 'string');
 });
+
+test('requestEmailCode hides unknown emails and stores no unusable code when registration is closed', async () => {
+  let created = 0;
+  const service = new EmailCodeAuthService(
+    {
+      authCode: { create: async () => { created += 1; } },
+      user: { findUnique: async () => null, count: async () => 1 },
+    } as any,
+    { getOrThrow: () => 'test-access-secret', get: () => '' } as any,
+    {
+      checkRisk: async () => ({ status: 'ok' as const }),
+      enforce: async () => {},
+      recordFailure: async () => {},
+      recordSuccess: async () => {},
+    } as any,
+    { getRegistrationConfig: async () => ({ registrationOpen: 'false' }) } as never,
+  );
+
+  const result = await service.requestEmailCode('nobody@example.com');
+
+  assert.equal(result.deliveryHint.length > 0, true);
+  assert.equal(created, 0);
+});

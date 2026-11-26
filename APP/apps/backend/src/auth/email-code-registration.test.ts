@@ -27,7 +27,10 @@ function fixture(existing = false, registrationOpen = 'false', whitelist = '') {
 for (const options of [['false', ''], ['true', 'other@example.com']]) {
   test(`email code registration obeys admission ${options.join(':')}`, async () => {
     const { service, wasCreated } = fixture(false, ...options as [string, string]);
-    await assert.rejects(() => service.requestEmailCode('member@example.com'), ForbiddenException);
+    // Requesting a code must not reveal whether the email is registered; the
+    // admission check still blocks account creation when the code is consumed.
+    const result = await service.requestEmailCode('member@example.com');
+    assert.ok(result.deliveryHint.length > 0);
     await assert.rejects(() => service.consumeEmailCode('member@example.com', '123456', 'local'), ForbiddenException);
     assert.equal(wasCreated(), false);
   });
