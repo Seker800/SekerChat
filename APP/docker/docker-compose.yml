@@ -7,8 +7,9 @@ services:
     restart: unless-stopped
     env_file:
       - .env.docker
+    # The frontend proxy is the only public entry; keep the API on loopback.
     ports:
-      - "3100:3100"
+      - "127.0.0.1:3100:3100"
 
   frontend:
     build:
