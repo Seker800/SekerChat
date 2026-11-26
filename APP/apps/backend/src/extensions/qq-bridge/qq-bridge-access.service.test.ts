@@ -79,3 +79,57 @@ test('global extension configuration permission does not grant write access to s
   );
   assert.equal(writes, 0);
 });
+
+test('hidden Servers are treated as inactive for bridge bindings', async () => {
+  const service = new QqBridgeAccessService(
+    {
+      group: {
+        findUnique: async () => ({
+          id: 'group',
+          createdById: 'super-1',
+          members: [],
+          isDM: false,
+          archivedAt: null,
+          server: { archivedAt: null, hiddenAt: new Date() },
+        }),
+      },
+    } as never,
+    { assertPermission: async () => undefined } as never,
+  );
+
+  await assert.rejects(
+    () => service.assertGroupManager({ sub: 'super-1', role: 'SUPER_ADMIN' }, 'group', true),
+    /只能绑定有效的普通群/,
+  );
+});
+
+test('activeBinding refuses bindings whose Server is hidden', async () => {
+  const tx = {
+    $queryRaw: async () => [],
+    qqBridgeBinding: {
+      findUnique: async () => ({
+        id: 'binding-1',
+        connectorId: 'connector-1',
+        archivedAt: null,
+        enabled: true,
+        revision: 1,
+        groupId: 'group-1',
+        connector: { enabled: true, revokedAt: null },
+      }),
+    },
+    group: {
+      findUnique: async () => ({
+        id: 'group-1',
+        isDM: false,
+        archivedAt: null,
+        server: { archivedAt: null, hiddenAt: new Date() },
+      }),
+    },
+  };
+  const service = new QqBridgeAccessService({} as never, {} as never);
+
+  await assert.rejects(
+    () => service.activeBinding(tx as never, 'connector-1', 'binding-1', 1),
+    /目标群不可用/,
+  );
+});

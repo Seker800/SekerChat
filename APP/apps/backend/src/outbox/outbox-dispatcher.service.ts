@@ -5,6 +5,7 @@ import { ArtifactUploadedOutboxHandler } from './artifact-uploaded-outbox.handle
 import { GroupLifecycleOutboxHandler } from './group-lifecycle-outbox.handler';
 import { UserMessageCreatedOutboxHandler } from './user-message-created-outbox.handler';
 import { ServerLifecycleOutboxHandler } from './server-lifecycle-outbox.handler';
+import { ServerVisibilityOutboxHandler } from './server-visibility-outbox.handler';
 import { SubscriptionChangedOutboxHandler } from './subscription-changed-outbox.handler';
 
 @Injectable()
@@ -14,12 +15,14 @@ export class OutboxDispatcherService {
     private readonly groupLifecycleHandler: GroupLifecycleOutboxHandler,
     private readonly userMessageCreatedHandler: UserMessageCreatedOutboxHandler,
     private readonly serverLifecycleHandler: ServerLifecycleOutboxHandler,
+    private readonly serverVisibilityHandler: ServerVisibilityOutboxHandler,
     private readonly subscriptionChangedHandler: SubscriptionChangedOutboxHandler,
     private readonly fileObjectsDeleteHandler: FileObjectsDeleteOutboxHandler,
   ) {}
 
   dispatch(event: OutboxEvent): Promise<void> {
-    if (event.eventType === this.fileObjectsDeleteHandler.eventType) return this.fileObjectsDeleteHandler.handle(event);
+    if (event.eventType === this.fileObjectsDeleteHandler.eventType)
+      return this.fileObjectsDeleteHandler.handle(event);
     if (event.eventType === this.artifactUploadedHandler.eventType) {
       return this.artifactUploadedHandler.handle(event);
     }
@@ -31,6 +34,9 @@ export class OutboxDispatcherService {
     }
     if (event.eventType === this.serverLifecycleHandler.eventType) {
       return this.serverLifecycleHandler.handle(event);
+    }
+    if (event.eventType === this.serverVisibilityHandler.eventType) {
+      return this.serverVisibilityHandler.handle(event);
     }
     if (event.eventType === this.subscriptionChangedHandler.eventType) {
       return this.subscriptionChangedHandler.handle(event);

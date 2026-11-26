@@ -3,7 +3,8 @@ export const resources = {
     translation: {
       networkReminder: {
         title: '网络提醒',
-        message: '当前连接出口位于中国大陆以外，可能导致访问变慢。如你正在中国大陆使用，请将 SekerChat 设为「直连」。',
+        message:
+          '当前连接出口位于中国大陆以外，可能导致访问变慢。如你正在中国大陆使用，请将 SekerChat 设为「直连」。',
         acknowledge: '知道了',
       },
       language: {
@@ -129,6 +130,7 @@ export const resources = {
         noCreatePermission: '暂无创建 Server 权限',
         archived: '已归档',
         unjoined: '未加入',
+        hideServer: '隐藏 Server',
       },
       sidebarFooter: {
         reminder: '提醒',
@@ -253,7 +255,8 @@ export const resources = {
     translation: {
       networkReminder: {
         title: 'Network reminder',
-        message: 'Your connection exits outside mainland China, which may slow down access. If you are using SekerChat in mainland China, set its address to bypass your proxy.',
+        message:
+          'Your connection exits outside mainland China, which may slow down access. If you are using SekerChat in mainland China, set its address to bypass your proxy.',
         acknowledge: 'Got it',
       },
       language: {
@@ -380,6 +383,7 @@ export const resources = {
         noCreatePermission: 'You do not have permission to create servers',
         archived: 'Archived',
         unjoined: 'Not joined',
+        hideServer: 'Hide server',
       },
       sidebarFooter: {
         reminder: 'Reminder',

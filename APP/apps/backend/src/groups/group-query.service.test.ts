@@ -164,7 +164,9 @@ test('listGroups passes prefetch to serializeGroup', async () => {
     },
   } as GroupPresenter;
 
-  const service = new GroupQueryService(prismaService as any, membershipService, presenter, { hasPermission: async () => false } as never);
+  const service = new GroupQueryService(prismaService as any, membershipService, presenter, {
+    hasPermission: async () => false,
+  } as never);
 
   await service.listGroups('user-1', false);
 
@@ -215,7 +217,9 @@ test('getGroup does not pass prefetch (single group, no batching needed)', async
     },
   } as GroupPresenter;
 
-  const service = new GroupQueryService(prismaService as any, membershipService, presenter, { hasPermission: async () => false } as never);
+  const service = new GroupQueryService(prismaService as any, membershipService, presenter, {
+    hasPermission: async () => false,
+  } as never);
 
   await service.getGroup('user-1', 'group-1');
 
@@ -256,10 +260,7 @@ test('advanceReadCursor only advances a member cursor to a message in the same g
       where: {
         groupId: 'group-1',
         userId: 'user-1',
-        OR: [
-          { lastReadEventSequence: null },
-          { lastReadEventSequence: { lt: 42n } },
-        ],
+        OR: [{ lastReadEventSequence: null }, { lastReadEventSequence: { lt: 42n } }],
       },
       data: { lastReadEventSequence: 42n },
     },
@@ -318,4 +319,30 @@ test('advanceReadCursor rejects values outside the PostgreSQL bigint range befor
     BadRequestException,
   );
   assert.equal(membershipQueries, 0);
+});
+
+test('listGroups excludes channels whose Server is hidden while keeping legacy unassigned groups', async () => {
+  let capturedWhere: unknown = null;
+  const service = new GroupQueryService(
+    {
+      group: {
+        findMany: async ({ where }: { where: unknown }) => {
+          capturedWhere = where;
+          return [];
+        },
+      },
+    } as any,
+    {} as GroupMembershipService,
+    {} as GroupPresenter,
+    { hasPermission: async () => false } as never,
+  );
+
+  await service.listGroups('user-1', false);
+
+  assert.deepEqual(capturedWhere, {
+    isDM: false,
+    members: { some: { userId: 'user-1' } },
+    archivedAt: null,
+    AND: [{ OR: [{ serverId: null }, { server: { hiddenAt: null } }] }],
+  });
 });

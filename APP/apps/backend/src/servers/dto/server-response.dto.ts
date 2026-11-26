@@ -15,3 +15,11 @@ export class ArchiveServerResponseDto {
   archivedAt!: string | null;
   groupCount!: number;
 }
+
+export class HiddenServerResponseDto {
+  serverId!: string;
+  name!: string;
+  hiddenAt!: string | null;
+  archivedAt!: string | null;
+  groupCount!: number;
+}

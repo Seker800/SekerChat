@@ -1,4 +1,9 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService } from '../system-config/permission.service';
@@ -25,6 +30,7 @@ export class GroupQueryService {
           },
         },
         ...(canViewArchived ? {} : { archivedAt: null }),
+        AND: [{ OR: [{ serverId: null }, { server: { hiddenAt: null } }] }],
       },
       orderBy: [{ archivedAt: 'asc' }, { updatedAt: 'desc' }],
       select: groupWithMembersSelect,
@@ -108,11 +114,7 @@ export class GroupQueryService {
     }
 
     // Full-access admins still cannot view non-member DM metadata (matches assertReadableGroupMembership)
-    if (
-      canViewAllGroups &&
-      group.isDM &&
-      !group.members.some((m) => m.user.id === userId)
-    ) {
+    if (canViewAllGroups && group.isDM && !group.members.some((m) => m.user.id === userId)) {
       throw new ForbiddenException('Group access denied.');
     }
 
@@ -188,7 +190,9 @@ export class GroupQueryService {
       });
       return {
         groupId,
-        lastReadEventSequence: (winner.lastReadEventSequence ?? targetMessage.eventSequence).toString(),
+        lastReadEventSequence: (
+          winner.lastReadEventSequence ?? targetMessage.eventSequence
+        ).toString(),
         changed: false,
       };
     }

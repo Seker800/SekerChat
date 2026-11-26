@@ -68,7 +68,11 @@ function patchReadCursorInMessages(
   return {
     ...current,
     items: current.items.map((message) => {
-      if (!message.eventSequence || BigInt(message.eventSequence) > cursor || !message.readReceipt) {
+      if (
+        !message.eventSequence ||
+        BigInt(message.eventSequence) > cursor ||
+        !message.readReceipt
+      ) {
         return message;
       }
       const receipt = message.readReceipt;
@@ -115,8 +119,12 @@ export function useRealtime(
     let reconnectAttempt = 0;
     const viewRefresh = new SubscriptionViewRefresh(queryClient, accessToken);
     const pendingViewChanges = new Set<string>();
-    const refreshQueue = new RealtimeRefreshQueue(queryClient, () => document.visibilityState === 'visible');
-    const invalidate = (filters: Parameters<typeof queryClient.invalidateQueries>[0]) => refreshQueue.invalidate(filters ?? {});
+    const refreshQueue = new RealtimeRefreshQueue(
+      queryClient,
+      () => document.visibilityState === 'visible',
+    );
+    const invalidate = (filters: Parameters<typeof queryClient.invalidateQueries>[0]) =>
+      refreshQueue.invalidate(filters ?? {});
     const refreshViews = (postId: string) => {
       if (document.visibilityState !== 'visible') {
         pendingViewChanges.add(postId);
@@ -166,6 +174,7 @@ export function useRealtime(
       }
       invalidate({ queryKey: ['groups'] });
       invalidate({ queryKey: ['dms'] });
+      invalidate({ queryKey: ['server-directory'] });
       invalidate({ queryKey: ['subscriptions'] });
       invalidate({ queryKey: ['subscription-summary'] });
     }
@@ -193,6 +202,7 @@ export function useRealtime(
         }
         invalidate({ queryKey: ['groups'] });
         invalidate({ queryKey: ['dms'] });
+        invalidate({ queryKey: ['server-directory'] });
         invalidate({ queryKey: ['subscriptions'] });
         invalidate({ queryKey: ['subscription-summary'] });
         recoveredRef.current?.();
@@ -230,12 +240,15 @@ export function useRealtime(
               current ? nextGroupPatch(current) : current,
             );
             const messageKey = ['messages', data.groupId];
-            const isInitialReadInFlight = queryClient.getQueryState(messageKey)?.fetchStatus === 'fetching';
+            const isInitialReadInFlight =
+              queryClient.getQueryState(messageKey)?.fetchStatus === 'fetching';
             queryClient.setQueryData<MessageTimeline>(messageKey, (current) => {
               // Preserve events racing the first HTTP read, without treating them as a full page.
-              const timeline = current ?? (isInitialReadInFlight
-                ? { groupId: data.groupId, items: [], isPartial: true as const }
-                : undefined);
+              const timeline =
+                current ??
+                (isInitialReadInFlight
+                  ? { groupId: data.groupId, items: [], isPartial: true as const }
+                  : undefined);
               return receiveCreatedMessage(timeline, data.groupId, messagePayload);
             });
             if (messagePayload.type === 'system') {
@@ -259,10 +272,14 @@ export function useRealtime(
             );
           }
           if (data.type === 'message.read-cursor.changed.v1') {
-            queryClient.setQueryData<MessageListResponse>(
-              ['messages', data.groupId],
-              (current) => patchReadCursorInMessages(current, data.payload),
+            queryClient.setQueryData<MessageListResponse>(['messages', data.groupId], (current) =>
+              patchReadCursorInMessages(current, data.payload),
             );
+          }
+          if (data.type === 'server.visibility.changed.v1') {
+            invalidate({ queryKey: ['server-directory'] });
+            invalidate({ queryKey: ['groups'] });
+            return;
           }
           if (data.type === 'group.updated.v1') {
             if (data.payload?.reason === 'file_share_updated') {
@@ -312,10 +329,11 @@ export function useRealtime(
             queryClient.setQueryData<GroupResponse[]>(['dms'], (current) =>
               current?.map((group) => patchPresenceInGroup(group, data.payload)),
             );
-            if (selectedGroupRef.current) queryClient.setQueryData<GroupResponse>(
-              ['group', selectedGroupRef.current],
-              (current) => current ? patchPresenceInGroup(current, data.payload) : current,
-            );
+            if (selectedGroupRef.current)
+              queryClient.setQueryData<GroupResponse>(
+                ['group', selectedGroupRef.current],
+                (current) => (current ? patchPresenceInGroup(current, data.payload) : current),
+              );
             presenceRef.current?.(data.payload);
           }
           if (data.type === 'subscription.changed.v1') {

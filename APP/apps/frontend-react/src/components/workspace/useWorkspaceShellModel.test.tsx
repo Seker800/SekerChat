@@ -22,6 +22,7 @@ vi.mock('../../hooks/useMediaQuery', () => ({
 
 vi.mock('../../store/workspace-store', () => ({
   DM_ATTENDANCE_PAGE_ID: '__dm_attendance__',
+  DM_ATTENDANCE_ROUTE: '/dm/__dm_attendance__',
   useWorkspaceStore: () => ({
     setReplyToMessageId: vi.fn(),
     setWorkspaceMode: vi.fn(),
@@ -156,6 +157,7 @@ vi.mock('./useArtifacts', () => ({
 vi.mock('./useWorkspaceMutations', () => ({
   useWorkspaceMutations: () => ({
     archiveGroupMutation: { mutateAsync: vi.fn() },
+    hideServerMutation: { mutateAsync: vi.fn() },
     onEditMessage: vi.fn(),
     onRevokeMessage: vi.fn(),
     onMoveGroupToServer: vi.fn(),

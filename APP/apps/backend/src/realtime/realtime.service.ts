@@ -217,10 +217,13 @@ export class RealtimeService implements OnModuleDestroy {
     });
   }
 
-  async emitSubscriptionChanged(payload: {
-    postId: string;
-    reason: 'published' | 'updated' | 'withdrawn' | 'pinned' | 'deleted' | 'confirmed' | 'viewed';
-  }, durableEventId?: string): Promise<void> {
+  async emitSubscriptionChanged(
+    payload: {
+      postId: string;
+      reason: 'published' | 'updated' | 'withdrawn' | 'pinned' | 'deleted' | 'confirmed' | 'viewed';
+    },
+    durableEventId?: string,
+  ): Promise<void> {
     this.eventPublisher.publishToAll({
       eventVersion: REALTIME_EVENT_VERSION,
       eventId: durableEventId
@@ -231,6 +234,17 @@ export class RealtimeService implements OnModuleDestroy {
       occurredAt: new Date().toISOString(),
       payload,
     } satisfies RealtimeEvent<typeof payload>);
+  }
+
+  async emitServerVisibilityChanged(serverId: string, hidden: boolean): Promise<void> {
+    this.eventPublisher.publishToAll({
+      eventVersion: REALTIME_EVENT_VERSION,
+      eventId: `server-visibility:${serverId}:${randomUUID()}`,
+      type: 'server.visibility.changed.v1',
+      groupId: '',
+      occurredAt: new Date().toISOString(),
+      payload: { serverId, hidden },
+    });
   }
 
   private broadcastPresence(userId: string, online: boolean): void {

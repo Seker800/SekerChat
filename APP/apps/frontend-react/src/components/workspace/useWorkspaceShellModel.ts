@@ -10,7 +10,11 @@ import {
   type GroupResponse,
 } from '../../lib/groups-api';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
-import { useWorkspaceStore, type WorkspaceMode } from '../../store/workspace-store';
+import {
+  DM_ATTENDANCE_ROUTE,
+  useWorkspaceStore,
+  type WorkspaceMode,
+} from '../../store/workspace-store';
 import {
   DM_ATTENDANCE_PAGE_ID,
   DM_SUBSCRIPTION_PAGE_ID,
@@ -21,7 +25,13 @@ import { useComposer } from './useComposer';
 import { useDmActions } from './useDmActions';
 import { useManagePanel } from './useManagePanel';
 import { useMessageList } from './useMessageList';
-import { buildServerStats, resolveServerLandingGroup, useServerTree } from './useServerTree';
+import {
+  buildServerStats,
+  DEFAULT_CATEGORY,
+  resolveServerLandingGroup,
+  useServerTree,
+  type ServerRailItem,
+} from './useServerTree';
 import { useWorkspaceDialogs } from './useWorkspaceDialogs';
 import { useWorkspaceMutations } from './useWorkspaceMutations';
 import { useWorkspaceNavigation } from './useWorkspaceNavigation';
@@ -418,6 +428,49 @@ export function useWorkspaceShellModel({
     [archivedServerRailItems, serverRailItems, dialogs, mutations.archiveServerMutation],
   );
 
+  const requestHideServer = useCallback(
+    (server: ServerRailItem) => {
+      if (server.name === DEFAULT_CATEGORY || server.id.startsWith('legacy:')) return;
+      dialogs.setConfirmDialog({
+        title: '隐藏 Server',
+        description: `确认隐藏 Server「${server.name}」？隐藏后它将从所有列表、搜索和发现中消失，但数据不会删除。需要恢复时请使用维护脚本。`,
+        confirmLabel: '隐藏',
+        isDanger: true,
+        onConfirm: async () => {
+          dialogs.setConfirmDialog(null);
+          try {
+            await mutations.hideServerMutation.mutateAsync({
+              serverId: server.id,
+              hidden: true,
+            });
+            if (selectedServerId === server.id) {
+              const nextGroup = groups.find(
+                (group) => group.serverId !== server.id && !group.archivedAt,
+              );
+              if (nextGroup) {
+                navigation.navigateToGroup(nextGroup.id);
+              } else {
+                setWorkspaceMode('dm');
+                void navigate(DM_ATTENDANCE_ROUTE);
+              }
+            }
+          } catch {
+            // The mutation's onError handler already surfaces the failure notice.
+          }
+        },
+      });
+    },
+    [
+      dialogs,
+      groups,
+      mutations.hideServerMutation,
+      navigate,
+      navigation,
+      selectedServerId,
+      setWorkspaceMode,
+    ],
+  );
+
   const requestLeaveGroup = useCallback(() => {
     if (!selectedGroupId) return;
     dialogs.setConfirmDialog({
@@ -633,6 +686,7 @@ export function useWorkspaceShellModel({
     openServerCreateDialog: dialogs.openServerCreateDialog,
     openServerSettingsDialog: dialogs.openServerSettingsDialog,
     onArchiveServer: requestArchiveServer,
+    requestHideServer,
     onJoinGroup: (groupId: string) => {
       void joinGroupMutation.mutateAsync(groupId);
     },

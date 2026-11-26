@@ -43,7 +43,10 @@ export class QqBridgeAccessService {
       !group.members.some((member) => member.role === 'ADMIN')
     )
       throw new ForbiddenException('没有目标群的管理权限。');
-    if (requireActive && (group.isDM || group.archivedAt || group.server?.archivedAt))
+    if (
+      requireActive &&
+      (group.isDM || group.archivedAt || group.server?.archivedAt || group.server?.hiddenAt)
+    )
       throw new BadRequestException('只能绑定有效的普通群。');
     return group;
   }
@@ -86,7 +89,13 @@ export class QqBridgeAccessService {
       where: { id: binding.groupId },
       include: { server: true },
     });
-    if (!group || group.isDM || group.archivedAt || group.server?.archivedAt)
+    if (
+      !group ||
+      group.isDM ||
+      group.archivedAt ||
+      group.server?.archivedAt ||
+      group.server?.hiddenAt
+    )
       throw new ForbiddenException('目标群不可用。');
     return binding;
   }
@@ -208,6 +217,7 @@ export class QqBridgeAccessService {
     const manageable = await this.prisma.group.findMany({
       where: {
         isDM: false,
+        AND: [{ OR: [{ serverId: null }, { server: { hiddenAt: null } }] }],
         ...(actor.role === 'SUPER_ADMIN'
           ? {}
           : {
@@ -222,7 +232,7 @@ export class QqBridgeAccessService {
         name: true,
         category: true,
         archivedAt: true,
-        server: { select: { archivedAt: true } },
+        server: { select: { archivedAt: true, hiddenAt: true } },
       },
       orderBy: { name: 'asc' },
     });
@@ -271,7 +281,9 @@ export class QqBridgeAccessService {
       bindings,
       deliveries,
       groups: manageable
-        .filter((group) => !group.archivedAt && !group.server?.archivedAt)
+        .filter(
+          (group) => !group.archivedAt && !group.server?.archivedAt && !group.server?.hiddenAt,
+        )
         .map(({ id, name, category }) => ({ id, name, category })),
     };
   }

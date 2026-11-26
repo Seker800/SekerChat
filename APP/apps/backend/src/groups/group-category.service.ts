@@ -80,7 +80,8 @@ export class GroupCategoryService {
     const groups = await this.prismaService.group.findMany({
       where: {
         isDM: false,
-        members: { some: { userId: actor.sub } },
+        ...(actor.role === 'SUPER_ADMIN' ? {} : { members: { some: { userId: actor.sub } } }),
+        AND: [{ OR: [{ serverId: null }, { server: { hiddenAt: null } }] }],
       },
       select: {
         id: true,
@@ -207,18 +208,50 @@ export class GroupCategoryService {
         updatedGroupCount: 0,
       };
     }
-    const defaultServer = await this.serversService.resolveServer({ category: DEFAULT_GROUP_CATEGORY });
+    if (server.name !== normalizedCategory) {
+      this.logger.log(
+        'group_category_reset_skipped',
+        JSON.stringify({
+          actorUserId: actor.sub,
+          category: normalizedCategory,
+          serverId: server.id,
+          reason: 'legacy_name',
+        }),
+      );
+      return {
+        category: normalizedCategory,
+        reassignedTo: DEFAULT_GROUP_CATEGORY,
+        updatedGroupCount: 0,
+      };
+    }
+    const defaultServer = await this.serversService.resolveServer({
+      category: DEFAULT_GROUP_CATEGORY,
+    });
+    const isSuperAdmin = actor.role === 'SUPER_ADMIN';
 
     const groupsToUpdate = await this.prismaService.group.findMany({
       where: {
         isDM: false,
         serverId: server.id,
-        members: { some: { userId: actor.sub } },
+        ...(isSuperAdmin ? {} : { members: { some: { userId: actor.sub } } }),
       },
       select: { id: true },
     });
 
     if (!groupsToUpdate.length) {
+      if (isSuperAdmin) {
+        await this.serversService.hideIfEmpty(actor, server.id, 'category_reset');
+      }
+      // Cleanup old category row if orphaned
+      await this.removeOrphanedCategory(normalizedCategory);
+      this.logger.log(
+        'group_category_reset',
+        JSON.stringify({
+          actorUserId: actor.sub,
+          category: normalizedCategory,
+          updatedGroupCount: 0,
+        }),
+      );
       return {
         category: normalizedCategory,
         reassignedTo: DEFAULT_GROUP_CATEGORY,
@@ -235,6 +268,9 @@ export class GroupCategoryService {
       },
     });
 
+    if (isSuperAdmin) {
+      await this.serversService.hideIfEmpty(actor, server.id, 'category_reset');
+    }
     // Cleanup old category row if orphaned
     await this.removeOrphanedCategory(normalizedCategory);
 

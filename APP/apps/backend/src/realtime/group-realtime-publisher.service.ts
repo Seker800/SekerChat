@@ -21,6 +21,10 @@ export class GroupRealtimePublisher {
     return this.realtimeService.getBrowserOnlineUserIds();
   }
 
+  publishServerVisibilityChanged(serverId: string, hidden: boolean): Promise<void> {
+    return this.realtimeService.emitServerVisibilityChanged(serverId, hidden);
+  }
+
   publishReadCursorChanged(
     groupId: string,
     payload: { userId: string; lastReadEventSequence: string },

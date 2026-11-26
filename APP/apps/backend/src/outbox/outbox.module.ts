@@ -12,6 +12,7 @@ import { OutboxWorkerService } from './outbox-worker.service';
 import { UserMessageCreatedOutboxHandler } from './user-message-created-outbox.handler';
 import { GroupLifecycleModule } from '../group-lifecycle/group-lifecycle.module';
 import { ServerLifecycleOutboxHandler } from './server-lifecycle-outbox.handler';
+import { ServerVisibilityOutboxHandler } from './server-visibility-outbox.handler';
 import { SubscriptionChangedOutboxHandler } from './subscription-changed-outbox.handler';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { OutboxRetentionService } from './outbox-retention.service';
@@ -37,6 +38,7 @@ import { SystemConfigModule } from '../system-config/system-config.module';
     OutboxRetentionService,
     UserMessageCreatedOutboxHandler,
     ServerLifecycleOutboxHandler,
+    ServerVisibilityOutboxHandler,
     SubscriptionChangedOutboxHandler,
   ],
   exports: [OutboxCoreModule],

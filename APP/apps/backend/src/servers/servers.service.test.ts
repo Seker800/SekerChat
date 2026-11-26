@@ -9,6 +9,7 @@ function buildServer(overrides: Record<string, unknown> = {}) {
     name: '研发',
     avatarStorageKey: null,
     archivedAt: null,
+    hiddenAt: null,
     createdAt: new Date('2026-08-01T00:00:00.000Z'),
     updatedAt: new Date('2026-08-01T00:00:00.000Z'),
     ...overrides,
@@ -265,6 +266,7 @@ test('listForUser keeps membership filtering for regular members', async () => {
   assert.equal(result[0]?.isMember, true);
   assert.deepEqual((serverQueries[0] as { where: unknown }).where, {
     archivedAt: null,
+    hiddenAt: null,
     groups: {
       some: {
         isDM: false,
@@ -321,6 +323,7 @@ test('listForUser keeps membership filtering when an admin lacks view_all_groups
   assert.equal(result.length, 1);
   assert.deepEqual((serverQueries[0] as { where: unknown }).where, {
     archivedAt: null,
+    hiddenAt: null,
     groups: {
       some: {
         isDM: false,
@@ -328,4 +331,198 @@ test('listForUser keeps membership filtering when an admin lacks view_all_groups
       },
     },
   });
+});
+
+test('setHidden marks only the visibility timestamp, emits one event and returns impact counts', async () => {
+  const updates: Array<{ hiddenAt: Date | null }> = [];
+  const events: unknown[] = [];
+  const transaction = {
+    server: {
+      updateMany: async ({ data }: { data: { hiddenAt: Date | null } }) => {
+        updates.push(data);
+        return { count: 1 };
+      },
+      findUniqueOrThrow: async () => buildServer({ hiddenAt: updates.at(-1)?.hiddenAt ?? null }),
+    },
+  };
+  const service = new ServersService(
+    {
+      server: { findUnique: async () => buildServer() },
+      group: { count: async () => 2 },
+      $transaction: async (callback: (tx: typeof transaction) => unknown) => callback(transaction),
+    } as never,
+    {} as never,
+    { enqueue: async (_tx: unknown, event: unknown) => events.push(event) } as never,
+    { getOrThrow: () => 'http://api.example.test' } as never,
+  );
+
+  const result = await service.setHidden({ sub: 'super-1', role: 'SUPER_ADMIN' }, 'server-1', true);
+
+  assert.ok(result.hiddenAt instanceof Date);
+  assert.equal(result.archivedAt, null);
+  assert.equal(result.groupCount, 2);
+  assert.equal(updates.length, 1);
+  assert.ok(updates[0]?.hiddenAt instanceof Date);
+  assert.deepEqual((events[0] as { payload: unknown }).payload, {
+    serverId: 'server-1',
+    hidden: true,
+  });
+});
+
+test('setHidden is idempotent and preserves archive state when restoring visibility', async () => {
+  const hiddenAt = new Date('2026-11-01T00:00:00.000Z');
+  const archivedAt = new Date('2026-10-01T00:00:00.000Z');
+  let updateCalls = 0;
+  const transaction = {
+    server: {
+      updateMany: async () => {
+        updateCalls += 1;
+        return { count: 1 };
+      },
+      findUniqueOrThrow: async () => buildServer({ hiddenAt: null, archivedAt }),
+    },
+  };
+  const service = new ServersService(
+    {
+      server: { findUnique: async () => buildServer({ hiddenAt, archivedAt }) },
+      group: { count: async () => 1 },
+      $transaction: async (callback: (tx: typeof transaction) => unknown) => callback(transaction),
+    } as never,
+    {} as never,
+    { enqueue: async () => undefined } as never,
+    { getOrThrow: () => 'http://api.example.test' } as never,
+  );
+
+  const stillHidden = await service.setHidden(
+    { sub: 'super-1', role: 'SUPER_ADMIN' },
+    'server-1',
+    true,
+  );
+  assert.equal(stillHidden.hiddenAt, hiddenAt);
+  assert.equal(updateCalls, 0);
+
+  const restored = await service.setHidden(
+    { sub: 'super-1', role: 'SUPER_ADMIN' },
+    'server-1',
+    false,
+  );
+  assert.equal(restored.hiddenAt, null);
+  assert.equal(restored.archivedAt, archivedAt);
+  assert.equal(updateCalls, 1);
+});
+
+test('setHidden rejects non-super-admin actors and the default Server', async () => {
+  const service = new ServersService(
+    {
+      server: { findUnique: async () => buildServer({ name: '未分类' }) },
+      group: { count: async () => 0 },
+    } as never,
+    {} as never,
+    {} as never,
+    {} as never,
+  );
+
+  await assert.rejects(
+    () => service.setHidden({ sub: 'admin-1', role: 'ADMIN' }, 'server-1', true),
+    /仅超级管理员/,
+  );
+  await assert.rejects(
+    () => service.setHidden({ sub: 'super-1', role: 'SUPER_ADMIN' }, 'server-1', true),
+    /默认 Server/,
+  );
+});
+
+test('hideIfEmpty writes atomically and emits visibility for an authorized super admin', async () => {
+  let updateWhere: unknown = null;
+  const events: unknown[] = [];
+  const transaction = {
+    server: {
+      updateMany: async ({ where }: { where: unknown }) => {
+        updateWhere = where;
+        return { count: 1 };
+      },
+      findUniqueOrThrow: async () => buildServer({ hiddenAt: new Date() }),
+    },
+  };
+  const service = new ServersService(
+    {
+      $transaction: async (callback: (tx: typeof transaction) => unknown) => callback(transaction),
+    } as never,
+    {} as never,
+    { enqueue: async (_tx: unknown, event: unknown) => events.push(event) } as never,
+    {} as never,
+  );
+
+  const changed = await service.hideIfEmpty(
+    { sub: 'super-1', role: 'SUPER_ADMIN' },
+    'server-1',
+    'category_reset',
+  );
+
+  assert.equal(changed, true);
+  assert.deepEqual(updateWhere, {
+    id: 'server-1',
+    hiddenAt: null,
+    archivedAt: null,
+    name: { not: '未分类' },
+    groups: { none: { isDM: false } },
+  });
+  assert.equal(events.length, 1);
+});
+
+test('hideIfEmpty refuses non-super-admin actors', async () => {
+  const service = new ServersService({} as never, {} as never, {} as never, {} as never);
+  await assert.rejects(
+    () => service.hideIfEmpty({ sub: 'admin-1', role: 'ADMIN' }, 'server-1', 'category_reset'),
+    /仅超级管理员/,
+  );
+});
+
+test('listHidden is restricted to SUPER_ADMIN and returns counts', async () => {
+  const hiddenAt = new Date('2026-11-01T00:00:00.000Z');
+  const service = new ServersService(
+    {
+      server: {
+        findMany: async () => [
+          {
+            id: 'server-1',
+            name: '研发',
+            hiddenAt,
+            archivedAt: null,
+            _count: { groups: 2 },
+          },
+        ],
+      },
+    } as never,
+    {} as never,
+    {} as never,
+    {} as never,
+  );
+
+  const result = await service.listHidden({ sub: 'super-1', role: 'SUPER_ADMIN' });
+  assert.deepEqual(result, [
+    {
+      serverId: 'server-1',
+      name: '研发',
+      hiddenAt,
+      archivedAt: null,
+      groupCount: 2,
+    },
+  ]);
+  await assert.rejects(() => service.listHidden({ sub: 'admin-1', role: 'ADMIN' }), /仅超级管理员/);
+});
+
+test('resolveServer refuses hidden channel targets', async () => {
+  const server = buildServer({ name: '未分类', hiddenAt: new Date() });
+  const transaction = {
+    server: { findUnique: async () => server },
+    serverNameClaim: { findUnique: async () => ({ server }) },
+    category: { upsert: async () => undefined },
+    $executeRaw: async () => 1,
+  };
+  const service = new ServersService({} as never, {} as never, {} as never, {} as never);
+  await assert.rejects(
+    () => service.resolveServer({ serverId: 'server-1' }, transaction as never),
+    /已隐藏/,
+  );
 });

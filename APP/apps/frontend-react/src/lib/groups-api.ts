@@ -13,6 +13,7 @@ export type GroupNotificationPreference = ApiSchemas['GroupNotificationPreferenc
 export type LeaveGroupResponse = ApiSchemas['LeaveGroupResponseDto'];
 export type ServerResponse = ApiSchemas['ServerResponseDto'];
 export type ArchiveServerResponse = ApiSchemas['ArchiveServerResponseDto'];
+export type HiddenServerResponse = ApiSchemas['HiddenServerResponseDto'];
 
 export type ResetCategoryResponse = ApiSchemas['ResetCategoryResponseDto'];
 export type ManageableCategoryResponse = ApiSchemas['ManageableCategoryResponseDto'];
@@ -150,6 +151,19 @@ export async function archiveServer(
     body: JSON.stringify({ archive }),
   });
   return parseResponse<ArchiveServerResponse>(response);
+}
+
+export async function setServerHidden(
+  accessToken: string,
+  serverId: string,
+  hidden = true,
+): Promise<HiddenServerResponse> {
+  const response = await fetchApi(`${apiBaseUrl}/servers/${encodeURIComponent(serverId)}/hidden`, {
+    method: 'PATCH',
+    headers: authHeaders(accessToken),
+    body: JSON.stringify({ hidden }),
+  });
+  return parseResponse<HiddenServerResponse>(response);
 }
 
 export async function updateGroup(

@@ -4,7 +4,12 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthenticatedUser } from '../auth/types/authenticated-user.type';
 import { ArchiveServerDto } from './dto/archive-server.dto';
-import { ArchiveServerResponseDto, ServerResponseDto } from './dto/server-response.dto';
+import {
+  ArchiveServerResponseDto,
+  HiddenServerResponseDto,
+  ServerResponseDto,
+} from './dto/server-response.dto';
+import { SetServerHiddenDto } from './dto/set-server-hidden.dto';
 import { UpdateServerDto } from './dto/update-server.dto';
 import { ServersService } from './servers.service';
 
@@ -13,6 +18,12 @@ import { ServersService } from './servers.service';
 @Controller('servers')
 export class ServersController {
   constructor(private readonly serversService: ServersService) {}
+
+  @Get('hidden')
+  @ApiOkResponse({ type: HiddenServerResponseDto, isArray: true })
+  listHidden(@CurrentUser() user: AuthenticatedUser) {
+    return this.serversService.listHidden(user);
+  }
 
   @Get()
   @ApiOkResponse({ type: ServerResponseDto, isArray: true })
@@ -38,5 +49,15 @@ export class ServersController {
     @Body() dto: ArchiveServerDto,
   ) {
     return this.serversService.archive(user, serverId, dto.archive ?? true);
+  }
+
+  @Patch(':serverId/hidden')
+  @ApiOkResponse({ type: HiddenServerResponseDto })
+  setHidden(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('serverId') serverId: string,
+    @Body() dto: SetServerHiddenDto,
+  ) {
+    return this.serversService.setHidden(user, serverId, dto.hidden);
   }
 }

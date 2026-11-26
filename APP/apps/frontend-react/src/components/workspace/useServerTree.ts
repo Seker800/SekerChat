@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import type { GroupResponse, ServerResponse } from '../../lib/groups-api';
 
-const DEFAULT_CATEGORY = '未分类';
+export const DEFAULT_CATEGORY = '未分类';
 
 export function getCategoryName(group: Pick<GroupResponse, 'category'>): string {
   return group.category?.trim() || DEFAULT_CATEGORY;

@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { Avatar } from '../shared/Avatar';
 import { ContextMenu, type ContextMenuItem } from './ContextMenu';
 import { useSecondaryClickGuard } from './useSecondaryClickGuard';
-import type { ServerRailItem } from './useServerTree';
+import { DEFAULT_CATEGORY, type ServerRailItem } from './useServerTree';
 import styles from './ServerRail.module.css';
 import { useTranslation } from 'react-i18next';
 
@@ -18,10 +18,12 @@ interface ServerRailProps {
   dmUnreadCount: number;
   canCreateServers?: boolean;
   canManageServerSettings?: boolean;
+  canHideServer?: boolean;
   onOpenDM: () => void;
   onSelect: (serverId: string) => void;
   onOpenCreateServer: () => void;
   onOpenCategorySettings: (server: ServerRailItem) => void;
+  onHideServer?: (server: ServerRailItem) => void;
 }
 
 export function ServerRail({
@@ -36,10 +38,12 @@ export function ServerRail({
   dmUnreadCount,
   canCreateServers = true,
   canManageServerSettings = true,
+  canHideServer = false,
   onOpenDM,
   onSelect,
   onOpenCreateServer,
   onOpenCategorySettings,
+  onHideServer,
 }: ServerRailProps) {
   const { t } = useTranslation();
   const [menuState, setMenuState] = useState<{
@@ -67,6 +71,19 @@ export function ServerRail({
           disabled: !canManageServerSettings || menuState.server.isMember === false,
           onSelect: () => onOpenCategorySettings(menuState.server),
         },
+        ...(canHideServer &&
+        menuState.server.name !== DEFAULT_CATEGORY &&
+        !menuState.server.id.startsWith('legacy:')
+          ? [
+              {
+                key: 'hide-server',
+                label: t('serverRail.hideServer'),
+                danger: true,
+                separatorBefore: true,
+                onSelect: () => onHideServer?.(menuState.server),
+              },
+            ]
+          : []),
       ]
     : [];
 
@@ -146,9 +163,13 @@ export function ServerRail({
           type="button"
           aria-controls="server-rail-actions"
           aria-expanded={serverActionsExpanded}
-          aria-label={serverActionsExpanded ? t('serverRail.collapseActions') : t('serverRail.expandActions')}
+          aria-label={
+            serverActionsExpanded ? t('serverRail.collapseActions') : t('serverRail.expandActions')
+          }
           onClick={() => setServerActionsExpanded((expanded) => !expanded)}
-          title={serverActionsExpanded ? t('serverRail.collapseActions') : t('serverRail.expandActions')}
+          title={
+            serverActionsExpanded ? t('serverRail.collapseActions') : t('serverRail.expandActions')
+          }
         >
           <svg
             width="14"

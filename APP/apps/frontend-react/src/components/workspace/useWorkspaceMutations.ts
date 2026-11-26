@@ -4,6 +4,7 @@ import {
   archiveGroup,
   createGroup,
   renameServer,
+  setServerHidden,
   updateGroup,
   type GroupResponse,
 } from '../../lib/groups-api';
@@ -151,6 +152,26 @@ export function useWorkspaceMutations({
     },
   });
 
+  const hideServerMutation = useMutation({
+    mutationFn: async ({ serverId, hidden }: { serverId: string; hidden: boolean }) => {
+      return setServerHidden(accessToken, serverId, hidden);
+    },
+    onSuccess: (result) => {
+      pushNotice(
+        'success',
+        result.hiddenAt
+          ? `已隐藏 Server「${result.name}」。`
+          : `已恢复 Server「${result.name}」的可见性。`,
+      );
+      void serversQuery.refetch();
+      void groupsQuery.refetch();
+      void queryClient.invalidateQueries({ queryKey: ['server-directory'] });
+    },
+    onError(error) {
+      pushNotice('error', error instanceof Error ? error.message : '更新 Server 可见性失败。');
+    },
+  });
+
   const setWorkStatusMutation = useMutation({
     mutationFn: async ({ groupId, status }: { groupId: string; status: string }) => {
       return setGroupWorkState(accessToken, groupId, { status });
@@ -245,6 +266,7 @@ export function useWorkspaceMutations({
 
   return {
     archiveServerMutation,
+    hideServerMutation,
     archiveGroupMutation,
     createChannelDialogState: {
       isSubmitting: createChannelMutation.isPending,

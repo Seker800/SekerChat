@@ -9,7 +9,8 @@ export type RealtimeEventType =
   | 'task.updated.v1'
   | 'task.deleted.v1'
   | 'presence.changed.v1'
-  | 'subscription.changed.v1';
+  | 'subscription.changed.v1'
+  | 'server.visibility.changed.v1';
 
 export type RealtimeJsonObject = Record<string, unknown>;
 
@@ -67,6 +68,11 @@ export interface SubscriptionRealtimePayload extends RealtimeJsonObject {
   reason: 'published' | 'updated' | 'withdrawn' | 'pinned' | 'deleted' | 'confirmed' | 'viewed';
 }
 
+export interface ServerVisibilityRealtimePayload extends RealtimeJsonObject {
+  serverId: string;
+  hidden: boolean;
+}
+
 export type VersionedRealtimeEvent =
   | RealtimeEvent<MessageRealtimePayload, 'message.created.v1'>
   | RealtimeEvent<MessageRealtimePayload, 'message.updated.v1'>
@@ -76,7 +82,8 @@ export type VersionedRealtimeEvent =
   | RealtimeEvent<TaskRealtimePayload, 'task.updated.v1'>
   | RealtimeEvent<TaskRealtimePayload, 'task.deleted.v1'>
   | RealtimeEvent<PresenceRealtimePayload, 'presence.changed.v1'>
-  | RealtimeEvent<SubscriptionRealtimePayload, 'subscription.changed.v1'>;
+  | RealtimeEvent<SubscriptionRealtimePayload, 'subscription.changed.v1'>
+  | RealtimeEvent<ServerVisibilityRealtimePayload, 'server.visibility.changed.v1'>;
 
 export type RealtimeEventParseResult =
   | { success: true; data: VersionedRealtimeEvent }
@@ -92,6 +99,7 @@ const EVENT_TYPES = new Set<RealtimeEventType>([
   'task.deleted.v1',
   'presence.changed.v1',
   'subscription.changed.v1',
+  'server.visibility.changed.v1',
 ]);
 
 export function parseRealtimeEvent(input: unknown): RealtimeEventParseResult {
@@ -134,8 +142,7 @@ function isPayloadValid(type: RealtimeEventType, payload: RealtimeJsonObject): b
       return isMessagePayload(payload);
     case 'message.read-cursor.changed.v1':
       return (
-        isNonEmptyString(payload.userId) &&
-        isPositiveIntegerString(payload.lastReadEventSequence)
+        isNonEmptyString(payload.userId) && isPositiveIntegerString(payload.lastReadEventSequence)
       );
     case 'group.updated.v1':
       return (
@@ -160,6 +167,8 @@ function isPayloadValid(type: RealtimeEventType, payload: RealtimeJsonObject): b
           String(payload.reason),
         )
       );
+    case 'server.visibility.changed.v1':
+      return isNonEmptyString(payload.serverId) && typeof payload.hidden === 'boolean';
   }
 }
 

@@ -5,6 +5,7 @@ export const OUTBOX_EVENT_TYPES = {
   artifactUploaded: 'artifact.uploaded.v1',
   groupLifecycleChanged: 'group.lifecycle.changed.v1',
   serverLifecycleRequested: 'server.lifecycle.requested.v1',
+  serverVisibilityChanged: 'server.visibility.changed.v1',
   subscriptionChanged: 'subscription.changed.v1',
   userMessageCreated: 'message.user-created.v1',
 } as const;

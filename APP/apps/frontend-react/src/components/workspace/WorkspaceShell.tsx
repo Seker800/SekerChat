@@ -243,6 +243,7 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
         dmUnreadCount={model.dmUnreadCount}
         canCreateServers={canCreateGroup}
         canManageServerSettings={canManageGroupSettings}
+        canHideServer={model.isSuperAdmin}
         isOverlay={model.isNarrowViewport}
         isOverlayOpen={model.isMobileSidebarOpen}
         onOpenDM={() => {
@@ -254,6 +255,7 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
         }}
         onOpenCreateServer={model.openServerCreateDialog}
         onOpenCategorySettings={model.openServerSettingsDialog}
+        onHideServer={model.requestHideServer}
       />
       <ChannelSidebar
         mode={model.mode}

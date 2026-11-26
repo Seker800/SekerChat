@@ -564,6 +564,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/servers/hidden": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["ServersController_listHidden"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/servers": {
         parameters: {
             query?: never;
@@ -610,6 +626,22 @@ export interface paths {
         options?: never;
         head?: never;
         patch: operations["ServersController_archive"];
+        trace?: never;
+    };
+    "/api/servers/{serverId}/hidden": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["ServersController_setHidden"];
         trace?: never;
     };
     "/api/groups/{groupId}/work-state": {
@@ -2956,6 +2988,13 @@ export interface components {
         UnbanDto: {
             note?: string;
         };
+        HiddenServerResponseDto: {
+            serverId: string;
+            name: string;
+            hiddenAt: string | null;
+            archivedAt: string | null;
+            groupCount: number;
+        };
         ServerResponseDto: {
             id: string;
             name: string;
@@ -2978,6 +3017,9 @@ export interface components {
             category: string;
             archivedAt: string | null;
             groupCount: number;
+        };
+        SetServerHiddenDto: {
+            hidden: boolean;
         };
         SetGroupWorkStateDto: {
             status: string;
@@ -4604,6 +4646,25 @@ export interface operations {
             };
         };
     };
+    ServersController_listHidden: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HiddenServerResponseDto"][];
+                };
+            };
+        };
+    };
     ServersController_list: {
         parameters: {
             query?: never;
@@ -4669,6 +4730,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ArchiveServerResponseDto"];
+                };
+            };
+        };
+    };
+    ServersController_setHidden: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                serverId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetServerHiddenDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HiddenServerResponseDto"];
                 };
             };
         };

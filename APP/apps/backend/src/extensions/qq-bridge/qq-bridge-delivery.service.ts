@@ -104,8 +104,11 @@ export class QqBridgeDeliveryService implements OnModuleInit, OnModuleDestroy {
       SELECT d.id FROM "QqBridgeDelivery" d
       JOIN "QqBridgeBinding" b ON b.id = d."bindingId"
       JOIN "QqBridgeConnector" c ON c.id = b."connectorId"
+      LEFT JOIN "Group" g ON g.id = b."groupId"
+      LEFT JOIN "Server" s ON s.id = g."serverId"
       WHERE c.id = ${connectorId} AND c.enabled AND c."revokedAt" IS NULL
         AND b.enabled AND b.bidirectional AND b."archivedAt" IS NULL
+        AND s."hiddenAt" IS NULL
         AND (
           (d.status = 'pending' AND d.revision = b.revision AND NOT EXISTS (
             SELECT 1 FROM "QqBridgeDelivery" blocked
@@ -146,7 +149,12 @@ export class QqBridgeDeliveryService implements OnModuleInit, OnModuleDestroy {
           orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
         });
         if (!task) continue;
-        await this.access.activeBinding(tx, connectorId, binding.id, binding.revision);
+        try {
+          await this.access.activeBinding(tx, connectorId, binding.id, binding.revision);
+        } catch (error) {
+          if (error instanceof ForbiddenException || error instanceof ConflictException) continue;
+          throw error;
+        }
         const lease = randomBytes(32).toString('hex');
         await tx.qqBridgeDelivery.update({
           where: { id: task.id },
@@ -187,12 +195,16 @@ export class QqBridgeDeliveryService implements OnModuleInit, OnModuleDestroy {
       const task = await this.leased(tx, connectorId, id, lease);
       if (task.status !== 'claimed' || !task.leaseUntil || task.leaseUntil.getTime() <= Date.now())
         throw new ConflictException('投递租约已过期。');
-      const binding = await this.access.activeBinding(
-        tx,
-        connectorId,
-        task.bindingId,
-        task.revision,
-      );
+      let binding: Awaited<ReturnType<QqBridgeAccessService['activeBinding']>>;
+      try {
+        binding = await this.access.activeBinding(tx, connectorId, task.bindingId, task.revision);
+      } catch (error) {
+        if (error instanceof ForbiddenException) {
+          await tx.qqBridgeDelivery.update({ where: { id }, data: { status: 'cancelled' } });
+          return null;
+        }
+        throw error;
+      }
       const message = await tx.message.findUnique({
         where: { id: task.messageId },
         include: { sender: true },

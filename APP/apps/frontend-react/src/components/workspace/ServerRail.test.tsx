@@ -11,6 +11,7 @@ afterEach(() => {
 function renderServerRail({
   canCreateServers = true,
   canManageServerSettings = true,
+  canHideServer = false,
   archivedServers = [],
   unjoinedServers = [],
   dmUnreadCount = 0,
@@ -20,10 +21,12 @@ function renderServerRail({
   onOpenCategorySettings = vi.fn(),
   onOpenCreateServer = vi.fn(),
   onOpenDM = vi.fn(),
+  onHideServer = vi.fn(),
   onSelect = vi.fn(),
 }: {
   canCreateServers?: boolean;
   canManageServerSettings?: boolean;
+  canHideServer?: boolean;
   archivedServers?: ServerRailItem[];
   unjoinedServers?: ServerRailItem[];
   dmUnreadCount?: number;
@@ -33,6 +36,7 @@ function renderServerRail({
   onOpenCategorySettings?: (server: ServerRailItem) => void;
   onOpenCreateServer?: () => void;
   onOpenDM?: () => void;
+  onHideServer?: (server: ServerRailItem) => void;
   onSelect?: (serverId: string) => void;
 } = {}) {
   const activeServer: ServerRailItem = {
@@ -56,10 +60,12 @@ function renderServerRail({
       isOverlayOpen={isOverlayOpen}
       canCreateServers={canCreateServers}
       canManageServerSettings={canManageServerSettings}
+      canHideServer={canHideServer}
       onOpenDM={onOpenDM}
       onSelect={onSelect}
       onOpenCreateServer={onOpenCreateServer}
       onOpenCategorySettings={onOpenCategorySettings}
+      onHideServer={onHideServer}
     />,
   );
 }
@@ -224,5 +230,89 @@ describe('ServerRail', () => {
     fireEvent.contextMenu(screen.getByTitle('外部项目 · 未加入'));
 
     expect(screen.getByRole('menuitem', { name: '打开 server 设置' })).toBeDisabled();
+  });
+
+  it('offers the hide action to SUPER_ADMIN for joined, unjoined and archived servers', () => {
+    const onHideServer = vi.fn();
+    renderServerRail({
+      canHideServer: true,
+      onHideServer,
+      archivedServers: [
+        {
+          id: 'server-archived',
+          name: '旧项目',
+          avatarUrl: null,
+          activeCount: 0,
+          unreadCount: 0,
+          isArchived: true,
+        },
+      ],
+      unjoinedServers: [
+        {
+          id: 'server-unjoined',
+          name: '外部项目',
+          avatarUrl: null,
+          activeCount: 0,
+          unreadCount: 0,
+          isArchived: false,
+          isMember: false,
+        },
+      ],
+    });
+
+    fireEvent.contextMenu(screen.getByTestId('server-rail-category'));
+    fireEvent.click(screen.getByRole('menuitem', { name: '隐藏 Server' }));
+    expect(onHideServer).toHaveBeenCalledWith(expect.objectContaining({ id: 'server-1' }));
+
+    fireEvent.click(screen.getByRole('button', { name: '展开 Server 操作' }));
+    fireEvent.contextMenu(screen.getByTitle('外部项目 · 未加入'));
+    fireEvent.click(screen.getByRole('menuitem', { name: '隐藏 Server' }));
+    expect(onHideServer).toHaveBeenCalledWith(expect.objectContaining({ id: 'server-unjoined' }));
+
+    fireEvent.contextMenu(screen.getByTitle('旧项目 · 已归档'));
+    fireEvent.click(screen.getByRole('menuitem', { name: '隐藏 Server' }));
+    expect(onHideServer).toHaveBeenCalledWith(expect.objectContaining({ id: 'server-archived' }));
+  });
+
+  it('does not offer the hide action without SUPER_ADMIN', () => {
+    renderServerRail({ canHideServer: false });
+
+    fireEvent.contextMenu(screen.getByTestId('server-rail-category'));
+
+    expect(screen.queryByRole('menuitem', { name: '隐藏 Server' })).not.toBeInTheDocument();
+  });
+
+  it('does not offer hide for the default Server or legacy pseudo-servers', () => {
+    renderServerRail({
+      canHideServer: true,
+      unjoinedServers: [
+        {
+          id: 'server-default',
+          name: '未分类',
+          avatarUrl: null,
+          activeCount: 0,
+          unreadCount: 0,
+          isArchived: false,
+          isMember: false,
+        },
+        {
+          id: 'legacy:旧分类',
+          name: '旧分类',
+          avatarUrl: null,
+          activeCount: 0,
+          unreadCount: 0,
+          isArchived: false,
+          isMember: false,
+        },
+      ],
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '展开 Server 操作' }));
+
+    fireEvent.contextMenu(screen.getByTitle('未分类 · 未加入'));
+    expect(screen.queryByRole('menuitem', { name: '隐藏 Server' })).not.toBeInTheDocument();
+
+    fireEvent.contextMenu(screen.getByTitle('旧分类 · 未加入'));
+    expect(screen.queryByRole('menuitem', { name: '隐藏 Server' })).not.toBeInTheDocument();
   });
 });

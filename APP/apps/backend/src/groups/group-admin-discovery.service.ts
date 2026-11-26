@@ -96,6 +96,15 @@ export class GroupAdminDiscoveryService {
       ];
     }
 
+    const visibleServerFilter: Prisma.GroupWhereInput = {
+      OR: [{ serverId: null }, { server: { hiddenAt: null } }],
+    };
+    where.AND = Array.isArray(where.AND)
+      ? [...where.AND, visibleServerFilter]
+      : where.AND
+        ? [where.AND, visibleServerFilter]
+        : [visibleServerFilter];
+
     const groups = await this.prismaService.group.findMany({
       where,
       orderBy: [{ archivedAt: 'asc' }, { updatedAt: 'desc' }],

@@ -241,12 +241,14 @@ model Server {
   name             String            @unique
   avatarStorageKey String?
   archivedAt       DateTime?
+  hiddenAt         DateTime?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   groups           Group[]
   nameClaims       ServerNameClaim[]
 
   @@index([archivedAt, updatedAt])
+  @@index([hiddenAt, archivedAt, updatedAt])
 }
 
 enum ServerNameKind {

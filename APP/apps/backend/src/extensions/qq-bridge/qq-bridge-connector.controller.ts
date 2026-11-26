@@ -48,14 +48,34 @@ export class QqBridgeConnectorController {
           where: { connectorId: connector.id, enabled: true, archivedAt: null },
         })
       : [];
+    const groupIds = [...new Set(bindings.map((binding) => binding.groupId))];
+    const activeGroupIds = new Set(
+      groupIds.length
+        ? (
+            await this.prisma.group.findMany({
+              where: {
+                id: { in: groupIds },
+                isDM: false,
+                archivedAt: null,
+                OR: [{ serverId: null }, { server: { archivedAt: null, hiddenAt: null } }],
+              },
+              select: { id: true },
+            })
+          ).map((group) => group.id)
+        : [],
+    );
+    const activeBindings = bindings.filter((binding) => activeGroupIds.has(binding.groupId));
+    const activeBindingIds = new Set(activeBindings.map((binding) => binding.id));
     const uncertain = await this.prisma.qqBridgeDelivery.findMany({
       where: { binding: { connectorId: connector.id }, status: { in: ['started', 'uncertain'] } },
       select: { bindingId: true },
     });
     return {
       enabled: connector.enabled,
-      bindings,
-      holdSelfMessages: [...new Set(uncertain.map((t) => t.bindingId))],
+      bindings: activeBindings,
+      holdSelfMessages: [...new Set(uncertain.map((t) => t.bindingId))].filter((bindingId) =>
+        activeBindingIds.has(bindingId),
+      ),
     };
   }
   @Post('heartbeat') async heartbeat(@Req() request: BridgeRequest, @Body() dto: HeartbeatDto) {
