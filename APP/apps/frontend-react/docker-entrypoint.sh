@@ -32,9 +32,19 @@ case "$SEKERCHAT_CSP_FRAME_ANCESTORS" in
     exit 1
     ;;
 esac
+case " $SEKERCHAT_CSP_FRAME_ANCESTORS " in
+  *" * "*)
+    printf '%s\n' 'SEKERCHAT_CSP_FRAME_ANCESTORS must list explicit origins, not a wildcard.' >&2
+    exit 1
+    ;;
+esac
 export SEKERCHAT_CSP_FRAME_ANCESTORS
 
-# 删掉 index.html 里的 Vite CSP meta 标签
-sed -i '/<!-- Vite dev server CSP/,/\/>/d' /usr/share/nginx/html/index.html
+# 删掉中英文 index.html 里的 Vite 开发用 CSP meta 标签；生产以响应头为准
+for index_file in /usr/share/nginx/html/index.html /usr/share/nginx/html/en/index.html; do
+  if [ -f "$index_file" ]; then
+    sed -i '/<!-- Vite dev server CSP/,/\/>/d' "$index_file"
+  fi
+done
 
 exec /docker-entrypoint.sh nginx -g "daemon off;"
