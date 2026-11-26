@@ -359,3 +359,24 @@ dev 实测（50 条消息频道，含 StrictMode 双跑，绝对数字约打对�
 ## 七、一句话总结
 
 这个软件现在的主要问题不是“算得慢”，而是“同样的事做了很多遍”：5 张头像被下载 500 多次、切一次频道把整个工作区和消息拉两遍、为了 95 行预览读 6,000 多条消息、上传进度每来一个网络事件就重绘整个页面；真正写库的操作则被 NAS 机械盘的 fsync 卡在 400–900 ms。先把头像缓存/压缩、bootstrap 拆分、群列表最新消息查询、API gzip 这四件事做掉，体感会立刻不一样；WAL 迁 SSD 是把“发消息仍然要等半秒”这最后一截也解决掉的关键。
+
+---
+
+## 八、修复落地记录（2026-11-26）
+
+以下修改已提交并推送到 `origin/main`（提交 `fcd5447`），未部署生产环境。
+
+**已实现**
+- 头像：新增共享头像缓存（同一 URL 只下载一次、in-flight 合并、引用计数 + LRU）；上传时用 `sharp` 生成 256px WebP；头像响应改为 `private, max-age=31536000, immutable`。
+- 工作区：bootstrap 改为不含消息的 `workspace-snapshot`，按 `mode + userId` 缓存；频道消息只由 `['messages', groupId]` 负责；删除三处无效的 bootstrap invalidation；删除 `serversQuery`/`groupsQuery` 的重复 refetch。
+- 传输：nginx 对 `application/json` 开启 gzip（含 `gzip_proxied any`）。
+- 群列表：新增 `loadLatestMessages()`，用 `LATERAL ... LIMIT 1` 取每组最新消息；未读数改为每组相关子查询；`/dm` 复用 category/user 批量预取。
+- 消息页：移除整组 `groupBy`，只按“当前用户在本页的最后一条消息”构造回执，并按需加载回执成员；裁剪未使用的 `thumbnailSize`/`attachedAt`，收窄 external avatar select。
+- 渲染：`MessageItem` 的 `artifactAction`/`onContextMenu`/`onReply`/`canManageFileShare`/`jumpToMessage` 稳定化；回执和编辑状态改为每行布尔；`patchGroupList` 无匹配时保持原数组；`notificationGroups` memo；上传进度 200ms 合并 + trailing flush。
+- 其他：文件内容响应增加 ETag 并支持 304，缓存从 60 秒提升到 1 小时；活动日历不再 60 秒轮询，改为 message.created/updated 实时失效；上传完成后的大小与 MIME 校验并行。
+- 测试：相关单测、类型检查、构建、lint、架构检查和 bundle 预算均通过；e2e 69/72 通过，剩余 3 项为既有/环境相关（图片预览精确数量、history anchor 并行下偶发、频道设置截图 18px 差异）。
+
+**仍需运维/后续**
+- 将 `pg_wal` 迁到 SSD；这是发消息 p50 从约 400ms 降到几十毫秒的唯一根治手段。
+- 存量头像尚未回填缩放版本（新上传已缩放；旧图靠长缓存避免重复下载）。
+- presence/read-cursor 的同步提交策略、outbox 空转退避、QQ 连接器轮询间隔未在本次修改范围内。
