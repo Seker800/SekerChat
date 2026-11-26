@@ -53,6 +53,7 @@ export class UsersController {
   ) {
     await this.ensurePermission(user, 'manage_user_roles');
     await this.usersService.deleteUser(user, userId);
+    this.realtimeGateway.disconnectSessions(userId);
     return { success: true };
   }
 
@@ -63,7 +64,9 @@ export class UsersController {
     @Body() dto: { disabled: boolean },
   ) {
     await this.ensurePermission(user, 'manage_user_roles');
-    return this.usersService.setUserDisabled(user, userId, Boolean(dto.disabled));
+    const result = await this.usersService.setUserDisabled(user, userId, Boolean(dto.disabled));
+    if (dto.disabled) this.realtimeGateway.disconnectSessions(userId);
+    return result;
   }
 
   @Patch(':userId/password')

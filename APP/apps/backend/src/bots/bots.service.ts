@@ -1,8 +1,9 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
 import { canTriggerBotReply, isAgentBot } from '../common/bot-identity';
 import { PrismaService } from '../prisma/prisma.service';
 import { MessagesService } from '../messages/messages.service';
+import { GroupRealtimePublisher } from '../realtime/group-realtime-publisher.service';
 import {
   CreateBotDto,
   BOT_CONFIG_DEFAULTS,
@@ -29,6 +30,7 @@ export class BotsService {
     private readonly prismaService: PrismaService,
     private readonly messagesService: MessagesService,
     private readonly replyDeliveries: BotReplyDeliveryRepository,
+    @Optional() private readonly groupRealtimePublisher?: GroupRealtimePublisher,
   ) {}
 
   async listBots() {
@@ -185,6 +187,11 @@ export class BotsService {
       throw new NotFoundException('Bot not found.');
     }
 
+    const memberships = await this.prismaService.groupMember.findMany({
+      where: { userId: botId },
+      select: { groupId: true },
+    });
+
     await this.prismaService.$transaction([
       this.prismaService.user.update({
         where: { id: botId },
@@ -198,6 +205,11 @@ export class BotsService {
         data: { revokedAt: new Date() },
       }),
     ]);
+
+    // The audience cache is in-process; drop it now instead of waiting for TTL.
+    for (const groupId of new Set(memberships.map((membership) => membership.groupId))) {
+      this.groupRealtimePublisher?.invalidateGroupMemberCache(groupId);
+    }
 
     this.logger.log('bot_disabled', JSON.stringify({ botId }));
     return { success: true };
