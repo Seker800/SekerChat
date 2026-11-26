@@ -49,11 +49,9 @@ export class SystemMessageService {
       message.eventSequence,
     );
 
-    const receiptMembers = await this.readReceiptService.listMessageReceiptMembers(groupId);
-    const serializedMessage = await this.serializerService.serializeMessage(
-      message,
-      receiptMembers,
-    );
+    // System messages are never the viewer's own message, so a read receipt has
+    // nothing to render; broadcast one without an O(members) recipient list.
+    const serializedMessage = await this.serializerService.serializeMessage(message, [], false);
     await this.realtimePublisher.publishCreated(groupId, message.eventSequence, serializedMessage);
 
     this.logger.log(

@@ -481,31 +481,10 @@ test('createMessage rejects dm bot messages when the sender is outside the allow
   );
 });
 
-test('listReminderEvents batch-fetches receipt members per unique group', async () => {
+test('listReminderEvents pulls notifications without loading read receipts', async () => {
   const receiptCalls: string[] = [];
   let notificationsMuted = false;
   let notificationsMutedThroughEventSequence = 0n;
-  const members1: MessageReceiptMember[] = [
-    {
-      userId: 'user-1',
-      email: 'a@example.com',
-      displayName: 'A',
-      avatarStorageKey: null,
-      lastReadEventSequence: 10n,
-      isBot: false,
-    },
-  ];
-  const members2: MessageReceiptMember[] = [
-    {
-      userId: 'user-2',
-      email: 'b@example.com',
-      displayName: 'B',
-      avatarStorageKey: null,
-      lastReadEventSequence: 20n,
-      isBot: false,
-    },
-  ];
-
   const prismaService = {
     message: {
       findMany: async ({ where }: { where: { eventSequence: { gt: bigint } } }) => {
@@ -611,11 +590,11 @@ test('listReminderEvents batch-fetches receipt members per unique group', async 
     buildUserAvatarUrl: () => null,
   };
 
-  // Build a custom ReadReceiptService that tracks calls
+  // Notification pulls never render receipts; the service must not load members.
   const readReceiptService = {
     listMessageReceiptMembers: async (groupId: string) => {
       receiptCalls.push(groupId);
-      return groupId === 'group-1' ? members1 : members2;
+      return [];
     },
     buildReadReceipt: () => null,
   } as any;
@@ -656,9 +635,7 @@ test('listReminderEvents batch-fetches receipt members per unique group', async 
 
   const result = await service.listReminderEvents('user-1', {});
 
-  // Called once per unique group, not per message
-  assert.deepEqual(receiptCalls.sort(), ['group-1', 'group-2']);
-  assert.equal(receiptCalls.length, 2);
+  assert.deepEqual(receiptCalls, []);
   assert.equal(result.events.length, 3);
   notificationsMuted = true;
   receiptCalls.length = 0;

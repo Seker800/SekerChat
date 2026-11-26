@@ -536,7 +536,7 @@ export function RightSidebar({
                 </button>
               </div>
             </div>
-            {!group.isDM && (isMember || canViewAllGroups) ? (
+            {isMember || canViewAllGroups ? (
               <>
                 <div className={styles.divider} />
                 <GroupActivityCalendar

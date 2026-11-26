@@ -19,8 +19,9 @@ export class RealtimeRefreshQueue {
   schedule(filters: InvalidateQueryFilters, delayMs: number): void {
     if (this.stopped) return;
     const key = JSON.stringify(filters.queryKey);
-    const existing = this.timers.get(key);
-    if (existing) clearTimeout(existing);
+    // Keep the first deadline: resetting it on every event would starve the
+    // refresh for as long as the conversation stays busy.
+    if (this.timers.has(key)) return;
     this.timers.set(
       key,
       setTimeout(() => {

@@ -162,6 +162,7 @@ describe('useComposer pending uploads', () => {
 
     const refetchMessages = vi.fn();
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const invalidate = vi.spyOn(queryClient, 'invalidateQueries');
     const { result } = renderHook(
       () =>
         useComposer({
@@ -222,8 +223,8 @@ describe('useComposer pending uploads', () => {
         attachment: { fileId: 'file-1' },
       }),
     );
-    // The confirmed message is patched into the timeline cache, so a full page
-    // refetch would only re-download what the client just wrote.
+    // A missing timeline gets exactly one page read; a cached one gets no refetch.
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['messages', 'group-1'] });
     expect(refetchMessages).not.toHaveBeenCalled();
     expect(
       queryClient

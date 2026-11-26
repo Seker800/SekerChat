@@ -1,6 +1,5 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { IdlePollSchedule } from '../work-queues/idle-poll-schedule';
 import { OutboxDispatcherService } from './outbox-dispatcher.service';
 import { OutboxService } from './outbox.service';
 import { OutboxWakeupService } from './outbox-wakeup.service';
@@ -9,7 +8,6 @@ import { OutboxWakeupService } from './outbox-wakeup.service';
 export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(OutboxWorkerService.name);
   private readonly batchSize = 25;
-  private readonly poll = new IdlePollSchedule();
   private drainRequested = false;
   private drainPromise: Promise<void> | null = null;
   private unsubscribeWakeup: (() => void) | null = null;
@@ -22,7 +20,6 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
 
   onModuleInit(): void {
     this.unsubscribeWakeup = this.wakeupService.subscribe(() => {
-      this.poll.wake();
       void this.processPendingEvents().catch((error) => {
         this.logger.warn(
           'outbox_immediate_delivery_failed',
@@ -43,14 +40,7 @@ export class OutboxWorkerService implements OnModuleInit, OnModuleDestroy {
     waitForCompletion: true,
   })
   async pollPendingEvents(): Promise<void> {
-    if (this.drainPromise || !this.poll.ready()) return;
-    if (!(await this.outboxService.hasDueEvents())) {
-      this.poll.idle();
-      return;
-    }
-    // A wakeup already forced an immediate drain; the next fallback tick may
-    // return to the base interval now that work was found.
-    this.poll.wake();
+    if (this.drainPromise || !(await this.outboxService.hasDueEvents())) return;
     await this.processPendingEvents();
   }
 

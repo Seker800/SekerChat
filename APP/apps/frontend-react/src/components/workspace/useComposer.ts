@@ -103,12 +103,15 @@ export function useComposer({
     maxBytes: chatAttachmentMaxBytes,
     replyToMessageId,
     onMessage: (message, groupId) => {
-      // The confirmed message is already in the timeline cache; a refetch here
-      // only re-downloads the page the client just wrote.
       trackLocallySentMessage(message.id);
-      queryClient.setQueryData<MessageTimeline>(['messages', groupId], current =>
+      const messageKey = ['messages', groupId];
+      // Without a cached timeline there is nothing to merge into; read one page
+      // once instead of refetching after every paste.
+      const hadTimeline = Boolean(queryClient.getQueryData<MessageTimeline>(messageKey));
+      queryClient.setQueryData<MessageTimeline>(messageKey, current =>
         receiveCreatedMessage(current, groupId, message),
       );
+      if (!hadTimeline) void queryClient.invalidateQueries({ queryKey: messageKey });
     },
   });
 
@@ -278,9 +281,12 @@ export function useComposer({
         attachment: { fileId: uploaded.id }, replyToMessageId: entry.replyToMessageId || undefined,
       });
       trackLocallySentMessage(message.id);
-      queryClient.setQueryData<MessageTimeline>(['messages', targetGroupId], current =>
+      const messageKey = ['messages', targetGroupId];
+      const hadTimeline = Boolean(queryClient.getQueryData<MessageTimeline>(messageKey));
+      queryClient.setQueryData<MessageTimeline>(messageKey, current =>
         confirmTimelineMessage(current, targetGroupId, entry.localId, message),
       );
+      if (!hadTimeline) void queryClient.invalidateQueries({ queryKey: messageKey });
       updatePendingUploadsForGroup(targetGroupId, (current) => current.filter((item) => item.localId !== entry.localId));
     } catch (error) {
       update({ status: 'error', error: controller.signal.aborted ? '已取消' : error instanceof Error ? error.message : '上传失败' });

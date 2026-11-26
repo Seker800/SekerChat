@@ -328,7 +328,8 @@ export class MessagesService {
       return updated;
     };
     const updated = await this.prismaService.$transaction(edit);
-    const serialized = await this.serializeMessageForGroup(updated);
+    // The edit broadcast only needs the message body; the client keeps its receipt.
+    const serialized = await this.serializeMessageForGroup(updated, [], false);
     await this.realtimePublisher.publishUpdated(groupId, messageId, serialized);
 
     this.logger.log('message_edited', JSON.stringify({ userId, groupId, messageId }));
@@ -373,7 +374,7 @@ export class MessagesService {
       return revoked;
     };
     const revoked = await this.prismaService.$transaction(revoke);
-    const serialized = await this.serializeMessageForGroup(revoked);
+    const serialized = await this.serializeMessageForGroup(revoked, [], false);
     await this.realtimePublisher.publishUpdated(groupId, messageId, serialized);
 
     this.logger.log('message_revoked', JSON.stringify({ userId, groupId, messageId }));
@@ -432,22 +433,12 @@ export class MessagesService {
             message.eventSequence <= member.notificationsMutedThroughEventSequence,
         ),
     );
-    // Batch-fetch receipt members per unique group to avoid N+1 queries
-    const uniqueGroupIds = [...new Set(notifyMessages.map((m) => m.groupId))];
-    const receiptMembersByGroup = new Map<string, MessageReceiptMember[]>();
-    await Promise.all(
-      uniqueGroupIds.map(async (gid) => {
-        receiptMembersByGroup.set(
-          gid,
-          await this.readReceiptService.listMessageReceiptMembers(gid),
-        );
-      }),
-    );
-
     return {
+      // The reminder client does not render read receipts, so the pull response
+      // stays free of per-message recipient lists.
       events: await Promise.all(
         notifyMessages.map((message) =>
-          this.serializeRealtimeMessageCreated(message, receiptMembersByGroup.get(message.groupId)),
+          this.serializeRealtimeMessageCreated(message, [], false),
         ),
       ),
       nextCursor: messages.at(-1)?.eventSequence.toString() ?? cursor.toString(),
@@ -600,16 +591,20 @@ export class MessagesService {
   async serializeMessageForGroup(
     message: SerializedMessage,
     preFetchedReceiptMembers?: MessageReceiptMember[],
+    isLastFromSender = true,
   ) {
     const receiptMembers =
       preFetchedReceiptMembers ??
-      (await this.readReceiptService.listMessageReceiptMembers(message.groupId));
-    return this.serializerService.serializeMessage(message, receiptMembers);
+      (isLastFromSender
+        ? await this.readReceiptService.listMessageReceiptMembers(message.groupId)
+        : []);
+    return this.serializerService.serializeMessage(message, receiptMembers, isLastFromSender);
   }
 
   private async serializeRealtimeMessageCreated(
     message: SerializedMessage,
     preFetchedReceiptMembers?: MessageReceiptMember[],
+    isLastFromSender = true,
   ) {
     return {
       eventId: message.eventSequence.toString(),
@@ -617,7 +612,11 @@ export class MessagesService {
       type: 'message.created.v1' as const,
       groupId: message.groupId,
       occurredAt: message.createdAt.toISOString(),
-      payload: await this.serializeMessageForGroup(message, preFetchedReceiptMembers),
+      payload: await this.serializeMessageForGroup(
+        message,
+        preFetchedReceiptMembers,
+        isLastFromSender,
+      ),
     };
   }
 

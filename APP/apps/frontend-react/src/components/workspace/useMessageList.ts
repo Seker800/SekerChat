@@ -64,7 +64,7 @@ export function useMessageList({
 
   useEffect(() => {
     const coordinator = readCursorCoordinatorRef.current;
-    return () => coordinator?.cancel();
+    return () => coordinator?.flush();
   }, []);
 
   const messagesQuery = useQuery({

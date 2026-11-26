@@ -224,13 +224,21 @@ export function useRealtime(
           if (!markEventAsProcessed(data.eventId)) return;
           if (data.type === 'message.created.v1') {
             const messagePayload = data.payload as unknown as MessageResponse;
+            const messageKey = ['messages', data.groupId];
+            // At-least-once delivery may replay a created event. The row merge is
+            // idempotent, but unread counts and notification sounds are not.
+            const isKnownMessage =
+              queryClient
+                .getQueryData<MessageTimeline>(messageKey)
+                ?.items.some((item) => item.id === messagePayload.id) ?? false;
             const nextGroupPatch = (group: GroupResponse) => ({
               ...group,
               latestMessage: buildLatestMessage(messagePayload) ?? group.latestMessage,
               updatedAt: data.occurredAt,
-              unreadCount:
-                messagePayload.senderId === currentUserId ||
-                selectedGroupRef.current === data.groupId
+              unreadCount: isKnownMessage
+                ? group.unreadCount
+                : messagePayload.senderId === currentUserId ||
+                    selectedGroupRef.current === data.groupId
                   ? 0
                   : group.unreadCount + 1,
             });
@@ -243,7 +251,6 @@ export function useRealtime(
             queryClient.setQueryData<GroupResponse>(['group', data.groupId], (current) =>
               current ? nextGroupPatch(current) : current,
             );
-            const messageKey = ['messages', data.groupId];
             const isInitialReadInFlight =
               queryClient.getQueryState(messageKey)?.fetchStatus === 'fetching';
             queryClient.setQueryData<MessageTimeline>(messageKey, (current) => {
@@ -264,6 +271,7 @@ export function useRealtime(
             if (messagePayload.type === 'system') {
               invalidate({ queryKey: ['artifacts', data.groupId] });
             }
+            if (isKnownMessage) return;
             callbackRef.current?.({
               groupId: data.groupId,
               messageId: messagePayload.id,

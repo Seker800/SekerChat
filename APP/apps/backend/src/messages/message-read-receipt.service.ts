@@ -21,15 +21,25 @@ export class MessageReadReceiptService {
     createdAt: Date,
     eventSequence: bigint,
   ): Promise<void> {
+    // Outbox effects are at-least-once, so a replayed event may call this with an
+    // older message. Guard both writes: a cursor and a channel timestamp must
+    // never move backwards just because a delivery was retried.
     await this.prismaService.$transaction([
-      this.prismaService.group.update({
-        where: { id: groupId },
+      this.prismaService.group.updateMany({
+        where: { id: groupId, updatedAt: { lt: createdAt } },
         data: {
           updatedAt: createdAt,
         },
       }),
       this.prismaService.groupMember.updateMany({
-        where: { groupId, userId },
+        where: {
+          groupId,
+          userId,
+          OR: [
+            { lastReadEventSequence: null },
+            { lastReadEventSequence: { lt: eventSequence } },
+          ],
+        },
         data: { lastReadEventSequence: eventSequence },
       }),
     ]);
