@@ -74,4 +74,20 @@ export class FilePreviewJobService {
       },
     });
   }
+
+  /**
+   * Terminal, non-retryable skip. Used when the image exceeds the decode
+   * budget: the original remains downloadable, but generating a thumbnail is
+   * never going to succeed and must not re-enter the worker loop.
+   */
+  async skip(job: ClaimedFilePreviewJob, reason: string) {
+    await this.prisma.filePreviewJob.updateMany({
+      where: this.lease(job),
+      data: {
+        status: 'FAILED',
+        lockedAt: null,
+        lastError: reason.slice(0, 2000),
+      },
+    });
+  }
 }

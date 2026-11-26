@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { RenderableImageFileRecord } from './file-record.types';
-import { createImageProcessor } from './image-processing-policy';
+import { readImageHeaderMetadata } from './image-processing-policy';
 import { ObjectStorageGateway } from './object-storage.gateway';
 import { withStoredImage } from './stored-image-processing';
 
@@ -10,7 +10,7 @@ export class ImageMetadataService {
 
   async fromBuffer(buffer: Buffer, mimeType: string) {
     if (!this.isTrackable(mimeType) || !buffer.length) return null;
-    const metadata = await createImageProcessor(buffer).metadata();
+    const metadata = await readImageHeaderMetadata(buffer);
     if (!metadata.width || !metadata.height) return null;
     return { width: metadata.width, height: metadata.height };
   }
@@ -18,7 +18,7 @@ export class ImageMetadataService {
   async fromObject(objectKey: string, mimeType: string) {
     if (!this.isTrackable(mimeType)) return null;
     return withStoredImage(this.objectStorage, objectKey, async (filename) => {
-      const metadata = await createImageProcessor(filename).metadata();
+      const metadata = await readImageHeaderMetadata(filename);
       return metadata.width && metadata.height
         ? { width: metadata.width, height: metadata.height }
         : null;

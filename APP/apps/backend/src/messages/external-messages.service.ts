@@ -7,7 +7,7 @@ import { type ExternalAuthor } from './external-author';
 import { messageSelect } from './message-record.types';
 import { FilesService } from '../files/files.service';
 import { previewJobForImage } from '../files/file-preview-state';
-import { createImageProcessor } from '../files/image-processing-policy';
+import { readImageHeaderMetadata } from '../files/image-processing-policy';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -23,7 +23,7 @@ export class ExternalMessagesService {
       throw new BadRequestException('图片须小于 10 MB。');
     let metadata;
     try {
-      metadata = await createImageProcessor(buffer).metadata();
+      metadata = await readImageHeaderMetadata(buffer);
     } catch {
       throw new BadRequestException('图片内容无效。');
     }

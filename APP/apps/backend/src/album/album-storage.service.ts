@@ -4,7 +4,11 @@ import { createHash, randomUUID } from 'node:crypto';
 import { FilesService } from '../files/files.service';
 import { ObjectStorageGateway } from '../files/object-storage.gateway';
 import { withStoredImage } from '../files/stored-image-processing';
-import { createImageProcessor } from '../files/image-processing-policy';
+import {
+  assertWithinImageDecodeBudget,
+  createImageProcessor,
+  readImageHeaderMetadata,
+} from '../files/image-processing-policy';
 import { PrismaService } from '../prisma/prisma.service';
 import { AlbumMediaAccessService } from './album-media-access.service';
 import { AlbumVideoService } from './album-video.service';
@@ -115,12 +119,14 @@ export class AlbumStorageService {
   }
 
   private async generateImageThumbnail(storageKey: string): Promise<Buffer> {
-    return withStoredImage(this.objects, storageKey, (filename) =>
-      createImageProcessor(filename)
+    return withStoredImage(this.objects, storageKey, async (filename) => {
+      const header = await readImageHeaderMetadata(filename);
+      assertWithinImageDecodeBudget(header);
+      return createImageProcessor(filename)
         .rotate()
         .resize({ width: 800, height: 800, fit: 'inside', withoutEnlargement: true })
         .jpeg({ quality: 85 })
-        .toBuffer(),
-    );
+        .toBuffer();
+    });
   }
 }

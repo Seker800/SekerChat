@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { AlbumMediaJobStatus, Prisma } from '@prisma/client';
 import { advanceAlbumRevision } from './album-revision';
 import { PrismaService } from '../prisma/prisma.service';
+import { ImageDecodeBudgetExceededError } from '../files/image-processing-policy';
 
 export interface ClaimedAlbumMediaJob {
   id: string;
@@ -57,7 +58,10 @@ export class AlbumMediaJobService {
   }
 
   markFailed(job: ClaimedAlbumMediaJob, error: unknown) {
-    const exhausted = job.attempts >= 12;
+    // Oversized images keep their original and simply have no generated
+    // thumbnail; retrying cannot succeed and would only add queue noise.
+    const exhausted =
+      error instanceof ImageDecodeBudgetExceededError || job.attempts >= 12;
     const delaySeconds = Math.min(3_600, 2 ** Math.min(job.attempts, 12));
     return this.prisma.albumMediaJob.update({
       where: { id: job.id },

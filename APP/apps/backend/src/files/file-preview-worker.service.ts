@@ -6,7 +6,12 @@ import { PrismaService } from '../prisma/prisma.service';
 import { FilePreviewJobService } from './file-preview-job.service';
 import type { ClaimedFilePreviewJob } from './file-preview-state';
 import { ObjectStorageGateway } from './object-storage.gateway';
-import { createImageProcessor } from './image-processing-policy';
+import {
+  assertWithinImageDecodeBudget,
+  createImageProcessor,
+  ImageDecodeBudgetExceededError,
+  readImageHeaderMetadata,
+} from './image-processing-policy';
 import { withStoredImage } from './stored-image-processing';
 
 @Injectable()
@@ -99,6 +104,27 @@ export class FilePreviewWorkerService {
     // Cascading deletion removes the job; lease-guarded writes become no-ops.
     if (!file) return;
     await withStoredImage(this.objects, file.storageKey, async (filename) => {
+      const header = await readImageHeaderMetadata(filename);
+      if (!header.width || !header.height) throw new Error('Image dimensions are unavailable');
+      try {
+        assertWithinImageDecodeBudget(header);
+      } catch (error) {
+        if (!(error instanceof ImageDecodeBudgetExceededError)) throw error;
+        // Oversized originals stay downloadable; only thumbnail generation is
+        // skipped, so do not retry this job or block the queue.
+        await this.jobs.skip(job, error.message);
+        this.logger.warn(
+          'file_preview_skipped_oversized_image',
+          JSON.stringify({
+            fileId: job.fileId,
+            width: header.width,
+            height: header.height,
+            error: error.message,
+          }),
+        );
+        return;
+      }
+
       const image = createImageProcessor(filename);
       const metadata = await image.metadata();
       if (!metadata.width || !metadata.height) throw new Error('Image dimensions are unavailable');
