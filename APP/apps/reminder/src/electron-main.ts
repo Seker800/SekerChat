@@ -10,7 +10,7 @@ import {
 } from 'electron';
 import { spawn, type ChildProcessByStdio } from 'node:child_process';
 import type { Readable } from 'node:stream';
-import { access, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, chmod, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { constants as fsConstants } from 'node:fs';
 import { join, resolve } from 'node:path';
 
@@ -220,7 +220,11 @@ async function saveConfig(input: Partial<DesktopConfig>): Promise<DesktopConfig>
 
 async function saveReminderSession(statePath: string, session: ReminderSessionState): Promise<void> {
   await ensureUserDataDir();
-  await writeFile(statePath, `${JSON.stringify(session, null, 2)}\n`, 'utf8');
+  await writeFile(statePath, `${JSON.stringify(session, null, 2)}\n`, {
+    encoding: 'utf8',
+    mode: 0o600,
+  });
+  await chmod(statePath, 0o600).catch(() => undefined);
 }
 
 function extractJsonObject(text: string): unknown {

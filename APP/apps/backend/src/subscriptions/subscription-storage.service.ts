@@ -1,13 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { createHash, randomUUID } from 'node:crypto';
 import { FilesService } from '../files/files.service';
+import { sanitizeObjectKeySegment } from '../files/object-key';
 
 @Injectable()
 export class SubscriptionStorageService {
   constructor(private readonly filesService: FilesService) {}
 
   buildStorageKey(postId: string, originalName: string): string {
-    return `subscriptions/${postId}/${randomUUID()}/${originalName}`;
+    return `subscriptions/${postId}/${randomUUID()}/${sanitizeObjectKeySegment(originalName, 'attachment')}`;
   }
 
   getStream(storageKey: string, range?: string) {

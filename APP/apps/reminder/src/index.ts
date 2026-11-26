@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { access, appendFile, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { access, appendFile, chmod, mkdir, readFile, writeFile } from 'node:fs/promises';
 import { constants as fsConstants } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import {
@@ -187,10 +187,16 @@ async function ensureParentDirectory(pathname: string): Promise<void> {
 
 async function saveSession(statePath: string, session: ReminderSessionState): Promise<void> {
   await ensureParentDirectory(statePath);
-  await writeFile(statePath, `${JSON.stringify(session, null, 2)}\n`, 'utf8');
+  await writeFile(statePath, `${JSON.stringify(session, null, 2)}\n`, {
+    encoding: 'utf8',
+    mode: 0o600,
+  });
+  await chmod(statePath, 0o600).catch(() => undefined);
 }
 
 async function loadSession(statePath: string): Promise<ReminderSessionState> {
+  // Repair permissions on sessions written by older versions.
+  await chmod(statePath, 0o600).catch(() => undefined);
   const raw = await readFile(statePath, 'utf8');
   return JSON.parse(raw) as ReminderSessionState;
 }

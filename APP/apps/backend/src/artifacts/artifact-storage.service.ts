@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
 import { FilesService } from '../files/files.service';
+import { sanitizeObjectKeySegment } from '../files/object-key';
 import { extractArtifactStorageKey, serializeArtifactStorageKey } from './artifact-storage-key';
 
 @Injectable()
@@ -16,11 +17,11 @@ export class ArtifactStorageService {
   }
 
   buildStorageKey(groupId: string, storedName: string) {
-    return `artifacts/${groupId}/${randomUUID()}/${storedName}`;
+    return `artifacts/${groupId}/${randomUUID()}/${sanitizeObjectKeySegment(storedName, 'artifact')}`;
   }
 
   buildStorageKeyForSourceFile(groupId: string, sourceFileId: string, storedName: string) {
-    return `artifacts/${groupId}/from-files/${sourceFileId}/${storedName}`;
+    return `artifacts/${groupId}/from-files/${sourceFileId}/${sanitizeObjectKeySegment(storedName, 'artifact')}`;
   }
 
   serializeStorageKey(storageKey: string) {

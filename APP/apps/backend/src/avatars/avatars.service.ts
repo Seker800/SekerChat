@@ -66,6 +66,8 @@ export class AvatarsService {
     categoryName: string,
     file: Express.Multer.File,
   ) {
+    // Check the actor before ensureServerByName, which creates Server rows.
+    await this.permissionService.assertPermission(actor.role, 'upload_server_avatar');
     const server = await this.serversService.ensureServerByName(categoryName);
     return this.uploadServerAvatarById(actor, server.id, file);
   }
