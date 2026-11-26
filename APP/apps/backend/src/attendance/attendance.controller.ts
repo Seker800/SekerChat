@@ -27,6 +27,13 @@ export class AttendanceController {
     await this.permissionService.assertPermission(user.role, 'view_presence_logs');
   }
 
+  private async ensureConfigAccess(user: AuthenticatedUser) {
+    if (user.role === 'SUPER_ADMIN') {
+      return;
+    }
+    await this.permissionService.assertPermission(user.role, 'manage_system_config');
+  }
+
   @Get('daily')
   async listDaily(
     @CurrentUser() user: AuthenticatedUser,
@@ -145,7 +152,7 @@ export class AttendanceController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: UpdateAttendanceConfigDto,
   ) {
-    await this.ensureViewAccess(user);
+    await this.ensureConfigAccess(user);
     await this.attendanceConfigService.updateFromDto(dto);
     const shouldRecomputeAttendance =
       dto.attendanceTimezone !== undefined ||
