@@ -5,6 +5,7 @@ import {
   Injectable,
   OnModuleDestroy,
   OnModuleInit,
+  Optional,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { randomBytes } from 'node:crypto';
@@ -15,6 +16,7 @@ import {
 } from '../../messages/message-delivery-intents';
 import { FilesService } from '../../files/files.service';
 import { QqBridgeAccessService, hashBridgeSecret } from './qq-bridge-access.service';
+import { QqBridgeAvailabilityService } from './qq-bridge-availability.service';
 import { FinishDeliveryDto } from './qq-bridge.dto';
 
 @Injectable()
@@ -25,9 +27,12 @@ export class QqBridgeDeliveryService implements OnModuleInit, OnModuleDestroy {
     private readonly intents: MessageDeliveryIntents,
     private readonly access: QqBridgeAccessService,
     private readonly files: FilesService,
+    @Optional() private readonly availability?: QqBridgeAvailabilityService,
   ) {}
 
   onModuleInit() {
+    // With the bridge off, message writes must not pay for a bridge lookup.
+    if (this.availability && !this.availability.isEnabled()) return;
     this.unregister = this.intents.register((tx, message, action) =>
       this.enqueue(tx, message, action),
     );

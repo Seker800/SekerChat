@@ -1,9 +1,10 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Optional } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ExternalMessagesService } from '../../messages/external-messages.service';
 import { OutboxWakeupService } from '../../outbox/outbox-wakeup.service';
 import { QqBridgeAccessService } from './qq-bridge-access.service';
+import { QqBridgeAvailabilityService } from './qq-bridge-availability.service';
 import {
   IngestQqMessageDto,
   MediaUploadDto,
@@ -19,6 +20,7 @@ export class QqBridgeIngestService {
     private readonly access: QqBridgeAccessService,
     private readonly messages: ExternalMessagesService,
     private readonly wakeup: OutboxWakeupService,
+    @Optional() private readonly availability?: QqBridgeAvailabilityService,
   ) {}
 
   async ingest(connectorId: string, dto: IngestQqMessageDto) {
@@ -26,6 +28,7 @@ export class QqBridgeIngestService {
   }
 
   async importHistory(actor: AuthenticatedUser, bindingId: string, dto: IngestQqMessageDto) {
+    this.availability?.assertEnabled();
     await this.access.assertAdmin(actor);
     if (bindingId !== dto.bindingId) throw new BadRequestException('历史消息与目标绑定不一致。');
     const binding = await this.prisma.qqBridgeBinding.findUniqueOrThrow({

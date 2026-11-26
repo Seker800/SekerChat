@@ -33,6 +33,7 @@ import * as Joi from 'joi';
         S3_FORCE_PATH_STYLE: Joi.boolean().truthy('true').falsy('false').default(true),
         FILE_ACCESS_SECRET: Joi.string().min(12).required(),
         FILE_ACCESS_TTL: Joi.string().required(),
+        QQ_BRIDGE_ENABLED: Joi.boolean().truthy('true').falsy('false').default(false),
         HEIF_CONVERT_PATH: Joi.string().default('heif-convert'),
         HEIF_INFO_PATH: Joi.string().default('heif-info'),
       }),

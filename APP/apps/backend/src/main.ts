@@ -3,6 +3,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { raw } from 'express';
+import type { Request, Response } from 'express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { AttendanceTrackingInterceptor } from './common/attendance-tracking.interceptor';
@@ -10,6 +11,7 @@ import { isAllowedCorsOrigin, resolveCorsOrigins } from './common/cors-origins';
 import { HttpExceptionLoggingFilter } from './common/http-exception.filter';
 import { RequestLoggingInterceptor } from './common/request-logging.interceptor';
 import { RealtimeService } from './realtime/realtime.service';
+import { QqBridgeAvailabilityService } from './extensions/qq-bridge/qq-bridge-availability.service';
 import { DndConfigService } from './system-config/dnd-config.service';
 import { UPLOAD_PART_SIZE_BYTES } from './uploads/upload-limits';
 import { resolveTrustedProxyCidrs } from './common/trusted-proxies';
@@ -29,7 +31,10 @@ async function bootstrap(): Promise<void> {
     raw({ type: '*/*', limit: `${UPLOAD_PART_SIZE_BYTES + 1024}b` }),
   );
   app.enableCors({
-    origin: (requestOrigin: string | undefined, callback: (err: Error | null, ok?: boolean) => void) => {
+    origin: (
+      requestOrigin: string | undefined,
+      callback: (err: Error | null, ok?: boolean) => void,
+    ) => {
       if (!requestOrigin || isAllowedCorsOrigin(requestOrigin, allowedOrigins)) {
         callback(null, true);
       } else {
@@ -63,6 +68,18 @@ async function bootstrap(): Promise<void> {
       forbidNonWhitelisted: true,
     }),
   );
+  // The connector polls every few seconds. When the integration is off, answer at
+  // the edge so polling never reaches auth, interceptors, or the database.
+  if (!app.get(QqBridgeAvailabilityService).isEnabled()) {
+    app.use('/api/integrations/qq-bridge', (_request: Request, response: Response) => {
+      response.status(410).json({
+        statusCode: 410,
+        code: 'QQ_BRIDGE_DISABLED',
+        message: 'QQ 桥接已停用。',
+      });
+    });
+  }
+
   app.useGlobalInterceptors(
     app.get(AttendanceTrackingInterceptor),
     app.get(RequestLoggingInterceptor),

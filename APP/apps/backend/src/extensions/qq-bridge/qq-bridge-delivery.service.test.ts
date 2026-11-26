@@ -52,3 +52,24 @@ test('claim skips bindings whose Server is hidden instead of aborting the poll',
   assert.deepEqual(activeBindingCalls, ['binding-hidden', 'binding-visible']);
   assert.equal(result?.bindingId, 'binding-visible');
 });
+
+test('disabled bridge does not register a delivery sink on message writes', () => {
+  let registered = 0;
+  const intents = {
+    register: () => {
+      registered += 1;
+      return () => undefined;
+    },
+  };
+  const service = new QqBridgeDeliveryService(
+    {} as never,
+    intents as never,
+    {} as never,
+    {} as never,
+    { isEnabled: () => false } as never,
+  );
+
+  service.onModuleInit();
+
+  assert.equal(registered, 0);
+});
