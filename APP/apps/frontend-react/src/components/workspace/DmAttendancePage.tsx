@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -14,6 +14,19 @@ import styles from './WorkspaceShell.module.css';
 type RangeKey = 7 | 30 | 90;
 const DISPLAY_TIMEZONE = 'Asia/Shanghai';
 const HEATMAP_WEEKDAY_LABELS = ['', '周一', '', '周三', '', '周五', ''];
+const TIME_LABEL_FORMATTER = new Intl.DateTimeFormat('zh-CN', {
+  timeZone: DISPLAY_TIMEZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
+const TIME_PARTS_FORMATTER = new Intl.DateTimeFormat('en-GB', {
+  timeZone: DISPLAY_TIMEZONE,
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
+const WEEK_MS = 604_800_000;
 
 function formatDuration(value: number | null | undefined): string {
   if (value === null || value === undefined) return '--';
@@ -23,29 +36,18 @@ function formatDuration(value: number | null | undefined): string {
 }
 
 function formatTimeLabel(value: string | null): string {
-  if (!value) return '--';
-  return new Intl.DateTimeFormat('zh-CN', {
-    timeZone: DISPLAY_TIMEZONE,
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(new Date(value));
+  return value ? TIME_LABEL_FORMATTER.format(new Date(value)) : '--';
 }
 
 function getShanghaiTimeParts(value: string | null): { hours: number; minutes: number } | null {
   if (!value) return null;
-  const formatter = new Intl.DateTimeFormat('en-GB', {
-    timeZone: DISPLAY_TIMEZONE,
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
-  const parts = formatter.formatToParts(new Date(value));
-  const map = Object.fromEntries(parts.map((part) => [part.type, part.value]));
-  return {
-    hours: Number(map.hour ?? '0'),
-    minutes: Number(map.minute ?? '0'),
-  };
+  let hours = 0;
+  let minutes = 0;
+  for (const part of TIME_PARTS_FORMATTER.formatToParts(new Date(value))) {
+    if (part.type === 'hour') hours = Number(part.value);
+    if (part.type === 'minute') minutes = Number(part.value);
+  }
+  return { hours, minutes };
 }
 
 function parseDateKey(workDate: string): Date {
@@ -83,23 +85,31 @@ function CheckInTimeDistribution({
   onRangeChange: (next: RangeKey) => void;
   data: CheckInPanelResponse['statusSeries'];
 }) {
-  const rows = [...data].reverse().map((item) => {
+  const rows = useMemo(
+    () =>
+      [...data].reverse().map((item) => {
     const checkIn = getShanghaiTimeParts(item.checkInAt);
     const checkOut = getShanghaiTimeParts(item.checkOutAt);
     const checkInMinute = checkIn ? checkIn.hours * 60 + checkIn.minutes : null;
     const checkOutMinute = checkOut ? checkOut.hours * 60 + checkOut.minutes : null;
-    const spans = checkInMinute === null || checkOutMinute === null
+        const spans =
+          checkInMinute === null || checkOutMinute === null
       ? []
       : checkOutMinute >= checkInMinute
         ? [{ start: checkInMinute, end: checkOutMinute }]
-        : [{ start: checkInMinute, end: 1440 }, { start: 0, end: checkOutMinute }];
+              : [
+                  { start: checkInMinute, end: 1440 },
+                  { start: 0, end: checkOutMinute },
+                ];
     return {
       item,
       checkInMinute,
       checkOutMinute,
       spans,
     };
-  });
+      }),
+    [data],
+  );
 
   return (
     <section className={styles.panelCard}>
@@ -126,11 +136,19 @@ function CheckInTimeDistribution({
       <div className={styles.timeDistributionList} data-testid="time-distribution-list">
         <div className={styles.timeDistributionAxis} aria-hidden="true">
           <span className={styles.timeDistributionAxisTicks}>
-            <span>00</span><span>06</span><span>12</span><span>18</span><span>24</span>
+            <span>00</span>
+            <span>06</span>
+            <span>12</span>
+            <span>18</span>
+            <span>24</span>
           </span>
         </div>
         {rows.map(({ item, checkInMinute, checkOutMinute, spans }) => (
-          <div key={item.workDate} className={styles.timeDistributionRow} data-testid="time-distribution-row">
+          <div
+            key={item.workDate}
+            className={styles.timeDistributionRow}
+            data-testid="time-distribution-row"
+          >
             <strong className={styles.timeDistributionDate}>{item.workDate.slice(5)}</strong>
             <div className={styles.timeDistributionTrack}>
               {spans.map(({ start, end }) => (
@@ -145,21 +163,39 @@ function CheckInTimeDistribution({
                 />
               ))}
               {checkInMinute !== null ? (
-                <i className={styles.timeDistributionCheckIn} style={{ left: `${(checkInMinute / 1440) * 100}%` }} />
+                <i
+                  className={styles.timeDistributionCheckIn}
+                  style={{ left: `${(checkInMinute / 1440) * 100}%` }}
+                />
               ) : null}
               {checkOutMinute !== null ? (
-                <i className={styles.timeDistributionCheckOut} style={{ left: `${(checkOutMinute / 1440) * 100}%` }} />
+                <i
+                  className={styles.timeDistributionCheckOut}
+                  style={{ left: `${(checkOutMinute / 1440) * 100}%` }}
+                />
               ) : null}
             </div>
             <div className={styles.timeDistributionTimes}>
-              <span>签到 <strong>{formatTimeLabel(item.checkInAt)}</strong></span>
-              <span>签退 <strong>{formatTimeLabel(item.checkOutAt)}</strong></span>
+              <span>
+                签到 <strong>{formatTimeLabel(item.checkInAt)}</strong>
+              </span>
+              <span>
+                签退 <strong>{formatTimeLabel(item.checkOutAt)}</strong>
+              </span>
             </div>
           </div>
         ))}
       </div>
     </section>
   );
+}
+
+function heatLevelForMinutes(minutes: number): 0 | 1 | 2 | 3 | 4 {
+  if (minutes <= 0) return 0;
+  if (minutes >= 480) return 4;
+  if (minutes >= 360) return 3;
+  if (minutes >= 240) return 2;
+  return 1;
 }
 
 function AttendanceHeatMatrix({
@@ -176,12 +212,36 @@ function AttendanceHeatMatrix({
     checkInMinutes: number;
     averageMinutes: number;
   };
-  const [tooltip, setTooltip] = useState<{ day: HeatDay; x: number; y: number } | null>(null);
-  const showTooltip = (day: HeatDay, x: number, y: number) => {
-    const left = Math.max(8, Math.min(x + 14, window.innerWidth - 232));
-    const top = y + 130 < window.innerHeight ? y + 14 : Math.max(8, y - 126);
-    setTooltip({ day, x: left, y: top });
+  const [tooltip, setTooltip] = useState<HeatDay | null>(null);
+  const tooltipRef = useRef<HTMLDivElement | null>(null);
+  const tooltipPositionRef = useRef({ left: 0, top: 0 });
+  const tooltipDayRef = useRef('');
+  const positionTooltip = () => {
+    const element = tooltipRef.current;
+    if (!element) return;
+    element.style.left = `${tooltipPositionRef.current.left}px`;
+    element.style.top = `${tooltipPositionRef.current.top}px`;
   };
+  const showTooltip = (day: HeatDay, x: number, y: number) => {
+    tooltipPositionRef.current = {
+      left: Math.max(8, Math.min(x + 14, window.innerWidth - 232)),
+      top: y + 130 < window.innerHeight ? y + 14 : Math.max(8, y - 126),
+    };
+    if (tooltipDayRef.current !== day.workDate) {
+      tooltipDayRef.current = day.workDate;
+      setTooltip(day);
+      return;
+    }
+    // Same cell: move the existing portal without a React commit per pointermove.
+    positionTooltip();
+  };
+  const hideTooltip = () => {
+    tooltipDayRef.current = '';
+    setTooltip(null);
+  };
+  useLayoutEffect(() => {
+    if (tooltip) positionTooltip();
+  }, [tooltip]);
   const onlineMap = useMemo(
     () => new Map(onlineSeries.map((item) => [item.workDate, item.onlineMinutes])),
     [onlineSeries],
@@ -205,8 +265,11 @@ function AttendanceHeatMatrix({
     const firstWeek = days[0] ? getWeekStartDate(days[0].workDate) : '';
     const lastDay = days[days.length - 1];
     const lastWeek = lastDay ? getWeekStartDate(lastDay.workDate) : '';
-    const weekCount = firstWeek && lastWeek
-      ? Math.round((parseDateKey(lastWeek).getTime() - parseDateKey(firstWeek).getTime()) / 604_800_000) + 1
+    const weekCount =
+      firstWeek && lastWeek
+        ? Math.round(
+            (parseDateKey(lastWeek).getTime() - parseDateKey(firstWeek).getTime()) / WEEK_MS,
+          ) + 1
       : 0;
     const monthLabels = days.filter((day, index) => index === 0 || day.workDate.endsWith('-01'));
     return {
@@ -215,19 +278,37 @@ function AttendanceHeatMatrix({
       weekCount,
       monthLabels: monthLabels.map((day) => ({
         label: `${Number(day.workDate.slice(5, 7))}月`,
-        column: Math.round((parseDateKey(getWeekStartDate(day.workDate)).getTime() - parseDateKey(firstWeek).getTime()) / 604_800_000) + 2,
+        column:
+          Math.round(
+            (parseDateKey(getWeekStartDate(day.workDate)).getTime() -
+              parseDateKey(firstWeek).getTime()) /
+              WEEK_MS,
+          ) + 2,
       })),
       activeDays: days.filter((day) => day.averageMinutes > 0).length,
     };
   }, [checkInMap, onlineMap, statusSeries]);
 
-  const getHeatLevel = (minutes: number): 0 | 1 | 2 | 3 | 4 => {
-    if (minutes <= 0) return 0;
-    if (minutes >= 480) return 4;
-    if (minutes >= 360) return 3;
-    if (minutes >= 240) return 2;
-    return 1;
+  const cells = useMemo(
+    () =>
+      days.map((day) => {
+        const column = firstWeek
+          ? Math.round(
+              (parseDateKey(getWeekStartDate(day.workDate)).getTime() -
+                parseDateKey(firstWeek).getTime()) /
+                WEEK_MS,
+            ) + 2
+          : 2;
+        return {
+          day,
+          column,
+          row: getWeekdayIndex(day.workDate) + 2,
+          level: heatLevelForMinutes(day.averageMinutes),
+          ariaLabel: `${day.workDate}，综合平均 ${formatDuration(day.averageMinutes)}，打卡 ${formatDuration(day.checkInMinutes)}，非免打扰在线 ${formatDuration(day.onlineMinutes)}`,
   };
+      }),
+    [days, firstWeek],
+  );
 
   return (
     <section className={styles.panelCard}>
@@ -245,60 +326,77 @@ function AttendanceHeatMatrix({
           aria-label="过去一年综合活跃强度图"
         >
           {monthLabels.map((month) => (
-            <span key={`${month.label}-${month.column}`} className={styles.heatmapMonthLabel} style={{ gridColumn: month.column, gridRow: 1 }}>
+            <span
+              key={`${month.label}-${month.column}`}
+              className={styles.heatmapMonthLabel}
+              style={{ gridColumn: month.column, gridRow: 1 }}
+            >
               {month.label}
             </span>
           ))}
           {HEATMAP_WEEKDAY_LABELS.map((label, index) => (
-            <span key={index} className={styles.heatmapWeekdayLabel} style={{ gridColumn: 1, gridRow: index + 2 }}>
+            <span
+              key={index}
+              className={styles.heatmapWeekdayLabel}
+              style={{ gridColumn: 1, gridRow: index + 2 }}
+            >
               {label}
             </span>
           ))}
-          {days.map((day) => {
-            const column = Math.round((parseDateKey(getWeekStartDate(day.workDate)).getTime() - parseDateKey(firstWeek).getTime()) / 604_800_000) + 2;
-            return (
+          {cells.map(({ day, column, row, level, ariaLabel }) => (
               <button
                 key={day.workDate}
                 type="button"
-                className={`${styles.heatmapCell} ${styles[`heatCellLevel${getHeatLevel(day.averageMinutes)}`]}`}
-                style={{ gridColumn: column, gridRow: getWeekdayIndex(day.workDate) + 2 }}
-                aria-label={`${day.workDate}，综合平均 ${formatDuration(day.averageMinutes)}，打卡 ${formatDuration(day.checkInMinutes)}，非免打扰在线 ${formatDuration(day.onlineMinutes)}`}
-                aria-describedby={tooltip?.day.workDate === day.workDate ? 'attendance-heatmap-tooltip' : undefined}
+              className={`${styles.heatmapCell} ${styles[`heatCellLevel${level}`]}`}
+              style={{ gridColumn: column, gridRow: row }}
+              aria-label={ariaLabel}
+              aria-describedby={
+                tooltip?.workDate === day.workDate ? 'attendance-heatmap-tooltip' : undefined
+              }
                 onPointerEnter={(event) => showTooltip(day, event.clientX, event.clientY)}
                 onPointerMove={(event) => showTooltip(day, event.clientX, event.clientY)}
                 onPointerLeave={(event) => {
-                  if (document.activeElement !== event.currentTarget) setTooltip(null);
+                if (document.activeElement !== event.currentTarget) hideTooltip();
                 }}
                 onFocus={(event) => {
                   const rect = event.currentTarget.getBoundingClientRect();
                   showTooltip(day, rect.left + rect.width / 2, rect.top);
                 }}
-                onBlur={() => setTooltip(null)}
+              onBlur={hideTooltip}
               />
-            );
-          })}
+          ))}
         </div>
       </div>
       <div className={styles.heatmapLegend}>
         <span>少</span>
         {[0, 1, 2, 3, 4].map((level) => (
-          <i key={level} className={`${styles.heatmapLegendSwatch} ${styles[`heatCellLevel${level}`]}`} />
+          <i
+            key={level}
+            className={`${styles.heatmapLegendSwatch} ${styles[`heatCellLevel${level}`]}`}
+          />
         ))}
         <span>多</span>
-        <span className={styles.heatmapLegendNote}>颜色按当天打卡与非免打扰在线时长的平均值计算</span>
+        <span className={styles.heatmapLegendNote}>
+          颜色按当天打卡与非免打扰在线时长的平均值计算
+        </span>
       </div>
-      {tooltip && createPortal(
+      {tooltip &&
+        createPortal(
         <div
+            ref={tooltipRef}
           id="attendance-heatmap-tooltip"
           className={styles.heatmapTooltip}
-          style={{ left: tooltip.x, top: tooltip.y }}
+            style={{
+              left: tooltipPositionRef.current.left,
+              top: tooltipPositionRef.current.top,
+            }}
           role="tooltip"
         >
-          <strong>{tooltip.day.workDate}</strong>
-          <span>综合平均：{formatDuration(tooltip.day.averageMinutes)}</span>
-          <span>打卡：{formatDuration(tooltip.day.checkInMinutes)}</span>
-          <span>非免打扰在线：{formatDuration(tooltip.day.onlineMinutes)}</span>
-          <span>状态：{getCheckInStatusText(tooltip.day.status)}</span>
+            <strong>{tooltip.workDate}</strong>
+            <span>综合平均：{formatDuration(tooltip.averageMinutes)}</span>
+            <span>打卡：{formatDuration(tooltip.checkInMinutes)}</span>
+            <span>非免打扰在线：{formatDuration(tooltip.onlineMinutes)}</span>
+            <span>状态：{getCheckInStatusText(tooltip.status)}</span>
         </div>,
         document.body,
       )}
@@ -318,9 +416,14 @@ function TodayOnlineTimeline({
   const totalMinutes = 24 * 60;
   const checkIn = getShanghaiTimeParts(checkInAt);
   const checkOut = getShanghaiTimeParts(checkOutAt);
-  const checkInLeft = checkIn ? ((checkIn.hours * 60 + checkIn.minutes) / totalMinutes) * 100 : null;
-  const checkOutLeft = checkOut ? ((checkOut.hours * 60 + checkOut.minutes) / totalMinutes) * 100 : null;
-  const clockedRange = checkInLeft !== null && checkOutLeft !== null
+  const checkInLeft = checkIn
+    ? ((checkIn.hours * 60 + checkIn.minutes) / totalMinutes) * 100
+    : null;
+  const checkOutLeft = checkOut
+    ? ((checkOut.hours * 60 + checkOut.minutes) / totalMinutes) * 100
+    : null;
+  const clockedRange =
+    checkInLeft !== null && checkOutLeft !== null
     ? {
         left: Math.min(checkInLeft, checkOutLeft),
         width: Math.abs(checkOutLeft - checkInLeft),
@@ -400,11 +503,26 @@ function TodayOnlineTimeline({
           ))}
         </div>
         <div className={styles.timelineLegend}>
-          <span><i className={`${styles.legendSwatch} ${styles.timelineOnline}`} />计入在线</span>
-          <span><i className={`${styles.legendSwatch} ${styles.timelineDnd}`} />免打扰在线</span>
-          <span><i className={`${styles.legendSwatch} ${styles.timelineOffline}`} />离线</span>
-          <span><i className={styles.checkInDotLegend} />签到</span>
-          <span><i className={styles.checkOutDotLegend} />签退</span>
+          <span>
+            <i className={`${styles.legendSwatch} ${styles.timelineOnline}`} />
+            计入在线
+          </span>
+          <span>
+            <i className={`${styles.legendSwatch} ${styles.timelineDnd}`} />
+            免打扰在线
+          </span>
+          <span>
+            <i className={`${styles.legendSwatch} ${styles.timelineOffline}`} />
+            离线
+          </span>
+          <span>
+            <i className={styles.checkInDotLegend} />
+            签到
+          </span>
+          <span>
+            <i className={styles.checkOutDotLegend} />
+            签退
+          </span>
         </div>
       </div>
     </section>
@@ -426,32 +544,47 @@ export function DmAttendancePage({ accessToken }: { accessToken: string }) {
   });
 
   const { online: onlinePanel, checkIn: checkInPanel } = mergeLiveAttendance(
-    onlinePanelQuery.data, checkInPanelQuery.data,
-    (checkInController.todayQuery?.dataUpdatedAt ?? 0) >= Math.max(onlinePanelQuery.dataUpdatedAt, checkInPanelQuery.dataUpdatedAt)
-      ? checkInController.today : undefined,
+    onlinePanelQuery.data,
+    checkInPanelQuery.data,
+    (checkInController.todayQuery?.dataUpdatedAt ?? 0) >=
+      Math.max(onlinePanelQuery.dataUpdatedAt, checkInPanelQuery.dataUpdatedAt)
+      ? checkInController.today
+      : undefined,
   );
   const today = checkInPanel?.today;
 
   const actionLabel = checkInController.actionLabel;
   const actionDisabled = !today || checkInController.actionDisabled;
 
-  const todayCheckInMinutes = checkInPanel?.checkInSeries[checkInPanel.checkInSeries.length - 1]?.checkInMinutes ?? 0;
+  const todayCheckInMinutes =
+    checkInPanel?.checkInSeries[checkInPanel.checkInSeries.length - 1]?.checkInMinutes ?? 0;
 
   const recentRows = useMemo(() => {
     if (!checkInPanel || !onlinePanel) return [];
-    const onlineMap = new Map(onlinePanel.dailySeries.map((item) => [item.workDate, item.onlineMinutes]));
+    const onlineMap = new Map(
+      onlinePanel.dailySeries.map((item) => [item.workDate, item.onlineMinutes]),
+    );
     return checkInPanel.recentRecords.map((item) => ({
       ...item,
       onlineMinutes: onlineMap.get(item.workDate) ?? 0,
-      checkInMinutes: checkInPanel.checkInSeries.find((seriesItem) => seriesItem.workDate === item.workDate)?.checkInMinutes ?? 0,
+      checkInMinutes:
+        checkInPanel.checkInSeries.find((seriesItem) => seriesItem.workDate === item.workDate)
+          ?.checkInMinutes ?? 0,
     }));
   }, [checkInPanel, onlinePanel]);
 
   return (
-    <section className={`${styles.terminalBoard} ${styles.attendancePage}`} data-testid="dm-attendance-page">
+    <section
+      className={`${styles.terminalBoard} ${styles.attendancePage}`}
+      data-testid="dm-attendance-page"
+    >
       {onlinePanelQuery.isLoading || checkInPanelQuery.isLoading ? (
         <div className={styles.specialPageEmpty}>正在载入出勤面板...</div>
-      ) : onlinePanelQuery.isError || checkInPanelQuery.isError || !onlinePanel || !checkInPanel || !today ? (
+      ) : onlinePanelQuery.isError ||
+        checkInPanelQuery.isError ||
+        !onlinePanel ||
+        !checkInPanel ||
+        !today ? (
         <div className={styles.specialPageEmpty}>
           {onlinePanelQuery.error instanceof Error
             ? onlinePanelQuery.error.message
@@ -467,7 +600,9 @@ export function DmAttendancePage({ accessToken }: { accessToken: string }) {
                 <div className={styles.panelEyebrow}>今日概览</div>
                 <div className={styles.checkInHeroStatusInline}>
                   <span className={styles.checkInHeroStatusDot} aria-hidden="true" />
-                  <strong className={styles.checkInHeroStatus}>{getCheckInStatusText(today.status)}</strong>
+                  <strong className={styles.checkInHeroStatus}>
+                    {getCheckInStatusText(today.status)}
+                  </strong>
                 </div>
               </div>
               <button
@@ -485,26 +620,42 @@ export function DmAttendancePage({ accessToken }: { accessToken: string }) {
               <div className={styles.heroSummaryHead}>月平均</div>
               <div className={styles.heroSummaryHead}>总平均</div>
 
-              <div className={`${styles.heroSummaryLabel} ${styles.heroSummaryLabelOnline}`}>在线</div>
+              <div className={`${styles.heroSummaryLabel} ${styles.heroSummaryLabelOnline}`}>
+                在线
+              </div>
               <article className={styles.heroSummaryCell}>
-                <strong className={styles.heroSummaryValueOnline}>{formatDuration(onlinePanel.summary.dayWorkedMinutes ?? 0)}</strong>
+                <strong className={styles.heroSummaryValueOnline}>
+                  {formatDuration(onlinePanel.summary.dayWorkedMinutes ?? 0)}
+                </strong>
               </article>
               <article className={styles.heroSummaryCell}>
-                <strong className={styles.heroSummaryValueOnline}>{formatDuration(checkInPanel.summary.averages.online.monthAverageMinutes)}</strong>
+                <strong className={styles.heroSummaryValueOnline}>
+                  {formatDuration(checkInPanel.summary.averages.online.monthAverageMinutes)}
+                </strong>
               </article>
               <article className={styles.heroSummaryCell}>
-                <strong className={styles.heroSummaryValueOnline}>{formatDuration(checkInPanel.summary.averages.online.totalAverageMinutes)}</strong>
+                <strong className={styles.heroSummaryValueOnline}>
+                  {formatDuration(checkInPanel.summary.averages.online.totalAverageMinutes)}
+                </strong>
               </article>
 
-              <div className={`${styles.heroSummaryLabel} ${styles.heroSummaryLabelCheckIn}`}>打卡</div>
+              <div className={`${styles.heroSummaryLabel} ${styles.heroSummaryLabelCheckIn}`}>
+                打卡
+              </div>
               <article className={styles.heroSummaryCell}>
-                <strong className={styles.heroSummaryValueCheckIn}>{formatDuration(todayCheckInMinutes)}</strong>
+                <strong className={styles.heroSummaryValueCheckIn}>
+                  {formatDuration(todayCheckInMinutes)}
+                </strong>
               </article>
               <article className={styles.heroSummaryCell}>
-                <strong className={styles.heroSummaryValueCheckIn}>{formatDuration(checkInPanel.summary.averages.checkIn.monthAverageMinutes)}</strong>
+                <strong className={styles.heroSummaryValueCheckIn}>
+                  {formatDuration(checkInPanel.summary.averages.checkIn.monthAverageMinutes)}
+                </strong>
               </article>
               <article className={styles.heroSummaryCell}>
-                <strong className={styles.heroSummaryValueCheckIn}>{formatDuration(checkInPanel.summary.averages.checkIn.totalAverageMinutes)}</strong>
+                <strong className={styles.heroSummaryValueCheckIn}>
+                  {formatDuration(checkInPanel.summary.averages.checkIn.totalAverageMinutes)}
+                </strong>
               </article>
             </div>
           </section>
@@ -554,8 +705,12 @@ export function DmAttendancePage({ accessToken }: { accessToken: string }) {
                     <strong>{getCheckInStatusText(item.status)}</strong>
                     <span data-label="签到">{formatTimeLabel(item.checkInAt)}</span>
                     <span data-label="签退">{formatTimeLabel(item.checkOutAt)}</span>
-                    <span className={styles.matrixCheckInTone} data-label="打卡时长">{formatDuration(item.checkInMinutes)}</span>
-                    <span className={styles.matrixOnlineTone} data-label="在线时长">{formatDuration(item.onlineMinutes)}</span>
+                  <span className={styles.matrixCheckInTone} data-label="打卡时长">
+                    {formatDuration(item.checkInMinutes)}
+                  </span>
+                  <span className={styles.matrixOnlineTone} data-label="在线时长">
+                    {formatDuration(item.onlineMinutes)}
+                  </span>
                   </div>
                 ))}
               </div>

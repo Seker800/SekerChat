@@ -139,6 +139,7 @@
   width: 100%;
   min-height: 22px;
   max-height: 180px;
+  field-sizing: content;
   padding: 9px 0;
   border: 0;
   resize: none;
@@ -149,7 +150,7 @@
   overflow-wrap: anywhere;
   font-size: 15px;
   overflow-x: hidden;
-  overflow-y: hidden;
+  overflow-y: auto;
 }
 
 .textarea::placeholder {

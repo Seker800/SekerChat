@@ -9,6 +9,33 @@ import type { PasteBatchStatus } from './useClipboardBatch';
 import { useMediaQuery } from '../../hooks/useMediaQuery';
 import type { MessageResponse } from '../../lib/messages-files-api';
 import styles from './Composer.module.css';
+
+let fieldSizingSupport: boolean | null = null;
+
+/**
+ * `CSS.supports` alone is not enough: some DOM shims claim support without
+ * implementing layout. A hidden 10-line probe only grows when the browser
+ * really applies `field-sizing`.
+ */
+function detectFieldSizingSupport(): boolean {
+  if (
+    typeof document === 'undefined' ||
+    typeof CSS === 'undefined' ||
+    typeof CSS.supports !== 'function' ||
+    !CSS.supports('field-sizing', 'content')
+  ) {
+    return false;
+  }
+
+  const probe = document.createElement('textarea');
+  probe.value = Array.from({ length: 10 }, () => 'line').join('\n');
+  probe.style.cssText =
+    'position:absolute;left:-9999px;top:0;height:auto;max-height:none;field-sizing:content;';
+  document.body.appendChild(probe);
+  const supported = probe.offsetHeight > 100;
+  probe.remove();
+  return supported;
+}
 import { useTranslation } from 'react-i18next';
 
 interface ComposerProps {
@@ -57,7 +84,9 @@ function normalizeClipboardImageFile(file: File): File {
 }
 
 function extractClipboardImageFiles(event: ReactClipboardEvent<HTMLTextAreaElement>): File[] {
-  const directFiles = Array.from(event.clipboardData?.files ?? []).filter((file) => file.type.startsWith('image/'));
+  const directFiles = Array.from(event.clipboardData?.files ?? []).filter((file) =>
+    file.type.startsWith('image/'),
+  );
   if (directFiles.length > 0) {
     return directFiles.map(normalizeClipboardImageFile);
   }
@@ -132,14 +161,20 @@ function ComposerView({
 
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
-    if (!textarea) {
+    // `field-sizing: content` lets the browser size the textarea without a
+    // write-read-write layout in every keystroke. Only older engines need the
+    // measurement fallback.
+    if (fieldSizingSupport === null) {
+      fieldSizingSupport = detectFieldSizingSupport();
+    }
+    if (!textarea || fieldSizingSupport) {
       return;
     }
 
     const resizeTextarea = () => {
-      textarea.style.height = '0px';
-      const contentHeight = textarea.scrollHeight;
       const maxHeight = 180;
+      textarea.style.height = 'auto';
+      const contentHeight = textarea.scrollHeight;
       textarea.style.height = `${Math.min(contentHeight, maxHeight)}px`;
       textarea.style.overflowY = contentHeight > maxHeight ? 'auto' : 'hidden';
     };
@@ -172,15 +207,28 @@ function ComposerView({
         </div>
       ) : null}
       {pasteBatch ? (
-        <div className={styles.pasteStatus} role={pasteBatch.error ? 'alert' : 'status'} data-testid="clipboard-batch-status">
-          <span>{t('composer.pasteProgress', { sent: pasteBatch.sent, total: pasteBatch.total })}
-            {pasteBatch.queued ? ` · ${t('composer.pasteQueued', { count: pasteBatch.queued })}` : ''}
+        <div
+          className={styles.pasteStatus}
+          role={pasteBatch.error ? 'alert' : 'status'}
+          data-testid="clipboard-batch-status"
+        >
+          <span>
+            {t('composer.pasteProgress', { sent: pasteBatch.sent, total: pasteBatch.total })}
+            {pasteBatch.queued
+              ? ` · ${t('composer.pasteQueued', { count: pasteBatch.queued })}`
+              : ''}
             {pasteBatch.error ? ` · ${pasteBatch.error}` : ''}
           </span>
-          {pasteBatch.error ? <>
-            <button type="button" className={styles.bannerButton} onClick={pasteBatch.retry}>{t('composer.pasteRetry')}</button>
-            <button type="button" className={styles.bannerButton} onClick={pasteBatch.discard}>{t('composer.pasteDiscard')}</button>
-          </> : null}
+          {pasteBatch.error ? (
+            <>
+              <button type="button" className={styles.bannerButton} onClick={pasteBatch.retry}>
+                {t('composer.pasteRetry')}
+              </button>
+              <button type="button" className={styles.bannerButton} onClick={pasteBatch.discard}>
+                {t('composer.pasteDiscard')}
+              </button>
+            </>
+          ) : null}
         </div>
       ) : null}
       <div className={styles.shell}>
@@ -232,8 +280,20 @@ function ComposerView({
                   strokeWidth="1.25"
                   strokeLinejoin="round"
                 />
-                <path d="M9.25 2.5v3h3" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinejoin="round" />
-                <path d="M6.5 9.25h3.5M6.5 11h3.5" fill="none" stroke="currentColor" strokeWidth="1.25" strokeLinecap="round" />
+                <path
+                  d="M9.25 2.5v3h3"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                  strokeLinejoin="round"
+                />
+                <path
+                  d="M6.5 9.25h3.5M6.5 11h3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.25"
+                  strokeLinecap="round"
+                />
               </svg>
             </label>
           ) : null}
