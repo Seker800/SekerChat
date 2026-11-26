@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useOptionalAuth } from '../../auth/AuthContext';
-import { bearerHeader, BROWSER_COOKIE_CREDENTIAL, fetchApi, resolveApiResourceUrl } from '../../lib/api-core';
+import { BROWSER_COOKIE_CREDENTIAL, resolveApiResourceUrl } from '../../lib/api-core';
+import { acquireAvatar, getCachedAvatar, type AvatarLease } from './avatarCache';
 import styles from './Avatar.module.css';
 
 interface AvatarProps {
@@ -13,11 +14,25 @@ interface AvatarProps {
   isDnd?: boolean;
 }
 
-export function Avatar({ avatarUrl, name, size, accessToken, onClick, isOnline, isDnd }: AvatarProps) {
+export function Avatar({
+  avatarUrl,
+  name,
+  size,
+  accessToken,
+  onClick,
+  isOnline,
+  isDnd,
+}: AvatarProps) {
   const auth = useOptionalAuth();
   const resolvedAccessToken = accessToken ?? (auth ? BROWSER_COOKIE_CREDENTIAL : undefined);
-  const [resolvedSrc, setResolvedSrc] = useState(() => (avatarUrl ? resolveApiResourceUrl(avatarUrl) : ''));
+  const [resolvedSrc, setResolvedSrc] = useState(() => {
+    if (!avatarUrl) return '';
+    const resolvedUrl = resolveApiResourceUrl(avatarUrl);
+    if (!resolvedAccessToken) return resolvedUrl;
+    return getCachedAvatar(resolvedUrl, resolvedAccessToken) ?? '';
+  });
   const [failed, setFailed] = useState(false);
+  const leaseRef = useRef<AvatarLease | null>(null);
   const glyph = (name.trim()[0] || '#').toUpperCase();
   const statusKind = isOnline ? (isDnd ? 'dnd' : 'online') : null;
   const style = {
@@ -30,6 +45,8 @@ export function Avatar({ avatarUrl, name, size, accessToken, onClick, isOnline, 
 
   useEffect(() => {
     if (!avatarUrl) {
+      leaseRef.current?.release();
+      leaseRef.current = null;
       setResolvedSrc('');
       setFailed(false);
       return;
@@ -37,46 +54,38 @@ export function Avatar({ avatarUrl, name, size, accessToken, onClick, isOnline, 
 
     const resolvedUrl = resolveApiResourceUrl(avatarUrl);
     if (!resolvedAccessToken) {
+      leaseRef.current?.release();
+      leaseRef.current = null;
       setResolvedSrc(resolvedUrl);
       setFailed(false);
       return;
     }
 
-    const controller = new AbortController();
-    let objectUrl: string | null = null;
-
+    let cancelled = false;
     setFailed(false);
-    setResolvedSrc('');
+    setResolvedSrc(getCachedAvatar(resolvedUrl, resolvedAccessToken) ?? '');
 
-    void fetchApi(resolvedUrl, {
-      headers: bearerHeader(resolvedAccessToken),
-      signal: controller.signal,
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`Avatar request failed (${response.status}).`);
-        }
-        return response.blob();
-      })
-      .then((blob) => {
-        if (controller.signal.aborted) {
+    void acquireAvatar(resolvedUrl, resolvedAccessToken)
+      .then((lease) => {
+        if (cancelled) {
+          lease.release();
           return;
         }
-        objectUrl = URL.createObjectURL(blob);
-        setResolvedSrc(objectUrl);
+        leaseRef.current?.release();
+        leaseRef.current = lease;
+        setResolvedSrc(lease.src);
       })
       .catch((error) => {
-        if (!controller.signal.aborted) {
+        if (!cancelled) {
           console.warn('Avatar load failed:', error);
           setFailed(true);
         }
       });
 
     return () => {
-      controller.abort();
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
+      cancelled = true;
+      leaseRef.current?.release();
+      leaseRef.current = null;
     };
   }, [avatarUrl, resolvedAccessToken]);
 
@@ -93,7 +102,12 @@ export function Avatar({ avatarUrl, name, size, accessToken, onClick, isOnline, 
         >
           {glyph}
         </div>
-        {statusKind ? <span className={isDnd ? styles.dndDot : styles.onlineDot} data-status-kind={statusKind} /> : null}
+        {statusKind ? (
+          <span
+            className={isDnd ? styles.dndDot : styles.onlineDot}
+            data-status-kind={statusKind}
+          />
+        ) : null}
       </div>
     );
   }
@@ -109,7 +123,9 @@ export function Avatar({ avatarUrl, name, size, accessToken, onClick, isOnline, 
         title={onClick ? '点击更换头像' : undefined}
         onError={() => setFailed(true)}
       />
-      {statusKind ? <span className={isDnd ? styles.dndDot : styles.onlineDot} data-status-kind={statusKind} /> : null}
+      {statusKind ? (
+        <span className={isDnd ? styles.dndDot : styles.onlineDot} data-status-kind={statusKind} />
+      ) : null}
     </div>
   );
 }

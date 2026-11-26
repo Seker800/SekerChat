@@ -3,11 +3,15 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AuthProvider } from '../../auth/AuthContext';
 import { Avatar } from './Avatar';
+import { clearAvatarCache } from './avatarCache';
 import styles from './Avatar.module.css';
 
 describe('Avatar', () => {
   beforeEach(() => {
-    vi.stubGlobal('fetch', vi.fn(async () => new Response('avatar', { headers: { 'Content-Type': 'image/png' } })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('avatar', { headers: { 'Content-Type': 'image/png' } })),
+    );
     vi.stubGlobal('URL', {
       ...URL,
       createObjectURL: vi.fn(() => 'blob:avatar'),
@@ -17,6 +21,7 @@ describe('Avatar', () => {
 
   afterEach(() => {
     cleanup();
+    clearAvatarCache();
     vi.unstubAllGlobals();
   });
 
@@ -48,7 +53,12 @@ describe('Avatar', () => {
 
     const { rerender } = render(
       <AuthProvider value={authValue}>
-        <Avatar avatarUrl="http://api.example.test/api/avatars/servers/dev/content?v=one" name="Dev" size={40} accessToken="token" />
+        <Avatar
+          avatarUrl="http://api.example.test/api/avatars/servers/dev/content?v=one"
+          name="Dev"
+          size={40}
+          accessToken="token"
+        />
       </AuthProvider>,
     );
 
@@ -63,7 +73,12 @@ describe('Avatar', () => {
 
     rerender(
       <AuthProvider value={authValue}>
-        <Avatar avatarUrl="http://api.example.test/api/avatars/servers/dev/content?v=two" name="Dev" size={40} accessToken="token" />
+        <Avatar
+          avatarUrl="http://api.example.test/api/avatars/servers/dev/content?v=two"
+          name="Dev"
+          size={40}
+          accessToken="token"
+        />
       </AuthProvider>,
     );
 
@@ -74,13 +89,19 @@ describe('Avatar', () => {
         headers: expect.objectContaining({ Authorization: 'Bearer token' }),
       }),
     );
-    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:avatar');
+    // The cache keeps released entries for reuse; eviction revokes them later.
   });
 
   it('uses the resolved avatar URL directly when no auth context is available', async () => {
     const fetchMock = vi.mocked(fetch);
 
-    render(<Avatar avatarUrl="http://api.example.test/api/avatars/servers/dev/content?v=one" name="Dev" size={40} />);
+    render(
+      <Avatar
+        avatarUrl="http://api.example.test/api/avatars/servers/dev/content?v=one"
+        name="Dev"
+        size={40}
+      />,
+    );
 
     await waitFor(() => expect(screen.getByAltText('Dev')).toBeInTheDocument());
     expect(fetchMock).not.toHaveBeenCalled();
@@ -99,7 +120,9 @@ describe('Avatar', () => {
   });
 
   it('does not render a dnd dot when the user is offline', () => {
-    const { container } = render(<Avatar avatarUrl={null} name="研发" size={40} isOnline={false} isDnd />);
+    const { container } = render(
+      <Avatar avatarUrl={null} name="研发" size={40} isOnline={false} isDnd />,
+    );
 
     expect(container.querySelector('[data-status-kind]')).toBeNull();
   });

@@ -35,14 +35,14 @@ import type { MessageArtifactAction } from './messageArtifactAction';
 
 interface MessageItemProps {
   accessToken?: string;
-  activeReceiptMessageId: string | null;
+  isReceiptActive: boolean;
   currentUserId: string;
   currentUserMentionTargets?: string[];
   groupMembers?: MentionMember[];
   canManageFileShare?: (attachment: NonNullable<MessageResponse['attachment']>) => boolean;
   artifactAction?: MessageArtifactAction;
   editText: string;
-  editingMessageId: string | null;
+  isEditing: boolean;
   isCompact: boolean;
   item: MessageResponse;
   messageRef: Ref<HTMLElement>;
@@ -62,14 +62,14 @@ interface MessageItemProps {
 
 export const MessageItem = memo(function MessageItem({
   accessToken,
-  activeReceiptMessageId,
+  isReceiptActive,
   currentUserId,
   currentUserMentionTargets,
   groupMembers,
   canManageFileShare,
   artifactAction,
   editText,
-  editingMessageId,
+  isEditing,
   isCompact,
   item,
   messageRef,
@@ -339,7 +339,7 @@ export const MessageItem = memo(function MessageItem({
                           )
                         }
                         aria-haspopup="dialog"
-                        aria-expanded={activeReceiptMessageId === item.id}
+                        aria-expanded={isReceiptActive}
                         aria-label={readReceiptAriaLabel(item.readReceipt, language)}
                         title={readReceiptAriaLabel(item.readReceipt, language)}
                         style={
@@ -361,7 +361,7 @@ export const MessageItem = memo(function MessageItem({
                           <span className={styles.receiptRing} aria-hidden="true" />
                         )}
                       </button>
-                      {activeReceiptMessageId === item.id ? (
+                      {isReceiptActive ? (
                         <div
                           onMouseEnter={() => onSetActiveReceiptMessageId(item.id)}
                           onMouseLeave={() =>
@@ -389,14 +389,20 @@ export const MessageItem = memo(function MessageItem({
                   ) : null}
                 </div>
 
-                {editingMessageId === item.id ? (
-                  <MessageEditor text={editText} members={groupMembers} onChange={onSetEditText}
+                {isEditing ? (
+                  <MessageEditor
+                    text={editText}
+                    members={groupMembers}
+                    onChange={onSetEditText}
                     onSave={(text) => {
                       onEditMessage?.(item.id, text);
                       onSetEditingMessageId(null);
                       onSetEditText('');
                     }}
-                    onCancel={() => { onSetEditingMessageId(null); onSetEditText(''); }}
+                    onCancel={() => {
+                      onSetEditingMessageId(null);
+                      onSetEditText('');
+                    }}
                   />
                 ) : (
                   <>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { CurrentUserResponse } from '../../lib/auth-api';
 
 type Notice = { tone: 'success' | 'info' | 'error'; text: string };
@@ -48,9 +48,13 @@ export function useWorkspaceDialogs({ currentUser }: UseWorkspaceDialogsOptions)
     return () => window.clearTimeout(timer);
   }, [notice]);
 
-  const pushNotice = (tone: Notice['tone'], text: string) => {
+  const pushNotice = useCallback((tone: Notice['tone'], text: string) => {
     setNotice({ tone, text });
-  };
+  }, []);
+
+  const showCopiedNotice = useCallback((text: string) => pushNotice('success', text), [pushNotice]);
+  const showErrorNotice = useCallback((text: string) => pushNotice('error', text), [pushNotice]);
+  const showInfoNotice = useCallback((text: string) => pushNotice('info', text), [pushNotice]);
 
   return {
     channelDialog: {
@@ -101,9 +105,9 @@ export function useWorkspaceDialogs({ currentUser }: UseWorkspaceDialogsOptions)
     setIsStartDMDialogOpen,
     setRenameServerName,
     setServerDialogState,
-    showCopiedNotice: (text: string) => pushNotice('success', text),
-    showErrorNotice: (text: string) => pushNotice('error', text),
-    showInfoNotice: (text: string) => pushNotice('info', text),
+    showCopiedNotice,
+    showErrorNotice,
+    showInfoNotice,
     userSettingsDialog: {
       isOpen: isUserSettingsOpen,
       initialMode: userSettingsInitialMode,

@@ -260,13 +260,29 @@ export async function uploadFileViaMultipart(
   let stage: MultipartUploadProgress['stage'] = 'uploading';
   let lastLoadedBytes = loadedBytes;
   let lastTs = Date.now();
+  let lastEmitAt = 0;
+  let trailingTimer: ReturnType<typeof setTimeout> | null = null;
   let speedBytesPerSec = 0;
   let finished = false;
 
-  const updateProgress = () => {
+  const updateProgress = (force = false) => {
     if (finished) return;
-    const currentBytes = loadedBytes + [...inFlightBytes.values()].reduce((sum, bytes) => sum + bytes, 0);
     const now = Date.now();
+    if (!force && now - lastEmitAt < 200) {
+      if (!trailingTimer) {
+        trailingTimer = setTimeout(() => {
+          trailingTimer = null;
+          updateProgress(true);
+        }, 200 - (now - lastEmitAt));
+      }
+      return;
+    }
+    if (trailingTimer) {
+      clearTimeout(trailingTimer);
+      trailingTimer = null;
+    }
+    lastEmitAt = now;
+    const currentBytes = loadedBytes + [...inFlightBytes.values()].reduce((sum, bytes) => sum + bytes, 0);
     const elapsed = now - lastTs;
     if (elapsed >= 500) {
       speedBytesPerSec = Math.max(0, Math.round(((currentBytes - lastLoadedBytes) / elapsed) * 1000));
@@ -291,7 +307,7 @@ export async function uploadFileViaMultipart(
   if (signal?.aborted) onAbort();
   else signal?.addEventListener('abort', onAbort, { once: true });
   const progressTimer = setInterval(updateProgress, 1000);
-  updateProgress();
+  updateProgress(true);
 
   try {
     await mapWithConcurrency(pendingChunks, DEFAULT_CONCURRENCY, async (chunk) => {
@@ -317,7 +333,7 @@ export async function uploadFileViaMultipart(
           const permanent = status >= 400 && status < 500 && status !== 408 && status !== 429;
           if (runController.signal.aborted || permanent || attempt >= MAX_PART_RETRIES) throw error;
           retries.set(chunk.partNumber, attempt + 1);
-          updateProgress();
+          updateProgress(true);
           await waitForUploadRetry(RETRY_BACKOFF_MS[attempt]!, runController.signal);
           retries.delete(chunk.partNumber);
         }
@@ -327,7 +343,7 @@ export async function uploadFileViaMultipart(
     if (runController.signal.aborted) throw new DOMException('Upload aborted', 'AbortError');
     stage = 'finalizing';
     speedBytesPerSec = 0;
-    updateProgress();
+    updateProgress(true);
     const finalized = await completeUpload(accessToken, sessionId, completedParts, runController.signal);
     removePersistedSession(persistenceKind, targetId, file.name, file.size, file.lastModified);
     return { finalized };
@@ -340,7 +356,12 @@ export async function uploadFileViaMultipart(
     }
     throw error;
   } finally {
+    updateProgress(true);
     finished = true;
+    if (trailingTimer) {
+      clearTimeout(trailingTimer);
+      trailingTimer = null;
+    }
     clearInterval(progressTimer);
     signal?.removeEventListener('abort', onAbort);
   }

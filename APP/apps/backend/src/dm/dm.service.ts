@@ -2,9 +2,10 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { GroupMemberRole, Prisma, UserRole } from '@prisma/client';
 import { isAgentBot } from '../common/bot-identity';
 import { PrismaService } from '../prisma/prisma.service';
-import { GroupPresenter } from '../groups/group-presenter.service';
+import { GroupPresenter, type GroupSerializePrefetch } from '../groups/group-presenter.service';
+import { loadLatestMessage, loadLatestMessages } from '../groups/group-latest-message';
 import { GroupQueryService } from '../groups/group-query.service';
-import { groupWithMembersSelect } from '../groups/group-types';
+import { groupWithMembersSelect, type GroupWithMembers } from '../groups/group-types';
 
 function dmPairKey(a: string, b: string): string {
   return [a, b].sort().join(':');
@@ -50,7 +51,7 @@ export class DmService {
     });
 
     if (existingByKey) {
-      return this.presenter.serializeGroup(await this.restoreParticipants(existingByKey, userId, targetUserId), userId);
+      return this.serializeDm(await this.restoreParticipants(existingByKey, userId, targetUserId), userId);
     }
 
     // Fallback: historical DM may have dmKey = NULL (duplicate pairs from before
@@ -70,7 +71,7 @@ export class DmService {
     });
     const historical = historicalCandidates.find((g) => g.members.length === 2);
     if (historical) {
-      return this.presenter.serializeGroup(historical, userId);
+      return this.serializeDm(historical, userId);
     }
 
     const group = await this.prismaService.$transaction(async (tx) => {
@@ -118,7 +119,19 @@ export class DmService {
       }),
     );
 
-    return this.presenter.serializeGroup(await this.restoreParticipants(group, userId, targetUserId), userId);
+    return this.serializeDm(await this.restoreParticipants(group, userId, targetUserId), userId);
+  }
+
+  private async serializeDm(
+    group: GroupWithMembers,
+    userId: string,
+    unreadCount = 0,
+    prefetch?: GroupSerializePrefetch,
+  ) {
+    if (group.latestMessage === undefined) {
+      group.latestMessage = await loadLatestMessage(this.prismaService, group.id);
+    }
+    return this.presenter.serializeGroup(group, userId, undefined, unreadCount, prefetch);
   }
 
   private async restoreParticipants(
@@ -141,7 +154,7 @@ export class DmService {
   }
 
   async listDMs(userId: string) {
-    const groups = await this.prismaService.group.findMany({
+    const groups = (await this.prismaService.group.findMany({
       where: {
         isDM: true,
         members: {
@@ -152,16 +165,28 @@ export class DmService {
       },
       orderBy: { updatedAt: 'desc' },
       select: groupWithMembersSelect,
-    });
+    })) as GroupWithMembers[];
 
-    const unreadCounts = await this.queryService.batchUnreadCounts(
-      userId,
-      groups.map((g) => g.id),
-    );
+    const [unreadCounts, latestMessages, prefetch] = await Promise.all([
+      this.queryService.batchUnreadCounts(
+        userId,
+        groups.map((group) => group.id),
+      ),
+      loadLatestMessages(
+        this.prismaService,
+        groups.map((group) => group.id),
+      ),
+      this.queryService.buildGroupSerializePrefetch(groups),
+    ]);
+
+    const groupsWithLatest = groups.map((group) => ({
+      ...group,
+      latestMessage: latestMessages.get(group.id) ?? null,
+    }));
 
     return Promise.all(
-      groups.map((group) =>
-        this.presenter.serializeGroup(group, userId, undefined, unreadCounts.get(group.id) ?? 0),
+      groupsWithLatest.map((group) =>
+        this.serializeDm(group, userId, unreadCounts.get(group.id) ?? 0, prefetch),
       ),
     );
   }

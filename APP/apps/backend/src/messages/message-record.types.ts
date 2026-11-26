@@ -1,13 +1,12 @@
 import { Prisma } from '@prisma/client';
 import { filePreviewJobSelect } from '../files/file-preview-state';
-import { fileObjectSelect } from '../files/file-record.types';
 
 export const messageSelect = {
   id: true,
   groupId: true,
   senderId: true,
   externalAuthor: true,
-  externalAvatarFile: { select: fileObjectSelect },
+  externalAvatarFile: { select: { id: true, groupId: true } },
   eventSequence: true,
   type: true,
   text: true,
@@ -37,10 +36,8 @@ export const messageSelect = {
       storageKey: true,
       previewJob: { select: filePreviewJobSelect },
       thumbnailStorageKey: true,
-      thumbnailSize: true,
       imageWidth: true,
       imageHeight: true,
-      attachedAt: true,
       share: {
         select: {
           expiresAt: true,
@@ -57,7 +54,7 @@ export const messageSelect = {
     select: {
       id: true,
       externalAuthor: true,
-      externalAvatarFile: { select: fileObjectSelect },
+      externalAvatarFile: { select: { id: true, groupId: true } },
       senderId: true,
       type: true,
       text: true,
@@ -74,7 +71,6 @@ export const messageSelect = {
           storageKey: true,
           previewJob: { select: filePreviewJobSelect },
           thumbnailStorageKey: true,
-          thumbnailSize: true,
           imageWidth: true,
           imageHeight: true,
           share: {

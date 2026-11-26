@@ -275,14 +275,14 @@ export function MessageList({
     return (
       <MessageItem
         accessToken={accessToken}
-        activeReceiptMessageId={activeReceiptMessageId}
+        isReceiptActive={activeReceiptMessageId === item.id}
+        isEditing={editingMessageId === item.id}
         currentUserId={currentUserId}
         groupMembers={groupMembers}
         currentUserMentionTargets={currentUserMentionTargets}
         canManageFileShare={canManageFileShare}
         artifactAction={artifactAction}
-        editText={editText}
-        editingMessageId={editingMessageId}
+        editText={editingMessageId === item.id ? editText : ''}
         isCompact={isCompact}
         item={item}
         messageRef={registerMessageRef(item.id)}

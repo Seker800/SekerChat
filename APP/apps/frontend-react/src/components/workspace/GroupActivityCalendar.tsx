@@ -87,7 +87,6 @@ export function GroupActivityCalendar({
     queryFn: () => fetchGroupMessageActivity(accessToken, groupId),
     enabled: isActive,
     staleTime: 60_000,
-    refetchInterval: 60_000,
   });
 
   const counts = useMemo(() => {

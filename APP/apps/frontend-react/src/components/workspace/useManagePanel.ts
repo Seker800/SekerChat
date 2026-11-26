@@ -95,7 +95,6 @@ export function useManagePanel({
         current?.map((group) => (group.id === updated.id ? { ...group, ...updated } : group)),
       );
       acknowledgeSavedFields(submitted.groupId, submitted);
-      void queryClient.invalidateQueries({ queryKey: ['workspace-bootstrap'] });
       onSuccess('频道设置已保存。');
     },
     onError: (error) => onError(error instanceof Error ? error.message : '保存频道设置失败。'),
@@ -126,7 +125,6 @@ export function useManagePanel({
         current ? patchGroup(current) : current,
       );
       acknowledgeSavedFields(submitted.groupId, submitted);
-      void queryClient.invalidateQueries({ queryKey: ['workspace-bootstrap'] });
       onSuccess('工作状态已保存。');
     },
     onError: (error) => onError(error instanceof Error ? error.message : '保存工作状态失败。'),

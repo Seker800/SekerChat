@@ -62,7 +62,7 @@ export class GroupPresenter {
       ? group.members.find((member) => member.user.id !== currentUserId)?.user
       : null;
     const dmPartnerName = dmPartner?.displayName ?? dmPartner?.email;
-    const latestMsg = group.messages?.[0] ?? null;
+    const latestMsg = group.latestMessage ?? null;
 
     const confirmedByDisplayName = group.artifactsConfirmedByUserId
       ? prefetch

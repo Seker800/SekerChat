@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { DEFAULT_WORKSPACE_BOOTSTRAP_MESSAGE_LIMIT } from '@sekerchat/shared';
 import { listDMCandidates, listDMs } from '../../lib/dm-api';
 import { getGroup, listGroups, listInvitableUsers, type GroupResponse } from '../../lib/groups-api';
 import { listGroupArtifacts } from '../../lib/messages-files-api';
@@ -53,17 +52,17 @@ export function useWorkspaceQueries({
   const isDmAlbumPage = mode === 'dm' && requestedRouteGroupId === DM_ALBUM_PAGE_ID;
   const isDmSubscriptionPage = mode === 'dm' && requestedRouteGroupId === DM_SUBSCRIPTION_PAGE_ID;
   const isDmSpecialPage = mode === 'dm' && isDmSpecialPageId(requestedRouteGroupId);
+  // The snapshot owns channel lists and config; the timeline owns messages.
+  // Keying this by route groupId made every channel switch re-download the entire
+  // workspace (and its messages) only to discard most of the response.
   const workspaceBootstrapQuery = useQuery({
-    queryKey: ['workspace-bootstrap', mode, isDmSpecialPage ? '' : requestedRouteGroupId],
+    queryKey: ['workspace-snapshot', mode, currentUserId],
     queryFn: () =>
       fetchWorkspaceBootstrap(accessToken, {
         mode,
-        ...(isDmSpecialPage ? { includeMessages: false } : {}),
-        groupId: mode === 'server' ? requestedRouteGroupId || undefined : undefined,
-        dmId: mode === 'dm' && !isDmSpecialPage ? requestedRouteGroupId || undefined : undefined,
-        messageLimit: DEFAULT_WORKSPACE_BOOTSTRAP_MESSAGE_LIMIT,
+        includeMessages: false,
       }),
-    staleTime: 10 * 1000,
+    staleTime: 60 * 1000,
   });
   const bootstrapData = workspaceBootstrapQuery.data;
   const isBootstrapPending = workspaceBootstrapQuery.isPending;

@@ -87,18 +87,16 @@ describe('GroupActivityCalendar', () => {
     expect(screen.getByRole('button', { name: '收起更早的 4 个月' })).toBeInTheDocument();
   });
 
-  it('refreshes the activity counts on the polling interval', async () => {
+  it('does not poll in the background; realtime invalidation refreshes it', async () => {
     renderCalendar();
 
     await waitFor(() => {
       expect(mockedFetchGroupMessageActivity).toHaveBeenCalledTimes(1);
     });
 
-    await vi.advanceTimersByTimeAsync(60_000);
+    await vi.advanceTimersByTimeAsync(180_000);
 
-    await waitFor(() => {
-      expect(mockedFetchGroupMessageActivity).toHaveBeenCalledTimes(2);
-    });
+    expect(mockedFetchGroupMessageActivity).toHaveBeenCalledTimes(1);
   });
 
   it('renders the full first and last message months', async () => {

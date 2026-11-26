@@ -167,7 +167,7 @@ export class FilesService {
     }
   }
 
-  createFileAccessUrl(file: FileObjectRecord) {
+  createFileAccessUrl(file: { id: string; groupId: string }) {
     return this.fileUrls.content(file);
   }
 

@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { MessageType, Prisma } from '@prisma/client';
 
 export const groupWithMembersSelect = {
   id: true,
@@ -45,17 +45,16 @@ export const groupWithMembersSelect = {
       },
     },
   },
-  messages: {
-    orderBy: { createdAt: 'desc' },
-    take: 1,
-    select: {
-      text: true,
-      senderId: true,
-      type: true,
-    },
-  },
 } satisfies Prisma.GroupSelect;
 
-export type GroupWithMembers = Prisma.GroupGetPayload<{ select: typeof groupWithMembersSelect }>;
+export type LatestMessageSummary = {
+  text: string | null;
+  senderId: string;
+  type: MessageType;
+};
+
+export type GroupWithMembers = Prisma.GroupGetPayload<{
+  select: typeof groupWithMembersSelect;
+}> & { latestMessage?: LatestMessageSummary | null };
 export type AdminGroupDiscoveryScope = 'all' | 'archived' | 'former';
 export type AuthenticatedActor = { sub: string; role: string };

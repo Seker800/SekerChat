@@ -83,7 +83,7 @@ test('createOrGetDM allows agent bot targets', async () => {
         },
       },
     ],
-    messages: [],
+    latestMessage: null,
   };
 
   const dmService = new DmService(
@@ -99,6 +99,7 @@ test('createOrGetDM allows agent bot targets', async () => {
         findUnique: async () => null,
         findMany: async () => [],
       },
+      message: { findFirst: async () => null },
       $transaction: async (callback: Function) =>
         callback({
           group: {
@@ -120,10 +121,11 @@ test('createOrGetDM allows agent bot targets', async () => {
 test('a concurrent DM winner is read outside the failed transaction', async () => {
   const { Prisma } = await import('@prisma/client');
   let failed = false;
-  const winner = { id: 'dm', members: [{ user: { id: 'a' } }, { user: { id: 'b' } }] };
+  const winner = { id: 'dm', members: [{ user: { id: 'a' } }, { user: { id: 'b' } }], latestMessage: null };
   const service = new DmService({
     user: { findUnique: async () => ({ id: 'b', role: 'MEMBER', isBot: false }) },
     group: { findUnique: async () => failed ? winner : null, findMany: async () => [] },
+    message: { findFirst: async () => null },
     $transaction: async (fn: (tx: unknown) => unknown) => fn({ group: {
       findUnique: async () => { if (failed) throw new Error('transaction aborted'); return null; },
       create: async () => { failed = true; throw new Prisma.PrismaClientKnownRequestError('unique', { code: 'P2002', clientVersion: '6.19.3' }); },
@@ -134,7 +136,7 @@ test('a concurrent DM winner is read outside the failed transaction', async () =
 
 test('reopening a DM restores a participant removed by older leave behavior', async () => {
   const restored: string[] = [];
-  const group = { id: 'dm', members: [{ user: { id: 'b' } }] };
+  const group = { id: 'dm', members: [{ user: { id: 'b' } }], latestMessage: null };
   const tx = {
     groupMember: { upsert: async ({ create }: { create: { userId: string } }) => { restored.push(create.userId); } },
     group: { findUniqueOrThrow: async () => ({ ...group, members: [{ user: { id: 'a' } }, ...group.members] }) },
@@ -142,6 +144,7 @@ test('reopening a DM restores a participant removed by older leave behavior', as
   const service = new DmService({
     user: { findUnique: async () => ({ id: 'b', role: 'MEMBER', isBot: false }) },
     group: { findUnique: async () => group },
+    message: { findFirst: async () => null },
     $transaction: async (fn: (tx: unknown) => unknown) => fn(tx),
   } as never, { serializeGroup: async (value: unknown) => value } as never, {} as never);
   await service.createOrGetDM('a', 'b');

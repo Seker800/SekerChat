@@ -7,9 +7,10 @@ import {
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PermissionService } from '../system-config/permission.service';
-import { groupWithMembersSelect } from './group-types';
+import { groupWithMembersSelect, type GroupWithMembers } from './group-types';
 import { GroupMembershipService } from './group-membership.service';
 import { GroupPresenter } from './group-presenter.service';
+import { loadLatestMessage, loadLatestMessages } from './group-latest-message';
 
 @Injectable()
 export class GroupQueryService {
@@ -21,7 +22,7 @@ export class GroupQueryService {
   ) {}
 
   async listGroups(userId: string, canViewArchived: boolean) {
-    const groups = await this.prismaService.group.findMany({
+    const groups = (await this.prismaService.group.findMany({
       where: {
         isDM: false,
         members: {
@@ -34,18 +35,22 @@ export class GroupQueryService {
       },
       orderBy: [{ archivedAt: 'asc' }, { updatedAt: 'desc' }],
       select: groupWithMembersSelect,
-    });
+    })) as GroupWithMembers[];
 
-    const unreadCounts = await this.batchUnreadCounts(
-      userId,
-      groups.map((g) => g.id),
-    );
+    const groupIds = groups.map((group) => group.id);
+    const [unreadCounts, latestMessages, prefetch] = await Promise.all([
+      this.batchUnreadCounts(userId, groupIds),
+      loadLatestMessages(this.prismaService, groupIds),
+      this.buildGroupSerializePrefetch(groups),
+    ]);
 
-    // Batch prefetch: avoid N+1 queries on category and confirmedByUserName
-    const prefetch = await this.buildGroupSerializePrefetch(groups);
+    const groupsWithLatest = groups.map((group) => ({
+      ...group,
+      latestMessage: latestMessages.get(group.id) ?? null,
+    }));
 
     return Promise.all(
-      groups.map((group) =>
+      groupsWithLatest.map((group) =>
         this.presenter.serializeGroup(
           group,
           userId,
@@ -57,7 +62,7 @@ export class GroupQueryService {
     );
   }
 
-  private async buildGroupSerializePrefetch(
+  async buildGroupSerializePrefetch(
     groups: Array<{ category: string; artifactsConfirmedByUserId: string | null }>,
   ) {
     const categoryNames = [...new Set(groups.map((g) => g.category))];
@@ -104,10 +109,10 @@ export class GroupQueryService {
       membership = await this.membershipService.getMembershipOrThrow(groupId, userId);
     }
 
-    const group = await this.prismaService.group.findUnique({
+    const group = (await this.prismaService.group.findUnique({
       where: { id: groupId },
       select: groupWithMembersSelect,
-    });
+    })) as GroupWithMembers | null;
 
     if (!group) {
       throw new NotFoundException('Group not found.');
@@ -118,9 +123,12 @@ export class GroupQueryService {
       throw new ForbiddenException('Group access denied.');
     }
 
-    const unreadCounts = await this.batchUnreadCounts(userId, [groupId]);
+    const [unreadCounts, latestMessage] = await Promise.all([
+      this.batchUnreadCounts(userId, [groupId]),
+      loadLatestMessage(this.prismaService, groupId),
+    ]);
     return await this.presenter.serializeGroup(
-      group,
+      { ...group, latestMessage },
       membership.role,
       userId,
       unreadCounts.get(groupId) ?? 0,
@@ -208,36 +216,30 @@ export class GroupQueryService {
     const result = new Map<string, number>();
     if (!groupIds.length) return result;
 
-    const memberships = await this.prismaService.groupMember.findMany({
-      where: { groupId: { in: groupIds }, userId },
-      select: { groupId: true, lastReadEventSequence: true },
-    });
-    const lastReadMap = new Map(memberships.map((m) => [m.groupId, m.lastReadEventSequence]));
-    const unreadRows = await this.prismaService.$queryRaw<
-      Array<{ groupId: string; count: bigint }>
-    >`
-      SELECT gm."groupId" AS "groupId", COUNT(m."id")::bigint AS "count"
+    // One indexed lookup per membership instead of aggregating the whole Message table.
+    const rows = await this.prismaService.$queryRaw<Array<{ groupId: string; count: bigint }>>`
+      SELECT
+        gm."groupId" AS "groupId",
+        CASE
+          WHEN gm."lastReadEventSequence" IS NULL THEN 0::bigint
+          ELSE (
+            SELECT COUNT(*)::bigint
+            FROM "Message" m
+            WHERE m."groupId" = gm."groupId"
+              AND m."eventSequence" > gm."lastReadEventSequence"
+          )
+        END AS "count"
       FROM "GroupMember" gm
-      LEFT JOIN "Message" m
-        ON gm."lastReadEventSequence" IS NOT NULL
-       AND m."groupId" = gm."groupId"
-       AND m."eventSequence" > gm."lastReadEventSequence"
       WHERE gm."userId" = ${userId}
         AND gm."groupId" IN (${Prisma.join(groupIds)})
-      GROUP BY gm."groupId"
     `;
-    const unreadMap = new Map(unreadRows.map((row) => [row.groupId, Number(row.count)]));
 
     for (const groupId of groupIds) {
-      const lastReadSeq = lastReadMap.get(groupId);
-      if (lastReadSeq === null || lastReadSeq === undefined) {
-        result.set(groupId, 0);
-        continue;
-      }
-
-      result.set(groupId, unreadMap.get(groupId) ?? 0);
+      result.set(groupId, 0);
     }
-
+    for (const row of rows) {
+      result.set(row.groupId, Number(row.count));
+    }
     return result;
   }
 }

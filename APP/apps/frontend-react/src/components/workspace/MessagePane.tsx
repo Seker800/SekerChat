@@ -209,16 +209,26 @@ export function MessagePane({
     onUnsupportedAction?.(t('messages.clipboardUnavailable'));
   }
 
-  function jumpToMessage(messageId: string) {
-    const target = messageRefs.current.get(messageId);
-    if (!target && navigationRef.current?.jumpToMessage(messageId)) return;
-    if (!target) {
-      onUnsupportedAction?.(t('messages.originalUnavailable'));
-      return;
-    }
+  const jumpToMessage = useCallback(
+    (messageId: string) => {
+      const target = messageRefs.current.get(messageId);
+      if (!target && navigationRef.current?.jumpToMessage(messageId)) return;
+      if (!target) {
+        onUnsupportedAction?.(t('messages.originalUnavailable'));
+        return;
+      }
 
-    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    },
+    [onUnsupportedAction, t],
+  );
+
+  const handleContextMenu = useCallback(
+    (item: MessageResponse, position: { x: number; y: number }) => {
+      setMenuState({ item, ...position });
+    },
+    [],
+  );
 
   const menuItems: ContextMenuItem[] = menuState
     ? (() => {
@@ -327,7 +337,7 @@ export function MessagePane({
           registerMessageRef={registerMessageRef}
           registerReceiptContainerRef={registerReceiptContainerRef}
           onClearPendingError={onClearPendingError}
-          onContextMenu={(item, position) => setMenuState({ item, ...position })}
+          onContextMenu={handleContextMenu}
           onEditMessage={onEditMessage}
           onJumpToMessage={jumpToMessage}
           onPreviewImage={imagePreview.setPreviewImage}

@@ -45,7 +45,7 @@ function makeBasicGroup(overrides: Partial<GroupWithMembers> = {}): GroupWithMem
         },
       },
     ],
-    messages: [],
+    latestMessage: null,
     ...overrides,
   };
 }

@@ -31,7 +31,6 @@ export function GroupMuteButton({
       queryClient.setQueryData<GroupResponse>(['group', result.groupId], (current) =>
         current ? { ...current, notificationsMuted: result.notificationsMuted } : current,
       );
-      void queryClient.invalidateQueries({ queryKey: ['workspace-bootstrap'] });
     },
     onError: (error) =>
       onError(error instanceof Error ? error.message : t('groupNotifications.failed')),

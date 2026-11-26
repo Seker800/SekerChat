@@ -49,7 +49,16 @@ test('restores independent drafts through actual workspace navigation', async ({
     category: name,
     name,
     isDM: false,
-    members: [],
+    members: [
+      {
+        userId: 'user-admin',
+        email: 'admin@local.invalid',
+        displayName: '管理员',
+        role: 'ADMIN',
+        joinedAt: '2026-04-01T00:00:00Z',
+        isOnline: true,
+      },
+    ],
     unreadCount: 0,
     archivedAt: null,
     createdAt: '2026-04-01T00:00:00Z',
@@ -112,6 +121,7 @@ test('retains loaded history and scroll position across a realtime-triggered ref
     node.dispatchEvent(new Event('scroll'));
   });
   await expect(page.locator('[data-message-id="history-0"]')).toBeAttached();
+  const initialLatestRequests = latestRequests;
   const anchor = page.locator('[data-message-id="history-2"]');
   await expect(anchor).toBeVisible();
   const before = await anchor.evaluate((node) => node.getBoundingClientRect().top);
@@ -130,7 +140,7 @@ test('retains loaded history and scroll position across a realtime-triggered ref
       }),
     );
   });
-  await expect.poll(() => latestRequests).toBe(2);
+  await expect.poll(() => latestRequests).toBe(initialLatestRequests + 1);
   await expect(page.locator('[data-message-id="history-0"]')).toBeAttached();
   await expect
     .poll(async () =>

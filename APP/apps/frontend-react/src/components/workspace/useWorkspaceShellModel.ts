@@ -127,6 +127,11 @@ export function useWorkspaceShellModel({
     isDmSubscriptionPage,
     isDmSpecialPage,
   } = workspaceQueries;
+  const notificationGroups = useMemo(
+    () => [...servers, ...workspaceQueries.dms],
+    [servers, workspaceQueries.dms],
+  );
+
   const loadError = serversQuery.isError
     ? {
         source: 'servers' as const,
@@ -182,7 +187,6 @@ export function useWorkspaceShellModel({
       dialogs.pushNotice('success', '已加入频道。');
       await discoverableQuery.refetch();
       await groupsQuery.refetch();
-      await serversQuery.refetch();
       await serverDirectoryQuery.refetch();
     },
     onError: (error) => {
@@ -316,19 +320,32 @@ export function useWorkspaceShellModel({
     unhideDmFromStore,
   });
 
+  const refetchArtifactsQuery = artifactsQuery.refetch;
+  const refetchSelectedGroupQuery = selectedGroupQuery.refetch;
+  const refetchArtifacts = useCallback(async () => {
+    await refetchArtifactsQuery();
+  }, [refetchArtifactsQuery]);
+  const refetchSelectedGroup = useCallback(async () => {
+    await refetchSelectedGroupQuery();
+  }, [refetchSelectedGroupQuery]);
+  const handleArtifactError = useCallback(
+    (message: string) => dialogs.pushNotice('error', message),
+    [dialogs.pushNotice],
+  );
+  const handleArtifactSuccess = useCallback(
+    (message: string) => dialogs.pushNotice('success', message),
+    [dialogs.pushNotice],
+  );
+
   const { artifacts } = useArtifacts({
     accessToken,
     selectedGroupId,
     selectedGroup: selectedGroup ?? undefined,
     items: artifactsQuery.data ?? [],
-    onError: (message) => dialogs.pushNotice('error', message),
-    onSuccess: (message) => dialogs.pushNotice('success', message),
-    refetchArtifacts: async () => {
-      await artifactsQuery.refetch();
-    },
-    refetchGroup: async () => {
-      await selectedGroupQuery.refetch();
-    },
+    onError: handleArtifactError,
+    onSuccess: handleArtifactSuccess,
+    refetchArtifacts,
+    refetchGroup: refetchSelectedGroup,
   });
 
   const mutations = useWorkspaceMutations({
@@ -485,7 +502,7 @@ export function useWorkspaceShellModel({
           dialogs.pushNotice('success', '已退出频道。');
           await discoverableQuery.refetch();
           await groupsQuery.refetch();
-          await serversQuery.refetch();
+          if (mode === 'dm') await serversQuery.refetch();
           await serverDirectoryQuery.refetch();
           // Navigate to next group in same server, fallback to any other
           const sameServer = groups.find(
@@ -623,7 +640,7 @@ export function useWorkspaceShellModel({
     dmUnreadCount,
     servers,
     groups,
-    notificationGroups: [...servers, ...workspaceQueries.dms],
+    notificationGroups,
     groupsQuery,
     isLoading:
       workspaceBootstrapQuery.isPending ||

@@ -143,6 +143,7 @@ export class FilesController {
     @Param('fileId') fileId: string,
     @Headers('range') rangeHeader: string | undefined,
     @Res({ passthrough: true }) response: Response,
+    @Headers('if-none-match') ifNoneMatch?: string,
   ) {
     let range: string | undefined;
     try {
@@ -166,6 +167,13 @@ export class FilesController {
     }
 
     const { file, stream, contentLength, contentRange } = result;
+    const etag = `"${file.id}"`;
+
+    response.setHeader('ETag', etag);
+    if (ifNoneMatch?.split(',').some((value) => value.trim() === etag)) {
+      response.status(304).end();
+      return;
+    }
 
     response.setHeader('Content-Security-Policy', "sandbox; default-src 'none'");
     response.setHeader('Content-Type', file.mimeType);
@@ -178,7 +186,7 @@ export class FilesController {
     );
     setPartialContentHeaders(response, range, contentRange, contentLength, Number(file.size));
 
-    response.setHeader('Cache-Control', 'private, max-age=60');
+    response.setHeader('Cache-Control', 'private, max-age=3600');
 
     return new StreamableFile(stream);
   }

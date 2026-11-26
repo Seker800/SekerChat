@@ -67,7 +67,7 @@ export class MessagesService {
 
     const limit = this.normalizePullLimit(options?.limit ?? 50);
     const cursor = options?.cursor?.trim() ? this.parseCursor(options.cursor) : undefined;
-    const [messagesDesc, receiptMembers, latestPerSenderRows] = await Promise.all([
+    const [messagesDesc, latestOwnMessage] = await Promise.all([
       this.prismaService.message.findMany({
         where: {
           groupId,
@@ -77,28 +77,32 @@ export class MessagesService {
         take: limit + 1,
         select: messageSelect,
       }),
-      this.readReceiptService.listMessageReceiptMembers(groupId),
-      this.prismaService.message.groupBy({
-        by: ['senderId'],
+      this.prismaService.message.findFirst({
         where: {
           groupId,
-          type: {
-            not: MessageType.SYSTEM,
-          },
+          senderId: userId,
+          type: { not: MessageType.SYSTEM },
         },
-        _max: {
-          eventSequence: true,
-        },
+        orderBy: { eventSequence: 'desc' },
+        select: { eventSequence: true },
       }),
     ]);
     const hasMore = messagesDesc.length > limit;
     const page = hasMore ? messagesDesc.slice(0, limit) : messagesDesc;
     const messages = [...page].reverse();
-    const latestPerSender = new Map(
-      latestPerSenderRows
-        .map((row) => [row.senderId, row._max.eventSequence])
-        .filter((entry): entry is [string, bigint] => entry[1] !== null),
+    const latestOwnSequence = latestOwnMessage?.eventSequence ?? null;
+    const needsReceipt = messages.some(
+      (message) =>
+        message.senderId === userId &&
+        message.type !== MessageType.SYSTEM &&
+        message.eventSequence === latestOwnSequence,
     );
+    // Receipts are only rendered for the viewer's own latest message. Other senders'
+    // receipt payloads were never displayed by the client, but forced every page to
+    // load all group members and aggregate the whole group history.
+    const receiptMembers = needsReceipt
+      ? await this.readReceiptService.listMessageReceiptMembers(groupId)
+      : [];
 
     return {
       groupId,
@@ -108,7 +112,9 @@ export class MessagesService {
           this.serializerService.serializeMessage(
             message,
             receiptMembers,
-            latestPerSender.get(message.senderId) === message.eventSequence,
+            needsReceipt &&
+              message.senderId === userId &&
+              message.eventSequence === latestOwnSequence,
           ),
         ),
       ),
@@ -687,8 +693,13 @@ export class MessagesService {
       const displayName = member.user.displayName?.trim().toLowerCase() ?? '';
       const candidates = [member.user.email.toLowerCase(), localPart, displayName].filter(Boolean);
 
-      if (candidates.some((candidate) => tokens.has(candidate) &&
-        (!candidate.includes('@') || candidate === member.user.email.toLowerCase()))) {
+      if (
+        candidates.some(
+          (candidate) =>
+            tokens.has(candidate) &&
+            (!candidate.includes('@') || candidate === member.user.email.toLowerCase()),
+        )
+      ) {
         mentionedUserIds.add(member.userId);
       }
     }

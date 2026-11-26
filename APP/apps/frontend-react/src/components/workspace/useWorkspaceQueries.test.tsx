@@ -1,5 +1,4 @@
 import '@testing-library/jest-dom/vitest';
-import { DEFAULT_WORKSPACE_BOOTSTRAP_MESSAGE_LIMIT } from '@sekerchat/shared';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
@@ -338,9 +337,7 @@ describe('useWorkspaceQueries selection recovery', () => {
 
     expect(fetchWorkspaceBootstrapMock).toHaveBeenCalledWith('token', {
       mode: 'server',
-      groupId: 'group-bootstrap',
-      dmId: undefined,
-      messageLimit: DEFAULT_WORKSPACE_BOOTSTRAP_MESSAGE_LIMIT,
+      includeMessages: false,
     });
     expect(listGroupsMock).not.toHaveBeenCalled();
     expect(listDMsMock).not.toHaveBeenCalled();

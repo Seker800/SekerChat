@@ -1,5 +1,5 @@
 import { useUploadSignal } from '../../hooks/useUploadSignal';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   addFileToGroupArtifacts,
   confirmGroupArtifacts,
@@ -72,7 +72,7 @@ export function useArtifacts({
     [visibleItems],
   );
 
-  const onAddFromMessage = async (fileId: string) => {
+  const onAddFromMessage = useCallback(async (fileId: string) => {
     if (isLocked) {
       onError('当前产出已确认，请先解除确认再继续编辑。');
       return;
@@ -96,7 +96,17 @@ export function useArtifacts({
         return next;
       });
     }
-  };
+  }, [
+    accessToken,
+    isLocked,
+    onError,
+    onSuccess,
+    pendingSourceFileIds,
+    refetchArtifacts,
+    refetchGroup,
+    selectedGroupId,
+    sourceFileIds,
+  ]);
 
   const onDelete = async (artifactId: string) => {
     if (isLocked) {

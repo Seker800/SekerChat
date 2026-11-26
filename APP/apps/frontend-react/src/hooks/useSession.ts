@@ -12,6 +12,7 @@ import {
 } from '../lib/auth-api';
 import { registerAuthSessionController } from '../lib/api-core';
 import { clearPrivateMediaCache } from '../components/workspace/media/privateMediaRepository';
+import { clearAvatarCache } from '../components/shared/avatarCache';
 
 const oidcErrorMessages: Record<string, string> = {
   oidc_access_denied: '群晖登录被取消或被拒绝。',
@@ -46,6 +47,7 @@ export function useSession() {
 
     function clearSessionState() {
       clearPrivateMediaCache();
+      clearAvatarCache();
       setSession(null);
       setCurrentUser(null);
       // Remove credentials written by versions before the cookie-only migration.

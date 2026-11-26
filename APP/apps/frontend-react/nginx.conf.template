@@ -25,6 +25,10 @@ server {
   # Every large upload is chunked into 32 MB parts; 64 MB covers any one request
   # while still bounding a slow or oversized body.
   client_max_body_size 64m;
+  gzip on;
+  gzip_types application/json;
+  gzip_min_length 1024;
+  gzip_proxied any;
   gzip_static on;
   gzip_vary on;
 

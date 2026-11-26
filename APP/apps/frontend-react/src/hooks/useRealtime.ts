@@ -29,7 +29,7 @@ function patchGroupList(
   groupId: string,
   patch: (group: GroupResponse) => GroupResponse,
 ): GroupResponse[] | undefined {
-  if (!current) return current;
+  if (!current?.some((group) => group.id === groupId)) return current;
   return current.map((group) => (group.id === groupId ? patch(group) : group));
 }
 
@@ -251,6 +251,7 @@ export function useRealtime(
                   : undefined);
               return receiveCreatedMessage(timeline, data.groupId, messagePayload);
             });
+            invalidate({ queryKey: ['group-message-activity', data.groupId] });
             if (messagePayload.type === 'system') {
               invalidate({ queryKey: ['artifacts', data.groupId] });
             }
@@ -270,6 +271,7 @@ export function useRealtime(
                 data.payload as unknown as MessageResponse,
               ),
             );
+            invalidate({ queryKey: ['group-message-activity', data.groupId] });
           }
           if (data.type === 'message.read-cursor.changed.v1') {
             queryClient.setQueryData<MessageListResponse>(['messages', data.groupId], (current) =>

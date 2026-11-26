@@ -44,7 +44,7 @@ export class AvatarsController {
   ) {
     const { mimeType, stream } = await this.avatarsService.getUserAvatarStream(userId);
     response.setHeader('Content-Type', mimeType);
-    response.setHeader('Cache-Control', 'private, max-age=300');
+    response.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
     return new StreamableFile(stream);
   }
 
@@ -100,7 +100,7 @@ export class AvatarsController {
       decodeURIComponent(category),
     );
     response.setHeader('Content-Type', mimeType);
-    response.setHeader('Cache-Control', 'private, max-age=300');
+    response.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
     return new StreamableFile(stream);
   }
 
@@ -111,7 +111,7 @@ export class AvatarsController {
   ) {
     const { mimeType, stream } = await this.avatarsService.getServerAvatarStreamById(serverId);
     response.setHeader('Content-Type', mimeType);
-    response.setHeader('Cache-Control', 'private, max-age=300');
+    response.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
     return new StreamableFile(stream);
   }
 }

@@ -26,4 +26,7 @@ test('frontend compression creates reusable gzip assets and nginx serves them', 
   const nginx = readFileSync(resolve(appRoot, 'apps/frontend-react/nginx.conf.template'), 'utf8');
   assert.match(nginx, /gzip_static\s+on;/);
   assert.match(nginx, /gzip_vary\s+on;/);
+  assert.match(nginx, /gzip\s+on;/);
+  assert.match(nginx, /gzip_types\s+application\/json;/);
+  assert.match(nginx, /gzip_proxied\s+any;/);
 });

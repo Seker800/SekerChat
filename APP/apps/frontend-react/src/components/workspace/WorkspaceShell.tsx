@@ -141,6 +141,51 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
     }));
   }, []);
 
+  const artifactAction = useMemo(
+    () => ({
+      isEnabled:
+        Boolean(model.isSelectedGroupMember || model.isSuperAdmin) &&
+        isPackagingWorkStatus(
+          model.workState?.status ?? model.selectedGroup?.workState?.status,
+          systemConfigQuery.data?.workStatusDefs,
+        ),
+      isLocked: model.artifacts.isLocked,
+      addedFileIds: model.artifacts.sourceFileIds,
+      pendingFileIds: model.artifacts.pendingSourceFileIds,
+      onAdd: model.artifacts.onAddFromMessage,
+    }),
+    [
+      model.isSelectedGroupMember,
+      model.isSuperAdmin,
+      model.workState?.status,
+      model.selectedGroup?.workState?.status,
+      systemConfigQuery.data?.workStatusDefs,
+      model.artifacts.isLocked,
+      model.artifacts.sourceFileIds,
+      model.artifacts.pendingSourceFileIds,
+      model.artifacts.onAddFromMessage,
+    ],
+  );
+
+  const canManageFileShare = useCallback(
+    () => model.isSelectedGroupMember && canManageAttachmentShare(model.selectedGroup),
+    [model.isSelectedGroupMember, model.selectedGroup],
+  );
+
+  const setReplyToMessageId = model.setReplyToMessageId;
+  const handleReplyToMessage = useCallback(
+    (messageId: string) => {
+      const current = useWorkspaceStore.getState().replyToMessageId;
+      setReplyToMessageId(current === messageId ? '' : messageId);
+    },
+    [setReplyToMessageId],
+  );
+
+  const refetchMessages = model.messagesQuery.refetch;
+  const handleRetryLoadMessages = useCallback(() => {
+    void refetchMessages();
+  }, [refetchMessages]);
+
   const devHeaderControls = import.meta.env.DEV ? (
     <div className={styles.localDevControls}>
       <div className={styles.localDevBadge} data-testid="local-dev-badge">
@@ -489,30 +534,17 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
             </header>
             <MessagePane
               activeGroupId={model.selectedGroupId}
-              artifactAction={{
-                isEnabled:
-                  Boolean(model.isSelectedGroupMember || model.isSuperAdmin) &&
-                  isPackagingWorkStatus(
-                    model.workState?.status ?? model.selectedGroup?.workState?.status,
-                    systemConfigQuery.data?.workStatusDefs,
-                  ),
-                isLocked: model.artifacts.isLocked,
-                addedFileIds: model.artifacts.sourceFileIds,
-                pendingFileIds: model.artifacts.pendingSourceFileIds,
-                onAdd: model.artifacts.onAddFromMessage,
-              }}
+              artifactAction={artifactAction}
               messages={model.messages}
               currentUserId={currentUser.id}
               groupMembers={model.selectedGroup?.members}
               currentUserMentionTargets={currentUserMentionTargets}
-              canManageFileShare={() =>
-                model.isSelectedGroupMember && canManageAttachmentShare(model.selectedGroup)
-              }
+              canManageFileShare={canManageFileShare}
               isLoadingMessages={
                 model.messagesQuery.isLoading ||
                 (model.messagesQuery.isFetching && model.messages.length === 0)
               }
-              onRetryLoad={() => void model.messagesQuery.refetch()}
+              onRetryLoad={handleRetryLoadMessages}
               messageLoadError={
                 model.messagesQuery.error instanceof Error
                   ? `消息加载失败：${model.messagesQuery.error.message}`
@@ -522,9 +554,7 @@ export function WorkspaceShell({ mode = 'server' }: WorkspaceShellProps) {
               onLoadOlderMessages={model.loadOlderMessages}
               hasMoreOlderMessages={model.hasMoreOlderMessages}
               isLoadingOlderMessages={model.isLoadingOlderMessages}
-              onReply={(messageId) => {
-                model.setReplyToMessageId(model.replyToMessageId === messageId ? '' : messageId);
-              }}
+              onReply={handleReplyToMessage}
               onUnsupportedAction={model.showInfoNotice}
               onCopyMessage={model.showCopiedNotice}
               onEditMessage={model.onEditMessage}

@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'node:crypto';
+import sharp from 'sharp';
 import { PrismaService } from '../prisma/prisma.service';
 import { FilesService } from '../files/files.service';
 import { AuthenticatedUser } from '../auth/types/authenticated-user.type';
@@ -14,6 +15,8 @@ import { ServersService } from '../servers/servers.service';
 
 const ALLOWED_AVATAR_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const MAX_AVATAR_SIZE = 2 * 1024 * 1024;
+const AVATAR_EDGE_PX = 256;
+const AVATAR_OUTPUT_MIME = 'image/webp';
 
 @Injectable()
 export class AvatarsService {
@@ -31,9 +34,10 @@ export class AvatarsService {
 
   async uploadUserAvatar(userId: string, file: Express.Multer.File) {
     this.validateAvatarFile(file);
-    const storageKey = this.buildUserAvatarStorageKey(userId, file.mimetype);
+    const normalized = await this.normalizeAvatar(file);
+    const storageKey = this.buildUserAvatarStorageKey(userId, normalized.mimeType);
 
-    await this.filesService.uploadBufferToS3(storageKey, file.buffer, file.mimetype);
+    await this.filesService.uploadBufferToS3(storageKey, normalized.buffer, normalized.mimeType);
 
     await this.prismaService.user.update({
       where: { id: userId },
@@ -80,9 +84,10 @@ export class AvatarsService {
     await this.permissionService.assertPermission(actor.role, 'upload_server_avatar');
     this.validateAvatarFile(file);
     const server = await this.serversService.requireServer(serverId);
-    const storageKey = this.buildServerAvatarStorageKey(server.id, file.mimetype);
+    const normalized = await this.normalizeAvatar(file);
+    const storageKey = this.buildServerAvatarStorageKey(server.id, normalized.mimeType);
 
-    await this.filesService.uploadBufferToS3(storageKey, file.buffer, file.mimetype);
+    await this.filesService.uploadBufferToS3(storageKey, normalized.buffer, normalized.mimeType);
 
     await this.prismaService.$transaction(async (transaction) => {
       await transaction.server.update({
@@ -171,6 +176,25 @@ export class AvatarsService {
 
   private getAvatarFileExtension(mimeType: string): string {
     return mimeType === 'image/jpeg' ? 'jpg' : (mimeType.split('/')[1] ?? 'bin');
+  }
+
+  private async normalizeAvatar(
+    file: Express.Multer.File,
+  ): Promise<{ buffer: Buffer; mimeType: string }> {
+    try {
+      const buffer = await sharp(file.buffer, { animated: false })
+        .rotate()
+        .resize(AVATAR_EDGE_PX, AVATAR_EDGE_PX, {
+          fit: 'cover',
+          position: 'centre',
+          withoutEnlargement: true,
+        })
+        .webp({ quality: 82 })
+        .toBuffer();
+      return { buffer, mimeType: AVATAR_OUTPUT_MIME };
+    } catch {
+      throw new BadRequestException('无法处理头像图片，请换一张 PNG、JPEG 或 WebP。');
+    }
   }
 
   private validateAvatarFile(file: Express.Multer.File): void {

@@ -3,6 +3,11 @@ import * as assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { AvatarsService } from './avatars.service';
 
+const PNG_1X1 = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAEUlEQVQImWP4z8DwH4QZYAwAR8oH+Xm0fdIAAAAASUVORK5CYII=',
+  'base64',
+);
+
 function createService(uploadedKeys: string[] = []) {
   const categoryUpdates: Array<{ name: string; avatarStorageKey: string | null }> = [];
   const deletedKeys: string[] = [];
@@ -103,9 +108,9 @@ test('uploadUserAvatar stores each replacement under a new key', async () => {
   const uploadedKeys: string[] = [];
   const { service } = createService(uploadedKeys);
   const file = {
-    buffer: Buffer.from('avatar'),
+    buffer: PNG_1X1,
     mimetype: 'image/png',
-    size: 6,
+    size: PNG_1X1.length,
   };
 
   await service.uploadUserAvatar('user-1', file as any);
@@ -129,9 +134,9 @@ test('uploadServerAvatar stores each replacement under a new key', async () => {
   const { service, deletedKeys } = createService(uploadedKeys);
   const actor = { sub: 'user-1', email: 'admin@example.com', role: 'ADMIN' };
   const file = {
-    buffer: Buffer.from('avatar'),
+    buffer: PNG_1X1,
     mimetype: 'image/png',
-    size: 6,
+    size: PNG_1X1.length,
   };
 
   await service.uploadServerAvatar(actor as any, '研发', file as any);

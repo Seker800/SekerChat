@@ -448,8 +448,12 @@ export class UploadsService {
     });
 
     try {
-      await this.filesService.assertObjectSize(session.objectKey, Number(session.size));
-      await this.validateObjectMime(session.objectKey, session.mimeType);
+      // Both checks read the assembled object independently; run them together so the
+      // completion path pays one storage round trip instead of two.
+      await Promise.all([
+        this.filesService.assertObjectSize(session.objectKey, Number(session.size)),
+        this.validateObjectMime(session.objectKey, session.mimeType),
+      ]);
     } catch (error) {
       this.logger.error(
         'assembled_object_validation_failed',

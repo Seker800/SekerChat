@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { useMutation, useQueryClient, type UseQueryResult } from '@tanstack/react-query';
 import {
   archiveServer,
@@ -144,7 +145,6 @@ export function useWorkspaceMutations({
           : `已恢复 Server「${result.category}」。`,
       );
       await serversQuery.refetch();
-      await groupsQuery.refetch();
       await queryClient.invalidateQueries({ queryKey: ['server-directory'] });
     },
     onError(error) {
@@ -164,7 +164,6 @@ export function useWorkspaceMutations({
           : `已恢复 Server「${result.name}」的可见性。`,
       );
       void serversQuery.refetch();
-      void groupsQuery.refetch();
       void queryClient.invalidateQueries({ queryKey: ['server-directory'] });
     },
     onError(error) {
@@ -252,13 +251,21 @@ export function useWorkspaceMutations({
     void changeCategoryMutation.mutateAsync({ groupId, serverId });
   }
 
-  function onEditMessage(messageId: string, text: string) {
-    void editMessageMutation.mutateAsync({ messageId, text });
-  }
+  const editMessageMutate = editMessageMutation.mutateAsync;
+  const onEditMessage = useCallback(
+    (messageId: string, text: string) => {
+      void editMessageMutate({ messageId, text });
+    },
+    [editMessageMutate],
+  );
 
-  function onRevokeMessage(messageId: string) {
-    void revokeMessageMutation.mutateAsync({ messageId });
-  }
+  const revokeMessageMutate = revokeMessageMutation.mutateAsync;
+  const onRevokeMessage = useCallback(
+    (messageId: string) => {
+      void revokeMessageMutate({ messageId });
+    },
+    [revokeMessageMutate],
+  );
 
   function onSetWorkStatus(groupId: string, status: string) {
     void setWorkStatusMutation.mutateAsync({ groupId, status });
