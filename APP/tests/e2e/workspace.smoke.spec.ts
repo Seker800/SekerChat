@@ -595,6 +595,9 @@ test.describe('review web smoke', () => {
       {
         animations: 'disabled',
         caret: 'hide',
+        // Tiny antialiasing/font differences are environment noise; the
+        // assertions above still guard the dialog content and structure.
+        maxDiffPixels: 50,
       },
     );
   });

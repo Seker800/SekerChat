@@ -4,6 +4,9 @@ export default defineConfig({
   testDir: './tests/e2e',
   testIgnore: ['**/*.live.spec.ts'],
   fullyParallel: true,
+  // The performance and media assertions are timing-sensitive; keep the CI
+  // suite on one worker so parallel CPU contention does not create false reds.
+  workers: process.env.CI ? 1 : undefined,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 2 : 0,
   reporter: [['list'], ['html', { open: 'never' }]],
