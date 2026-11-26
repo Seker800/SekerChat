@@ -17,6 +17,17 @@ import {
 } from '../../lib/message-timeline';
 import { ReadCursorCoordinator } from './readCursorCoordinator';
 
+/** The selected channel's badge is cleared locally before the cursor commit lands. */
+function clearGroupUnread(queryClient: ReturnType<typeof useQueryClient>, groupId: string): void {
+  const clear = (groups: GroupResponse[] | undefined) =>
+    groups?.map((group) => (group.id === groupId ? { ...group, unreadCount: 0 } : group));
+  queryClient.setQueryData<GroupResponse[]>(['groups'], clear);
+  queryClient.setQueryData<GroupResponse[]>(['dms'], clear);
+  queryClient.setQueryData<GroupResponse>(['group', groupId], (current) =>
+    current ? { ...current, unreadCount: 0 } : current,
+  );
+}
+
 interface UseMessageListInput {
   accessToken: string;
   selectedGroupId: string;
@@ -51,7 +62,12 @@ export function useMessageList({
   const readCursorCoordinatorRef = useRef<ReadCursorCoordinator | null>(null);
   if (!readCursorCoordinatorRef.current) {
     readCursorCoordinatorRef.current = new ReadCursorCoordinator(
-      (groupId, eventSequence) => advanceReadCursor(accessTokenRef.current, groupId, eventSequence),
+      (groupId, eventSequence) =>
+        advanceReadCursor(accessTokenRef.current, groupId, eventSequence).then(() => {
+          // A list refetch may have restored the server's unread count while the
+          // cursor was inside its window; re-assert the local read state.
+          clearGroupUnread(queryClient, groupId);
+        }),
       (error, groupId) => {
         console.error('advanceReadCursor failed:', error);
         void queryClient.invalidateQueries({ queryKey: ['groups'] });
@@ -105,19 +121,7 @@ export function useMessageList({
     if (!latest?.eventSequence) return;
 
     readCursorCoordinatorRef.current?.observe(selectedGroupId, latest.eventSequence);
-    queryClient.setQueryData<GroupResponse[]>(['groups'], (current) =>
-      current?.map((group) =>
-        group.id === selectedGroupId ? { ...group, unreadCount: 0 } : group,
-      ),
-    );
-    queryClient.setQueryData<GroupResponse[]>(['dms'], (current) =>
-      current?.map((group) =>
-        group.id === selectedGroupId ? { ...group, unreadCount: 0 } : group,
-      ),
-    );
-    queryClient.setQueryData<GroupResponse>(['group', selectedGroupId], (current) =>
-      current ? { ...current, unreadCount: 0 } : current,
-    );
+    clearGroupUnread(queryClient, selectedGroupId);
   }, [canAdvanceReadCursor, messages, queryClient, selectedGroupId]);
 
   const patchLoadedMessage = useCallback(
