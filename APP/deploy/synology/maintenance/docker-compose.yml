@@ -5,6 +5,8 @@ x-logging: &default-logging
     max-file: "3"
 
 services:
+  # Keep PostgreSQL on the data network only. Use `docker exec` or an SSH tunnel
+  # for administration; never publish 5432/5433 on 0.0.0.0.
   postgres:
     logging: *default-logging
     image: ${POSTGRES_IMAGE:?Set POSTGRES_IMAGE to the deployed image with a sha256 digest}
@@ -28,7 +30,10 @@ services:
     env_file: [../.env]
     volumes:
       - ../../runtime/minio:/data
-    ports: ["9000:9000", "127.0.0.1:9001:9001"]
+    # The application reaches MinIO through the data network
+    # (`S3_ENDPOINT=http://sekerchat-minio:9000`). The host ports exist only for
+    # maintenance tools running on the NAS; never bind them to 0.0.0.0.
+    ports: ["127.0.0.1:9000:9000", "127.0.0.1:9001:9001"]
     networks: [data]
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]

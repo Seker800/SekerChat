@@ -32,7 +32,19 @@ if ! "$DOCKER_BIN" ps --format '{{.Names}}' | grep -qx "$MINIO_CONTAINER"; then
   exit 1
 fi
 
-"$DOCKER_BIN" exec -i "$MINIO_CONTAINER" sh -c 'cat > /tmp/sekerchat-cors.xml' < "$CORS_FILE"
+# Restrict browser access to the configured application origin. Falling back to
+# `*` keeps existing installations working until they set APP_BASE_URL.
+APP_ORIGIN="$(printf '%s' "${APP_BASE_URL:-}" | sed -E 's#^(https?://[^/]+).*#\1#')"
+case "$APP_ORIGIN" in
+  http://*|https://*) ;;
+  *) APP_ORIGIN='*' ;;
+esac
+
+CORS_TMP="$(mktemp)"
+trap 'rm -f "$CORS_TMP"' EXIT
+sed "s#__ALLOWED_ORIGIN__#${APP_ORIGIN}#g" "$CORS_FILE" > "$CORS_TMP"
+
+"$DOCKER_BIN" exec -i "$MINIO_CONTAINER" sh -c 'cat > /tmp/sekerchat-cors.xml' < "$CORS_TMP"
 
 "$DOCKER_BIN" exec "$MINIO_CONTAINER" sh -c '
 set -eu

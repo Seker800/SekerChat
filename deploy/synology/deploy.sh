@@ -1,6 +1,16 @@
 #!/bin/bash
 set -euo pipefail
 
+cat >&2 <<'EOF'
+此目录已废弃，不再作为 SekerChat 的部署入口。
+其中的 docker-compose.yml 会把 PostgreSQL / MinIO 端口和默认口令暴露到局域网，
+也可能在路由器转发后暴露到公网。
+
+正式入口：APP/deploy/synology/
+正式部署说明：APP/docs/synology-deployment.md
+EOF
+exit 1
+
 # ============================================================
 # SekerChat 群晖部署脚本
 # 用法: bash deploy.sh

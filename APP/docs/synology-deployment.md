@@ -71,6 +71,11 @@ ssh nas "chmod +x /volume1/docker/sekerchat/{backup,verify-app-compose,release,r
 内部对象存储地址通常为 `S3_ENDPOINT=http://minio:9000`。如果存在外网和局域网两个前端入口，
 `CORS_ORIGINS` 必须同时列出。可信代理网段必须与 external network 中 frontend 的固定地址一致。
 
+MinIO 的数据面只通过 Docker 网络 `sekerchat-minio:9000` 供 backend 使用；维护端口只应绑定
+`127.0.0.1`。不要在路由器上转发 `9000`/`9001`，也不要在维护 compose 里把端口写成
+`9000:9000`。文件分享、预览和下载都走 `https://<入口>/api/...` 的同源代理，不依赖对象存储
+公网端口。升级 MinIO 前先备份 `runtime/minio`，再更新带 sha256 digest 的 `MINIO_IMAGE`。
+
 ## 固定发布顺序
 
 1. 本机构建、验证 checksum/SBOM，上传并 `docker load` 新镜像。
