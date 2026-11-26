@@ -80,14 +80,25 @@ export class FilePreviewJobService {
    * budget: the original remains downloadable, but generating a thumbnail is
    * never going to succeed and must not re-enter the worker loop.
    */
-  async skip(job: ClaimedFilePreviewJob, reason: string) {
-    await this.prisma.filePreviewJob.updateMany({
-      where: this.lease(job),
-      data: {
-        status: 'FAILED',
-        lockedAt: null,
-        lastError: reason.slice(0, 2000),
-      },
+  async skip(
+    job: ClaimedFilePreviewJob,
+    reason: string,
+    dimensions?: { imageWidth: number; imageHeight: number },
+  ) {
+    await this.prisma.$transaction(async (tx) => {
+      const owned = await tx.filePreviewJob.updateMany({
+        where: this.lease(job),
+        data: {
+          status: 'FAILED',
+          lockedAt: null,
+          lastError: reason.slice(0, 2000),
+        },
+      });
+      // Keep the dimensions we already read from the header so the UI can lay
+      // out the original even when no thumbnail is generated.
+      if (owned.count && dimensions) {
+        await tx.fileObject.update({ where: { id: job.fileId }, data: dimensions });
+      }
     });
   }
 }

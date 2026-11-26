@@ -13,6 +13,11 @@ import { LoginRiskService } from '../login-risk/login-risk.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RegistrationConfigService } from '../system-config/registration-config.service';
 
+// Cost-10 bcrypt hash used for unknown/OIDC-only accounts so login timing does
+// not reveal whether an email is registered.
+const DUMMY_PASSWORD_HASH =
+  '$2b$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy';
+
 @Injectable()
 export class PasswordAuthService {
   private readonly bootstrapSuperAdminEmail: string | null;
@@ -96,6 +101,9 @@ export class PasswordAuthService {
       where: { email: normalizedEmail },
     });
 
+    const passwordHash = user?.passwordHash ?? DUMMY_PASSWORD_HASH;
+    const valid = await bcrypt.compare(password, passwordHash);
+
     if (!user || !user.passwordHash) {
       await this.loginRiskService.recordFailure(normalizedEmail, ip);
       throw new UnauthorizedException('邮箱或密码错误');
@@ -106,7 +114,6 @@ export class PasswordAuthService {
       throw new ForbiddenException('该账号已停用，请联系管理员');
     }
 
-    const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
       await this.loginRiskService.recordFailure(normalizedEmail, ip);
       throw new UnauthorizedException('邮箱或密码错误');

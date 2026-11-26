@@ -112,7 +112,10 @@ export class FilePreviewWorkerService {
         if (!(error instanceof ImageDecodeBudgetExceededError)) throw error;
         // Oversized originals stay downloadable; only thumbnail generation is
         // skipped, so do not retry this job or block the queue.
-        await this.jobs.skip(job, error.message);
+        await this.jobs.skip(job, error.message, {
+          imageWidth: header.autoOrient?.width ?? header.width,
+          imageHeight: header.autoOrient?.height ?? header.height,
+        });
         this.logger.warn(
           'file_preview_skipped_oversized_image',
           JSON.stringify({
